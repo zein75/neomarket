@@ -25,6 +25,7 @@ class SKU(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     price: Mapped[int] = mapped_column(Integer, nullable=False)
     stock: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    reserved_quantity: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     images: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 

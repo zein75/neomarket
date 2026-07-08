@@ -3,7 +3,9 @@ from uuid import UUID
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.clients.moderation import ModerationClient
 from src.models.product import Product
+from src.models.product import ProductStatus
 from src.repositories.product_repo import ProductRepository
 from src.schemas.product import PaginatedProducts, ProductCreate, ProductResponse, ProductUpdate
 
@@ -50,11 +52,23 @@ class ProductService:
         return await self.repo.get_with_skus(product.id)
 
     async def update(self, product_id: UUID, seller_id: UUID, data: ProductUpdate) -> Product:
-        product = await self.repo.get_seller_product(product_id, seller_id)
+        product = await self.repo.get_with_skus(product_id)
         if not product:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Product not found"
             )
+        if product.seller_id != seller_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
+            )
+        if product.status == ProductStatus.HARD_BLOCKED:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cannot edit hard-blocked product",
+            )
+
+        moderation_client = ModerationClient()
+        json_before = moderation_client.product_snapshot(product)
         if data.title is not None:
             product.title = data.title
         if data.description is not None:
@@ -69,7 +83,18 @@ class ProductService:
             product.category = data.category
         if data.is_active is not None:
             product.is_active = data.is_active
+        should_send_to_moderation = product.status in {
+            ProductStatus.MODERATED,
+            ProductStatus.BLOCKED,
+        }
+        if should_send_to_moderation:
+            product.status = ProductStatus.ON_MODERATION
         await self.repo.session.flush()
+        if should_send_to_moderation:
+            await moderation_client.send_product_edited(
+                product,
+                json_before=json_before,
+            )
         return await self.repo.get_with_skus(product.id)
 
     async def delete(self, product_id: UUID, seller_id: UUID) -> None:

@@ -63,6 +63,14 @@ class SKUService:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
             )
+        if product.status == ProductStatus.HARD_BLOCKED:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cannot edit SKU of hard-blocked product",
+            )
+
+        moderation_client = ModerationClient()
+        json_before = moderation_client.product_snapshot(product)
         if data.name is not None:
             sku.name = data.name
         if data.price is not None:
@@ -73,8 +81,19 @@ class SKUService:
             sku.images = data.images
         if data.is_active is not None:
             sku.is_active = data.is_active
+        should_send_to_moderation = product.status in {
+            ProductStatus.MODERATED,
+            ProductStatus.BLOCKED,
+        }
+        if should_send_to_moderation:
+            product.status = ProductStatus.ON_MODERATION
         await self.sku_repo.session.flush()
         await self.sku_repo.session.refresh(sku)
+        if should_send_to_moderation:
+            await moderation_client.send_product_edited(
+                product,
+                json_before=json_before,
+            )
         return sku
 
     async def delete(self, sku_id: UUID, seller_id: UUID) -> None:

@@ -25,10 +25,16 @@ def upgrade() -> None:
         "skus",
         sa.Column("images", sa.JSON(), nullable=False, server_default=sa.text("'[]'")),
     )
+    op.add_column(
+        "skus",
+        sa.Column("reserved_quantity", sa.Integer(), nullable=False, server_default="0"),
+    )
     op.alter_column("skus", "images", server_default=None)
+    op.alter_column("skus", "reserved_quantity", server_default=None)
 
 
 def downgrade() -> None:
+    op.drop_column("skus", "reserved_quantity")
     op.drop_column("skus", "images")
     op.execute("UPDATE products SET status = 'MODERATION' WHERE status = 'ON_MODERATION'")
     op.execute("UPDATE products SET status = 'ACTIVE' WHERE status = 'MODERATED'")

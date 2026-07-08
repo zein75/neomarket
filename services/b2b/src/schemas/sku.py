@@ -27,5 +27,6 @@ class SKUResponse(BaseModel):
     name: str
     price: int
     stock: int
+    reserved_quantity: int = 0
     images: list[str]
     is_active: bool

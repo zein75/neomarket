@@ -6,7 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_current_seller, get_db
 from src.models.seller import Seller
-from src.schemas.product import PaginatedProducts, ProductCreate, ProductResponse
+from src.schemas.product import (
+    PaginatedProducts,
+    ProductCreate,
+    ProductResponse,
+    ProductUpdate,
+)
 from src.services.product_service import ProductService
 
 router = APIRouter(tags=["products"])
@@ -44,3 +49,26 @@ async def create_product(
     product = await svc.create(current_seller.id, data)
     await db.commit()
     return product
+
+
+@router.put("/api/v1/products/{product_id}", response_model=ProductResponse)
+async def update_product(
+    product_id: UUID,
+    data: ProductUpdate,
+    current_seller: Seller = Depends(get_current_seller),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    svc = ProductService(db)
+    product = await svc.update(product_id, current_seller.id, data)
+    await db.commit()
+    return product
+
+
+@router.patch("/api/v1/products/{product_id}", response_model=ProductResponse)
+async def patch_product(
+    product_id: UUID,
+    data: ProductUpdate,
+    current_seller: Seller = Depends(get_current_seller),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    return await update_product(product_id, data, current_seller, db)

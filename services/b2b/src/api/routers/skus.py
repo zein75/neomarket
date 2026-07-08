@@ -51,7 +51,7 @@ async def create_sku_legacy(
     return await create_sku(data, current_seller, db)
 
 
-@router.patch("/api/v1/skus/{sku_id}", response_model=SKUResponse)
+@router.put("/api/v1/skus/{sku_id}", response_model=SKUResponse)
 async def update_sku(
     sku_id: UUID,
     data: SKUUpdate,
@@ -63,6 +63,16 @@ async def update_sku(
     await db.commit()
     await db.refresh(sku)
     return sku
+
+
+@router.patch("/api/v1/skus/{sku_id}", response_model=SKUResponse)
+async def patch_sku(
+    sku_id: UUID,
+    data: SKUUpdate,
+    current_seller: Seller = Depends(get_current_seller),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    return await update_sku(sku_id, data, current_seller, db)
 
 
 @router.delete("/api/v1/skus/{sku_id}", status_code=204)
