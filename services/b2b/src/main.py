@@ -5,7 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from src.api.routers import auth, health, products, reservations, sellers, skus
+from src.api.routers import auth, health, invoices, products, reservations, sellers, skus
 
 
 @asynccontextmanager
@@ -31,5 +31,6 @@ app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(products.router)
 app.include_router(skus.router)
+app.include_router(invoices.router)
 app.include_router(reservations.router)
 app.include_router(sellers.router)

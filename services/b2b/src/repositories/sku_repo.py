@@ -2,6 +2,7 @@ from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from src.models.sku import SKU
 from .base import BaseRepository
@@ -16,6 +17,14 @@ class SKURepository(BaseRepository[SKU]):
             select(SKU).where(SKU.product_id == product_id)
         )
         return list(result.scalars().all())
+
+    async def get_with_product(self, sku_id: UUID) -> SKU | None:
+        result = await self.session.execute(
+            select(SKU)
+            .where(SKU.id == sku_id)
+            .options(joinedload(SKU.product))
+        )
+        return result.scalar_one_or_none()
 
     async def create_sku(
         self,
