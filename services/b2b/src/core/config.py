@@ -15,5 +15,9 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
 
+    moderation_url: str = "http://moderation:8000"
+    service_key: str = "dev-service-key-change-in-production"
+    moderation_timeout_seconds: float = 3.0
+
 
 settings = Settings()

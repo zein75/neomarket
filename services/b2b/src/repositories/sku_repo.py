@@ -16,3 +16,24 @@ class SKURepository(BaseRepository[SKU]):
             select(SKU).where(SKU.product_id == product_id)
         )
         return list(result.scalars().all())
+
+    async def create_sku(
+        self,
+        *,
+        product_id: UUID,
+        name: str,
+        price: int,
+        stock: int,
+        images: list[str],
+    ) -> SKU:
+        sku = SKU(
+            product_id=product_id,
+            name=name,
+            price=price,
+            stock=stock,
+            images=images,
+        )
+        self.session.add(sku)
+        await self.session.flush()
+        await self.session.refresh(sku)
+        return sku

@@ -15,9 +15,10 @@ if TYPE_CHECKING:
 
 class ProductStatus(StrEnum):
     CREATED = "CREATED"
-    MODERATION = "MODERATION"
-    ACTIVE = "ACTIVE"
-    REJECTED = "REJECTED"
+    ON_MODERATION = "ON_MODERATION"
+    MODERATED = "MODERATED"
+    BLOCKED = "BLOCKED"
+    HARD_BLOCKED = "HARD_BLOCKED"
 
 
 class Product(Base, TimestampMixin):
