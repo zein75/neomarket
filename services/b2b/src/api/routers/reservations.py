@@ -4,14 +4,60 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.deps import get_db
-from src.schemas.reservation import ReservationCreate, ReservationResponse
+from src.api.deps import get_db, verify_service_key
+from src.schemas.reservation import (
+    InventoryResponse,
+    ReservationCreate,
+    ReservationResponse,
+    ReserveRequest,
+    UnreserveRequest,
+)
 from src.services.reservation_service import ReservationService
 
-router = APIRouter(prefix="/reservations", tags=["reservations"])
+router = APIRouter(tags=["reservations"])
 
 
-@router.post("", response_model=ReservationResponse, status_code=201)
+@router.post("/api/v1/reserve", response_model=InventoryResponse)
+async def reserve_inventory(
+    data: ReserveRequest,
+    _: None = Depends(verify_service_key),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
+    result = await ReservationService(db).reserve(data)
+    await db.commit()
+    return result
+
+
+@router.post("/api/v1/inventory/reserve", response_model=InventoryResponse)
+async def reserve_inventory_alias(
+    data: ReserveRequest,
+    _: None = Depends(verify_service_key),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
+    return await reserve_inventory(data, _, db)
+
+
+@router.post("/api/v1/unreserve", response_model=InventoryResponse)
+async def unreserve_inventory(
+    data: UnreserveRequest,
+    _: None = Depends(verify_service_key),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
+    result = await ReservationService(db).unreserve(data)
+    await db.commit()
+    return result
+
+
+@router.post("/api/v1/inventory/unreserve", response_model=InventoryResponse)
+async def unreserve_inventory_alias(
+    data: UnreserveRequest,
+    _: None = Depends(verify_service_key),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
+    return await unreserve_inventory(data, _, db)
+
+
+@router.post("/reservations", response_model=ReservationResponse, status_code=201)
 async def create_reservation(
     data: ReservationCreate,
     db: AsyncSession = Depends(get_db),
@@ -23,7 +69,7 @@ async def create_reservation(
     return reservation
 
 
-@router.delete("/{order_id}", status_code=204)
+@router.delete("/reservations/{order_id}", status_code=204)
 async def cancel_reservations(
     order_id: UUID,
     db: AsyncSession = Depends(get_db),

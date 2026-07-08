@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ReservationCreate(BaseModel):
@@ -16,3 +16,23 @@ class ReservationResponse(BaseModel):
     sku_id: UUID
     order_id: UUID
     quantity: int
+
+
+class ReserveItem(BaseModel):
+    sku_id: UUID
+    quantity: int = Field(gt=0)
+
+
+class ReserveRequest(BaseModel):
+    order_id: UUID
+    idempotency_key: str
+    items: list[ReserveItem] = Field(min_length=1)
+
+
+class UnreserveRequest(BaseModel):
+    order_id: UUID
+
+
+class InventoryResponse(BaseModel):
+    status: str
+    order_id: UUID

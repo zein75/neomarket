@@ -19,6 +19,13 @@ class B2CClient:
 
     async def send_product_deleted(self, product: Any) -> None:
         event = self.build_product_deleted_event(product)
+        await self._post_event(event)
+
+    async def send_sku_out_of_stock(self, sku: Any) -> None:
+        event = self.build_sku_out_of_stock_event(sku)
+        await self._post_event(event)
+
+    async def _post_event(self, event: dict[str, Any]) -> None:
         async with httpx.AsyncClient(timeout=settings.b2c_timeout_seconds) as client:
             response = await client.post(
                 f"{self.base_url}/api/v1/b2b/events",
@@ -37,5 +44,15 @@ class B2CClient:
             "payload": {
                 "product_id": str(product.id),
                 "sku_ids": [str(sku.id) for sku in product.skus],
+            },
+        }
+
+    def build_sku_out_of_stock_event(self, sku: Any) -> dict[str, Any]:
+        return {
+            "event_type": "SKU_OUT_OF_STOCK",
+            "idempotency_key": str(uuid5(NAMESPACE_URL, f"sku-out-of-stock:{sku.id}")),
+            "occurred_at": datetime.now(timezone.utc).isoformat(),
+            "payload": {
+                "sku_id": str(sku.id),
             },
         }

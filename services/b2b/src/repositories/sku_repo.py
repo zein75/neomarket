@@ -26,6 +26,14 @@ class SKURepository(BaseRepository[SKU]):
         )
         return result.scalar_one_or_none()
 
+    async def list_for_update(self, sku_ids: list[UUID]) -> list[SKU]:
+        result = await self.session.execute(
+            select(SKU)
+            .where(SKU.id.in_(sku_ids))
+            .with_for_update()
+        )
+        return list(result.scalars().all())
+
     async def create_sku(
         self,
         *,
