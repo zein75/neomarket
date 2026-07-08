@@ -42,6 +42,7 @@ class Product(Base, TimestampMixin):
         String(32), default=ProductStatus.CREATED.value, nullable=False
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    deleted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     seller: Mapped["Seller"] = relationship("Seller", back_populates="products")
     skus: Mapped[list["SKU"]] = relationship(

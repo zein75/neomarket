@@ -26,7 +26,10 @@ class ProductRepository(BaseRepository[Product]):
         page_size: int = 20,
         search: str | None = None,
     ) -> tuple[list[Product], int]:
-        base_query = select(Product).where(Product.is_active == True)  # noqa: E712
+        base_query = select(Product).where(
+            Product.is_active == True,  # noqa: E712
+            Product.deleted == False,  # noqa: E712
+        )
         if search:
             base_query = base_query.where(Product.title.ilike(f"%{search}%"))
 
@@ -50,7 +53,7 @@ class ProductRepository(BaseRepository[Product]):
     async def list_by_seller(self, seller_id: UUID) -> list[Product]:
         result = await self.session.execute(
             select(Product)
-            .where(Product.seller_id == seller_id)
+            .where(Product.seller_id == seller_id, Product.deleted == False)  # noqa: E712
             .options(selectinload(Product.skus))
         )
         return list(result.scalars().all())

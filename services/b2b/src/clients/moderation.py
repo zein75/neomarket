@@ -31,6 +31,10 @@ class ModerationClient:
         event = self.build_product_edited_event(product, json_before=json_before)
         await self._post_event(event)
 
+    async def send_product_deleted(self, product: Any) -> None:
+        event = self.build_product_deleted_event(product)
+        await self._post_event(event)
+
     async def _post_event(self, event: dict[str, Any]) -> None:
         async with httpx.AsyncClient(timeout=settings.moderation_timeout_seconds) as client:
             response = await client.post(
@@ -73,6 +77,16 @@ class ModerationClient:
                 "queue_priority": 3,
                 "json_before": json_before,
                 "json_after": self.product_snapshot(product),
+            },
+        }
+
+    def build_product_deleted_event(self, product: Any) -> dict[str, Any]:
+        return {
+            "event_type": "PRODUCT_DELETED",
+            "idempotency_key": str(uuid5(NAMESPACE_URL, f"product-deleted:{product.id}")),
+            "occurred_at": datetime.now(timezone.utc).isoformat(),
+            "payload": {
+                "product_id": str(product.id),
             },
         }
 

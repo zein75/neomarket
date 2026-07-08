@@ -1,8 +1,10 @@
 from uuid import UUID
 
 from fastapi import HTTPException, status
+import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.clients.b2c import B2CClient
 from src.clients.moderation import ModerationClient
 from src.models.product import Product
 from src.models.product import ProductStatus
@@ -98,9 +100,29 @@ class ProductService:
         return await self.repo.get_with_skus(product.id)
 
     async def delete(self, product_id: UUID, seller_id: UUID) -> None:
-        product = await self.repo.get_seller_product(product_id, seller_id)
+        product = await self.repo.get_with_skus(product_id)
         if not product:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Product not found"
             )
-        await self.repo.delete(product)
+        if product.seller_id != seller_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
+            )
+        if product.deleted:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Product already deleted",
+            )
+
+        product.deleted = True
+        product.is_active = False
+        await self.repo.session.flush()
+        try:
+            await ModerationClient().send_product_deleted(product)
+        except httpx.HTTPError:
+            pass
+        try:
+            await B2CClient().send_product_deleted(product)
+        except httpx.HTTPError:
+            pass

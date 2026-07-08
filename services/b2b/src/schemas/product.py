@@ -39,6 +39,7 @@ class ProductResponse(BaseModel):
     status: ProductStatus
     category: str | None
     is_active: bool
+    deleted: bool = False
     skus: list[SKUResponse] = []
 
 

@@ -72,3 +72,14 @@ async def patch_product(
     db: AsyncSession = Depends(get_db),
 ) -> Any:
     return await update_product(product_id, data, current_seller, db)
+
+
+@router.delete("/api/v1/products/{product_id}", status_code=204)
+async def delete_product(
+    product_id: UUID,
+    current_seller: Seller = Depends(get_current_seller),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    svc = ProductService(db)
+    await svc.delete(product_id, current_seller.id)
+    await db.commit()
