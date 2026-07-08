@@ -9,6 +9,7 @@ from src.models.seller import Seller
 from src.schemas.product import (
     PaginatedProducts,
     ProductCreate,
+    ProductDetailResponse,
     ProductResponse,
     ProductUpdate,
 )
@@ -49,6 +50,16 @@ async def create_product(
     product = await svc.create(current_seller.id, data)
     await db.commit()
     return product
+
+
+@router.get("/api/v1/products/{product_id}", response_model=ProductDetailResponse)
+async def get_seller_product(
+    product_id: UUID,
+    current_seller: Seller = Depends(get_current_seller),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    svc = ProductService(db)
+    return await svc.get_for_seller(product_id, current_seller.id)
 
 
 @router.put("/api/v1/products/{product_id}", response_model=ProductResponse)

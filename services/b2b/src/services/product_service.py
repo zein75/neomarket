@@ -38,8 +38,57 @@ class ProductService:
             )
         return product
 
+    async def get_for_seller(self, product_id: UUID, seller_id: UUID) -> dict[str, object]:
+        product = await self.repo.get_with_skus(product_id)
+        if not product or product.seller_id != seller_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Product not found"
+            )
+        return self._seller_product_detail(product)
+
     async def list_by_seller(self, seller_id: UUID) -> list[Product]:
         return await self.repo.list_by_seller(seller_id)
+
+    def _seller_product_detail(self, product: Product) -> dict[str, object]:
+        return {
+            "id": str(product.id),
+            "seller_id": str(product.seller_id),
+            "title": product.title,
+            "description": product.description,
+            "category_id": str(product.category_id) if product.category_id else None,
+            "images": product.images,
+            "characteristics": product.characteristics,
+            "status": self._status_value(product.status),
+            "category": product.category,
+            "is_active": product.is_active,
+            "deleted": product.deleted,
+            "blocked": product.status
+            in {ProductStatus.BLOCKED, ProductStatus.HARD_BLOCKED},
+            "blocking_reason": product.blocking_reason,
+            "field_reports": product.field_reports or [],
+            "skus": [self._seller_sku_detail(sku) for sku in product.skus],
+        }
+
+    def _seller_sku_detail(self, sku: object) -> dict[str, object]:
+        reserved_quantity = getattr(sku, "reserved_quantity", 0)
+        stock = sku.stock
+        return {
+            "id": str(sku.id),
+            "product_id": str(sku.product_id),
+            "name": sku.name,
+            "price": sku.price,
+            "cost_price": getattr(sku, "cost_price", None),
+            "stock": stock,
+            "active_quantity": max(stock - reserved_quantity, 0),
+            "reserved_quantity": reserved_quantity,
+            "images": sku.images,
+            "is_active": sku.is_active,
+        }
+
+    def _status_value(self, product_status: object) -> str:
+        if isinstance(product_status, ProductStatus):
+            return product_status.value
+        return str(product_status)
 
     async def create(self, seller_id: UUID, data: ProductCreate) -> Product:
         product = await self.repo.create_product(

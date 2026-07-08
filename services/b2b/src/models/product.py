@@ -38,6 +38,10 @@ class Product(Base, TimestampMixin):
     category_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     images: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     characteristics: Mapped[dict[str, object]] = mapped_column(JSON, default=dict, nullable=False)
+    blocking_reason: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
+    field_reports: Mapped[list[dict[str, object]]] = mapped_column(
+        JSON, default=list, nullable=False
+    )
     status: Mapped[str] = mapped_column(
         String(32), default=ProductStatus.CREATED.value, nullable=False
     )

@@ -43,6 +43,24 @@ class ProductResponse(BaseModel):
     skus: list[SKUResponse] = []
 
 
+class BlockingReasonResponse(BaseModel):
+    id: UUID
+    title: str
+    comment: str
+
+
+class FieldReportResponse(BaseModel):
+    field_name: str
+    sku_id: UUID | None = None
+    comment: str
+
+
+class ProductDetailResponse(ProductResponse):
+    blocked: bool
+    blocking_reason: BlockingReasonResponse | None = None
+    field_reports: list[FieldReportResponse] = []
+
+
 class PaginatedProducts(BaseModel):
     items: list[ProductResponse]
     total: int

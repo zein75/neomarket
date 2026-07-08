@@ -26,7 +26,9 @@ class SKUResponse(BaseModel):
     product_id: UUID
     name: str
     price: int
+    cost_price: int | None = None
     stock: int
+    active_quantity: int | None = None
     reserved_quantity: int = 0
     images: list[str]
     is_active: bool
