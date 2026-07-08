@@ -4,7 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.deps import get_current_seller, get_db
+from src.api.deps import get_current_seller, get_db, verify_service_key
 from src.models.seller import Seller
 from src.schemas.product import (
     PaginatedProducts,
@@ -16,6 +16,12 @@ from src.schemas.product import (
 from src.services.product_service import ProductService
 
 router = APIRouter(tags=["products"])
+
+
+def _parse_ids(ids: str | None) -> list[UUID] | None:
+    if not ids:
+        return None
+    return [UUID(raw_id.strip()) for raw_id in ids.split(",") if raw_id.strip()]
 
 
 # --- Public catalog (called by B2C) ---
@@ -38,6 +44,25 @@ async def get_product(
 ) -> Any:
     svc = ProductService(db)
     return await svc.get_active(product_id)
+
+
+@router.get("/api/v1/products")
+async def list_public_products(
+    ids: str | None = Query(None),
+    _: None = Depends(verify_service_key),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    svc = ProductService(db)
+    return await svc.list_public_catalog(product_ids=_parse_ids(ids))
+
+
+@router.get("/api/v1/public/products")
+async def list_public_products_alias(
+    ids: str | None = Query(None),
+    _: None = Depends(verify_service_key),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    return await list_public_products(ids, _, db)
 
 
 @router.post("/api/v1/products", response_model=ProductResponse, status_code=201)

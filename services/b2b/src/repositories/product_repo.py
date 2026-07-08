@@ -58,6 +58,23 @@ class ProductRepository(BaseRepository[Product]):
         )
         return list(result.scalars().all())
 
+    async def list_public_catalog(
+        self,
+        product_ids: list[UUID] | None = None,
+    ) -> list[Product]:
+        query = (
+            select(Product)
+            .where(
+                Product.status == "MODERATED",
+                Product.deleted == False,  # noqa: E712
+            )
+            .options(selectinload(Product.skus))
+        )
+        if product_ids is not None:
+            query = query.where(Product.id.in_(product_ids))
+        result = await self.session.execute(query)
+        return list(result.scalars().all())
+
     async def get_seller_product(self, product_id: UUID, seller_id: UUID) -> Product | None:
         result = await self.session.execute(
             select(Product)

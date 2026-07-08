@@ -46,6 +46,17 @@ class ProductService:
             )
         return self._seller_product_detail(product)
 
+    async def list_public_catalog(
+        self,
+        product_ids: list[UUID] | None = None,
+    ) -> list[dict[str, object]]:
+        products = await self.repo.list_public_catalog(product_ids)
+        return [
+            self._public_product_detail(product)
+            for product in products
+            if self._is_publicly_visible(product)
+        ]
+
     async def list_by_seller(self, seller_id: UUID) -> list[Product]:
         return await self.repo.list_by_seller(seller_id)
 
@@ -84,6 +95,45 @@ class ProductService:
             "images": sku.images,
             "is_active": sku.is_active,
         }
+
+    def _is_publicly_visible(self, product: Product) -> bool:
+        if str(product.status) != ProductStatus.MODERATED.value:
+            return False
+        if product.deleted:
+            return False
+        return any(self._active_quantity(sku) > 0 for sku in product.skus)
+
+    def _public_product_detail(self, product: Product) -> dict[str, object]:
+        return {
+            "id": str(product.id),
+            "title": product.title,
+            "description": product.description,
+            "category_id": str(product.category_id) if product.category_id else None,
+            "images": product.images,
+            "characteristics": product.characteristics,
+            "status": self._status_value(product.status),
+            "category": product.category,
+            "skus": [
+                self._public_sku_detail(sku)
+                for sku in product.skus
+                if self._active_quantity(sku) > 0
+            ],
+        }
+
+    def _public_sku_detail(self, sku: object) -> dict[str, object]:
+        return {
+            "id": str(sku.id),
+            "product_id": str(sku.product_id),
+            "name": sku.name,
+            "price": sku.price,
+            "stock": sku.stock,
+            "active_quantity": self._active_quantity(sku),
+            "images": sku.images,
+            "is_active": sku.is_active,
+        }
+
+    def _active_quantity(self, sku: object) -> int:
+        return max(sku.stock - getattr(sku, "reserved_quantity", 0), 0)
 
     def _status_value(self, product_status: object) -> str:
         if isinstance(product_status, ProductStatus):
