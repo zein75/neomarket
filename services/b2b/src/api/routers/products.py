@@ -6,10 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_current_seller, get_db, verify_service_key
 from src.models.seller import Seller
+from src.models.product import ProductStatus
 from src.schemas.product import (
     PaginatedProducts,
     ProductCreate,
     ProductDetailResponse,
+    ProductPaginatedResponse,
     ProductResponse,
     ProductUpdate,
 )
@@ -46,7 +48,29 @@ async def get_product(
     return await svc.get_active(product_id)
 
 
-@router.get("/api/v1/products")
+@router.get("/api/v1/products", response_model=ProductPaginatedResponse)
+async def list_seller_products(
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    status: ProductStatus | None = Query(None),
+    include_deleted: bool = Query(False),
+    deleted: bool | None = Query(None),
+    search: str | None = Query(None),
+    current_seller: Seller = Depends(get_current_seller),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    svc = ProductService(db)
+    return await svc.list_for_seller_cabinet(
+        seller_id=current_seller.id,
+        limit=limit,
+        offset=offset,
+        status=status,
+        include_deleted=include_deleted or deleted is True,
+        search=search,
+    )
+
+
+@router.get("/api/v1/public/products")
 async def list_public_products(
     ids: str | None = Query(None),
     _: None = Depends(verify_service_key),
@@ -54,15 +78,6 @@ async def list_public_products(
 ) -> Any:
     svc = ProductService(db)
     return await svc.list_public_catalog(product_ids=_parse_ids(ids))
-
-
-@router.get("/api/v1/public/products")
-async def list_public_products_alias(
-    ids: str | None = Query(None),
-    _: None = Depends(verify_service_key),
-    db: AsyncSession = Depends(get_db),
-) -> Any:
-    return await list_public_products(ids, _, db)
 
 
 @router.post("/api/v1/products", response_model=ProductResponse, status_code=201)

@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.models.product import Product
+from src.models.sku import SKU
 from .base import BaseRepository
 
 
@@ -57,6 +58,58 @@ class ProductRepository(BaseRepository[Product]):
             .options(selectinload(Product.skus))
         )
         return list(result.scalars().all())
+
+    async def list_for_seller_cabinet(
+        self,
+        *,
+        seller_id: UUID,
+        limit: int,
+        offset: int,
+        status: str | None = None,
+        include_deleted: bool = False,
+        search: str | None = None,
+    ) -> tuple[list[tuple[Product, int, int]], int]:
+        sku_stats = (
+            select(
+                SKU.product_id.label("product_id"),
+                func.count(SKU.id).label("skus_count"),
+                func.coalesce(
+                    func.sum(func.greatest(SKU.stock - SKU.reserved_quantity, 0)),
+                    0,
+                ).label("total_active_quantity"),
+            )
+            .group_by(SKU.product_id)
+            .subquery()
+        )
+        base_query = select(Product).where(Product.seller_id == seller_id)
+        if not include_deleted:
+            base_query = base_query.where(Product.deleted == False)  # noqa: E712
+        if status:
+            base_query = base_query.where(Product.status == status)
+        if search:
+            base_query = base_query.where(Product.title.ilike(f"%{search}%"))
+
+        total = (
+            await self.session.execute(
+                select(func.count()).select_from(base_query.subquery())
+            )
+        ).scalar_one()
+
+        rows = (
+            await self.session.execute(
+                base_query
+                .outerjoin(sku_stats, sku_stats.c.product_id == Product.id)
+                .with_only_columns(
+                    Product,
+                    func.coalesce(sku_stats.c.skus_count, 0),
+                    func.coalesce(sku_stats.c.total_active_quantity, 0),
+                )
+                .order_by(Product.created_at.desc())
+                .offset(offset)
+                .limit(limit)
+            )
+        ).all()
+        return [(row[0], int(row[1]), int(row[2])) for row in rows], total
 
     async def list_public_catalog(
         self,

@@ -9,7 +9,13 @@ from src.clients.moderation import ModerationClient
 from src.models.product import Product
 from src.models.product import ProductStatus
 from src.repositories.product_repo import ProductRepository
-from src.schemas.product import PaginatedProducts, ProductCreate, ProductResponse, ProductUpdate
+from src.schemas.product import (
+    PaginatedProducts,
+    ProductCreate,
+    ProductPaginatedResponse,
+    ProductResponse,
+    ProductUpdate,
+)
 
 
 class ProductService:
@@ -59,6 +65,61 @@ class ProductService:
 
     async def list_by_seller(self, seller_id: UUID) -> list[Product]:
         return await self.repo.list_by_seller(seller_id)
+
+    async def list_for_seller_cabinet(
+        self,
+        *,
+        seller_id: UUID,
+        limit: int = 20,
+        offset: int = 0,
+        status: ProductStatus | None = None,
+        include_deleted: bool = False,
+        search: str | None = None,
+    ) -> ProductPaginatedResponse:
+        rows, total = await self.repo.list_for_seller_cabinet(
+            seller_id=seller_id,
+            limit=limit,
+            offset=offset,
+            status=self._status_value(status) if status else None,
+            include_deleted=include_deleted,
+            search=search,
+        )
+        return ProductPaginatedResponse(
+            items=[
+                self._seller_product_list_item(
+                    product,
+                    skus_count=skus_count,
+                    total_active_quantity=total_active_quantity,
+                )
+                for product, skus_count, total_active_quantity in rows
+            ],
+            total_count=total,
+            limit=limit,
+            offset=offset,
+        )
+
+    def _seller_product_list_item(
+        self,
+        product: Product,
+        *,
+        skus_count: int,
+        total_active_quantity: int,
+    ) -> dict[str, object]:
+        return {
+            "id": str(product.id),
+            "seller_id": str(product.seller_id),
+            "title": product.title,
+            "description": product.description,
+            "category_id": str(product.category_id) if product.category_id else None,
+            "images": product.images,
+            "characteristics": product.characteristics,
+            "status": self._status_value(product.status),
+            "category": product.category,
+            "is_active": product.is_active,
+            "deleted": product.deleted,
+            "skus_count": skus_count,
+            "total_active_quantity": total_active_quantity,
+        }
 
     def _seller_product_detail(self, product: Product) -> dict[str, object]:
         return {

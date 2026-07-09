@@ -61,6 +61,29 @@ class ProductDetailResponse(ProductResponse):
     field_reports: list[FieldReportResponse] = []
 
 
+class ProductListItem(BaseModel):
+    id: UUID
+    seller_id: UUID
+    title: str
+    description: str | None
+    category_id: UUID | None
+    images: list[str]
+    characteristics: dict[str, Any]
+    status: ProductStatus
+    category: str | None
+    is_active: bool
+    deleted: bool = False
+    skus_count: int
+    total_active_quantity: int
+
+
+class ProductPaginatedResponse(BaseModel):
+    items: list[ProductListItem]
+    total_count: int
+    limit: int
+    offset: int
+
+
 class PaginatedProducts(BaseModel):
     items: list[ProductResponse]
     total: int
