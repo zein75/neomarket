@@ -33,6 +33,10 @@ class UnreserveRequest(BaseModel):
     order_id: UUID
 
 
+class FulfillRequest(BaseModel):
+    order_id: UUID
+
+
 class InventoryResponse(BaseModel):
     status: str
     order_id: UUID

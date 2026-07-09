@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_db, verify_service_key
 from src.schemas.reservation import (
+    FulfillRequest,
     InventoryResponse,
     ReservationCreate,
     ReservationResponse,
@@ -55,6 +56,26 @@ async def unreserve_inventory_alias(
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, object]:
     return await unreserve_inventory(data, _, db)
+
+
+@router.post("/api/v1/fulfill", response_model=InventoryResponse)
+async def fulfill_inventory(
+    data: FulfillRequest,
+    _: None = Depends(verify_service_key),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
+    result = await ReservationService(db).fulfill(data)
+    await db.commit()
+    return result
+
+
+@router.post("/api/v1/inventory/fulfill", response_model=InventoryResponse)
+async def fulfill_inventory_alias(
+    data: FulfillRequest,
+    _: None = Depends(verify_service_key),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
+    return await fulfill_inventory(data, _, db)
 
 
 @router.post("/reservations", response_model=ReservationResponse, status_code=201)

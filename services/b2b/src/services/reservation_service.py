@@ -6,15 +6,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.clients.b2c import B2CClient
 from src.models.reservation import Reservation
+from src.repositories.fulfilled_order_repo import FulfilledOrderRepository
 from src.repositories.reservation_repo import ReservationRepository
 from src.repositories.sku_repo import SKURepository
-from src.schemas.reservation import ReservationCreate, ReserveRequest, UnreserveRequest
+from src.schemas.reservation import (
+    FulfillRequest,
+    ReservationCreate,
+    ReserveRequest,
+    UnreserveRequest,
+)
 
 
 class ReservationService:
     def __init__(self, session: AsyncSession) -> None:
         self.reservation_repo = ReservationRepository(session)
         self.sku_repo = SKURepository(session)
+        self.fulfilled_order_repo = FulfilledOrderRepository(session)
 
     async def create(self, data: ReservationCreate) -> Reservation:
         sku = await self.sku_repo.get_by_id(data.sku_id)
@@ -110,6 +117,31 @@ class ReservationService:
         await self.reservation_repo.delete_many(reservations)
         await self.reservation_repo.session.flush()
         return {"status": "UNRESERVED", "order_id": data.order_id}
+
+    async def fulfill(self, data: FulfillRequest) -> dict[str, object]:
+        if await self.fulfilled_order_repo.exists(data.order_id):
+            return {"status": "FULFILLED", "order_id": data.order_id}
+
+        reservations = await self.reservation_repo.list_by_order(data.order_id)
+        if not reservations:
+            return {"status": "FULFILLED", "order_id": data.order_id}
+
+        skus = await self.sku_repo.list_for_update(
+            [reservation.sku_id for reservation in reservations]
+        )
+        skus_by_id = {sku.id: sku for sku in skus}
+        for reservation in reservations:
+            sku = skus_by_id.get(reservation.sku_id)
+            if sku:
+                sku.stock = max(sku.stock - reservation.quantity, 0)
+                sku.reserved_quantity = max(
+                    sku.reserved_quantity - reservation.quantity,
+                    0,
+                )
+        await self.reservation_repo.delete_many(reservations)
+        await self.fulfilled_order_repo.mark_fulfilled(data.order_id)
+        await self.reservation_repo.session.flush()
+        return {"status": "FULFILLED", "order_id": data.order_id}
 
     async def cancel_by_order(self, order_id: UUID) -> None:
         await self.unreserve(UnreserveRequest(order_id=order_id))

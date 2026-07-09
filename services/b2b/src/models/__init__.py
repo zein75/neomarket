@@ -5,6 +5,7 @@ from .sku import SKU
 from .reservation import Reservation
 from .invoice import Invoice, InvoiceItem
 from .processed_event import ProcessedEvent
+from .fulfilled_order import FulfilledOrder
 
 __all__ = [
     "Base",
@@ -15,4 +16,5 @@ __all__ = [
     "Invoice",
     "InvoiceItem",
     "ProcessedEvent",
+    "FulfilledOrder",
 ]
