@@ -1,8 +1,10 @@
 from uuid import UUID
 
 from fastapi import HTTPException, status
+import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.clients.b2c import B2CClient
 from src.clients.moderation import ModerationClient
 from src.models.product import ProductStatus
 from src.models.sku import SKU
@@ -107,4 +109,38 @@ class SKUService:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
             )
+        if product.status == ProductStatus.HARD_BLOCKED:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cannot delete SKU of hard-blocked product",
+            )
+        if getattr(sku, "reserved_quantity", 0) > 0:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Cannot delete SKU with active reserves",
+            )
+
+        was_visible_in_b2c = (
+            product.status == ProductStatus.MODERATED and self._active_quantity(sku) > 0
+        )
+        if sku in product.skus:
+            product.skus.remove(sku)
+        is_last_sku_deleted = len(product.skus) == 0
         await self.sku_repo.delete(sku)
+
+        if is_last_sku_deleted and product.status == ProductStatus.ON_MODERATION:
+            product.status = ProductStatus.CREATED
+            await self.sku_repo.session.flush()
+            try:
+                await ModerationClient().send_product_deleted(product)
+            except httpx.HTTPError:
+                pass
+
+        if was_visible_in_b2c:
+            try:
+                await B2CClient().send_sku_out_of_stock(sku)
+            except httpx.HTTPError:
+                pass
+
+    def _active_quantity(self, sku: object) -> int:
+        return max(sku.stock - getattr(sku, "reserved_quantity", 0), 0)
