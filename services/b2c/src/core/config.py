@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
 
     b2b_base_url: str = "http://localhost:8002"
+    service_key: str = "dev-service-key-change-in-production"
 
 
 settings = Settings()

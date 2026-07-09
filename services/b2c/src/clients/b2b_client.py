@@ -3,6 +3,8 @@ from typing import Any
 import httpx
 from fastapi import HTTPException
 
+from src.core.config import settings
+
 
 class B2BClient:
     def __init__(self, base_url: str) -> None:
@@ -39,6 +41,19 @@ class B2BClient:
 
     async def get_product(self, product_id: str) -> Any:
         return await self._get(f"/products/{product_id}")
+
+    async def get_public_products(self) -> Any:
+        try:
+            response = await self._client.get(
+                "/api/v1/public/products",
+                headers={"X-Service-Key": settings.service_key},
+            )
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            raise HTTPException(status_code=e.response.status_code, detail=str(e))
+        except httpx.RequestError:
+            raise HTTPException(status_code=503, detail="B2B service unavailable")
 
     async def get_products_batch(self, product_ids: list[str]) -> Any:
         try:

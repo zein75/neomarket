@@ -1,0 +1,154 @@
+import pytest
+from fastapi import HTTPException
+
+from src.clients import b2b_client as b2b_client_module
+from src.clients.b2b_client import B2BClient
+from src.services import catalog_service as catalog_service_module
+from src.services.catalog_service import CatalogService
+
+
+def _product(
+    product_id: str,
+    *,
+    title: str,
+    category_id: str,
+    category: str,
+    price: int,
+    active_quantity: int = 5,
+) -> dict[str, object]:
+    return {
+        "id": product_id,
+        "title": title,
+        "description": f"{title} description",
+        "category_id": category_id,
+        "category": category,
+        "images": [{"url": f"https://cdn.test/{product_id}.jpg"}],
+        "characteristics": {"brand": "Neo", "color": "black"},
+        "skus": [
+            {
+                "id": f"sku-{product_id}",
+                "name": "Default",
+                "price": price,
+                "active_quantity": active_quantity,
+                "images": [],
+            }
+        ],
+    }
+
+
+class FakeB2BClient:
+    products: list[dict[str, object]] = []
+    unavailable = False
+
+    def __init__(self, base_url: str) -> None:
+        self.base_url = base_url
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args):
+        return None
+
+    async def get_public_products(self):
+        if self.unavailable:
+            raise HTTPException(status_code=503, detail="B2B service unavailable")
+        return self.products
+
+
+@pytest.fixture(autouse=True)
+def patch_b2b(monkeypatch: pytest.MonkeyPatch):
+    FakeB2BClient.products = []
+    FakeB2BClient.unavailable = False
+    monkeypatch.setattr(catalog_service_module, "B2BClient", FakeB2BClient)
+
+
+@pytest.mark.asyncio
+async def test_catalog_returns_filtered_sorted_products() -> None:
+    FakeB2BClient.products = [
+        _product("p1", title="Budget keyboard", category_id="keyboards", category="Keyboards", price=5000),
+        _product("p2", title="Premium keyboard", category_id="keyboards", category="Keyboards", price=15000),
+        _product("p3", title="Mouse", category_id="mice", category="Mice", price=7000),
+    ]
+
+    response = await CatalogService().list_products(
+        category_id="keyboards",
+        sort="price_desc",
+        limit=1,
+        offset=0,
+    )
+
+    assert response["total_count"] == 2
+    assert response["limit"] == 1
+    assert response["offset"] == 0
+    assert [item["id"] for item in response["items"]] == ["p2"]
+    assert response["items"][0]["min_price"] == 15000
+
+
+@pytest.mark.asyncio
+async def test_facets_return_counts_per_filter_value() -> None:
+    FakeB2BClient.products = [
+        _product("p1", title="Keyboard A", category_id="keyboards", category="Keyboards", price=5000),
+        _product("p2", title="Keyboard B", category_id="keyboards", category="Keyboards", price=15000),
+        _product("p3", title="Mouse", category_id="mice", category="Mice", price=7000),
+    ]
+
+    response = await CatalogService().facets()
+
+    assert response["categories"] == [
+        {"id": "keyboards", "name": "Keyboards", "count": 2},
+        {"id": "mice", "name": "Mice", "count": 1},
+    ]
+    assert response["price"]["min"] == 5000
+    assert response["price"]["max"] == 15000
+    assert response["in_stock"]["true"] == 3
+
+
+@pytest.mark.asyncio
+async def test_invalid_sort_returns_400() -> None:
+    with pytest.raises(HTTPException) as exc_info:
+        await CatalogService().list_products(sort="rating_desc")
+
+    assert exc_info.value.status_code == 400
+    assert "price_asc" in exc_info.value.detail
+
+
+@pytest.mark.asyncio
+async def test_b2b_unavailable_returns_502() -> None:
+    FakeB2BClient.unavailable = True
+
+    with pytest.raises(HTTPException) as exc_info:
+        await CatalogService().list_products()
+
+    assert exc_info.value.status_code == 502
+
+
+@pytest.mark.asyncio
+async def test_b2b_public_catalog_uses_service_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured_headers = {}
+
+    class FakeResponse:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self):
+            return []
+
+    class FakeAsyncClient:
+        def __init__(self, *args, **kwargs) -> None:
+            return None
+
+        async def aclose(self) -> None:
+            return None
+
+        async def get(self, path: str, *, headers=None, **kwargs):
+            captured_headers.update(headers or {})
+            return FakeResponse()
+
+    monkeypatch.setattr(b2b_client_module.httpx, "AsyncClient", FakeAsyncClient)
+
+    async with B2BClient("http://b2b") as client:
+        await client.get_public_products()
+
+    assert captured_headers["X-Service-Key"] == "dev-service-key-change-in-production"
