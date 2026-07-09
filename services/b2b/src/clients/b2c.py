@@ -25,6 +25,10 @@ class B2CClient:
         event = self.build_sku_out_of_stock_event(sku)
         await self._post_event(event)
 
+    async def send_product_blocked(self, product: Any) -> None:
+        event = self.build_product_blocked_event(product)
+        await self._post_event(event)
+
     async def _post_event(self, event: dict[str, Any]) -> None:
         async with httpx.AsyncClient(timeout=settings.b2c_timeout_seconds) as client:
             response = await client.post(
@@ -54,5 +58,16 @@ class B2CClient:
             "occurred_at": datetime.now(timezone.utc).isoformat(),
             "payload": {
                 "sku_id": str(sku.id),
+            },
+        }
+
+    def build_product_blocked_event(self, product: Any) -> dict[str, Any]:
+        return {
+            "event_type": "PRODUCT_BLOCKED",
+            "idempotency_key": str(uuid5(NAMESPACE_URL, f"product-blocked:{product.id}")),
+            "occurred_at": datetime.now(timezone.utc).isoformat(),
+            "payload": {
+                "product_id": str(product.id),
+                "status": str(product.status),
             },
         }

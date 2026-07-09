@@ -208,6 +208,11 @@ class ProductService:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
             )
+        if product.status == ProductStatus.HARD_BLOCKED:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cannot delete hard-blocked product",
+            )
         if product.deleted:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
