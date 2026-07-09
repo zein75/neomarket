@@ -3,6 +3,7 @@ from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import IntegrityError
 
 from src.api.routers import moderation_events as moderation_router
 from src.main import app
@@ -197,6 +198,34 @@ async def test_duplicate_event_same_idempotency_key_no_side_effects() -> None:
             "payload": {"product_id": str(product.id), "status": "BLOCKED"},
         }
     ]
+
+
+@pytest.mark.asyncio
+async def test_parallel_duplicate_event_no_side_effects(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class RaceProcessedEventRepository(FakeProcessedEventRepository):
+        async def exists(self, idempotency_key: str) -> bool:
+            return False
+
+        async def mark_processed(self, idempotency_key: str) -> None:
+            raise IntegrityError("duplicate key", params=None, orig=None)
+
+    product = _product()
+    FakeProductRepository.product = product
+    monkeypatch.setattr(
+        moderation_service_module,
+        "ProcessedEventRepository",
+        RaceProcessedEventRepository,
+    )
+
+    response = await ModerationEventService(FakeSession()).apply(
+        _event(product.id, decision="BLOCKED")
+    )
+
+    assert response == {"status": "DUPLICATE"}
+    assert product.status == ProductStatus.ON_MODERATION
+    assert FakeB2CClient.blocked_events == []
 
 
 def test_missing_service_key_returns_401() -> None:

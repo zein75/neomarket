@@ -1,5 +1,6 @@
 from fastapi import HTTPException, status
 import httpx
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.clients.b2c import B2CClient
@@ -30,22 +31,33 @@ class ModerationEventService:
             )
 
         decision = (event.decision or "").upper()
-        if decision == ProductStatus.MODERATED.value:
-            self._apply_moderated(product)
-        elif decision == ProductStatus.BLOCKED.value:
-            self._apply_blocked(product, event)
-            try:
-                await B2CClient().send_product_blocked(product)
-            except httpx.HTTPError:
-                pass
-        else:
+        if decision not in {
+            ProductStatus.MODERATED.value,
+            ProductStatus.BLOCKED.value,
+        }:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Unsupported moderation decision",
             )
 
+        try:
+            await self.processed_event_repo.mark_processed(event.idempotency_key)
+        except IntegrityError:
+            rollback = getattr(self.processed_event_repo.session, "rollback", None)
+            if rollback:
+                await rollback()
+            return {"status": "DUPLICATE"}
+
+        if decision == ProductStatus.MODERATED.value:
+            self._apply_moderated(product)
+        else:
+            self._apply_blocked(product, event)
+            try:
+                await B2CClient().send_product_blocked(product)
+            except httpx.HTTPError:
+                pass
+
         await self.product_repo.session.flush()
-        await self.processed_event_repo.mark_processed(event.idempotency_key)
         return {"status": "APPLIED"}
 
     def _apply_moderated(self, product: object) -> None:
