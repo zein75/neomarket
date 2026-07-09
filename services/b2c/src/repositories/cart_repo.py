@@ -70,3 +70,7 @@ class CartRepository(BaseRepository[Cart]):
     async def remove_item(self, item: CartItem) -> None:
         await self.session.delete(item)
         await self.session.flush()
+
+    async def remove_cart(self, cart: Cart) -> None:
+        await self.session.delete(cart)
+        await self.session.flush()
