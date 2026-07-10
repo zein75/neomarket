@@ -36,12 +36,23 @@ class FakeSession:
 
 class FakeModerationRepository:
     cards: dict[UUID, SimpleNamespace] = {}
+    deleted_cards: list[UUID] = []
 
     def __init__(self, session) -> None:
         self.session = session
 
     async def get_with_skus(self, card_id: UUID):
         return self.cards.get(card_id)
+
+    async def get_by_product_id(self, product_id: UUID):
+        for card in self.cards.values():
+            if card.product_id == product_id:
+                return card
+        return None
+
+    async def delete(self, card) -> None:
+        self.deleted_cards.append(card.id)
+        self.cards.pop(card.id, None)
 
 
 class FakeB2BClient:
@@ -54,6 +65,7 @@ class FakeB2BClient:
 @pytest.fixture(autouse=True)
 def patch_dependencies(monkeypatch):
     FakeModerationRepository.cards = {}
+    FakeModerationRepository.deleted_cards = []
     FakeB2BClient.events = []
     monkeypatch.setattr(
         moderation_service_module,
@@ -130,3 +142,112 @@ async def test_approve_without_sku_returns_409() -> None:
     assert exc.value.status_code == 409
     assert exc.value.detail == {"code": "APPROVE_REQUIRES_SKU"}
     assert FakeB2BClient.events == []
+
+
+async def test_hard_block_transitions_to_terminal_and_emits_event() -> None:
+    moderator_id = uuid4()
+    card = _card(moderator_id=moderator_id)
+    FakeModerationRepository.cards[card.id] = card
+
+    blocked = await ModerationService(FakeSession()).decline_product(
+        card.id,
+        moderator_id,
+        hard_block=True,
+        reason={"code": "COUNTERFEIT", "message": "Counterfeit goods"},
+    )
+
+    assert blocked.status == ModerationStatus.HARD_BLOCKED
+    assert FakeB2BClient.events == [
+        {
+            "idempotency_key": f"moderation-hard-blocked:{card.product_id}",
+            "event_type": "PRODUCT_MODERATION_DECIDED",
+            "product_id": str(card.product_id),
+            "decision": "BLOCKED",
+            "status": "BLOCKED",
+            "hard_block": True,
+            "blocking_reason": {"code": "COUNTERFEIT", "message": "Counterfeit goods"},
+            "field_reports": [],
+            "payload": {
+                "product_id": str(card.product_id),
+                "status": "BLOCKED",
+                "decision": "BLOCKED",
+                "hard_block": True,
+                "blocking_reason": {
+                    "code": "COUNTERFEIT",
+                    "message": "Counterfeit goods",
+                },
+                "field_reports": [],
+            },
+        }
+    ]
+
+
+async def test_hard_block_event_carries_hard_block_true() -> None:
+    moderator_id = uuid4()
+    card = _card(moderator_id=moderator_id)
+    FakeModerationRepository.cards[card.id] = card
+
+    await ModerationService(FakeSession()).decline_product(
+        card.id,
+        moderator_id,
+        hard_block=True,
+        reason={"code": "FORBIDDEN"},
+    )
+
+    assert FakeB2BClient.events[0]["decision"] == "BLOCKED"
+    assert FakeB2BClient.events[0]["hard_block"] is True
+    assert FakeB2BClient.events[0]["payload"]["hard_block"] is True
+
+
+async def test_any_modify_on_hard_blocked_returns_403() -> None:
+    moderator_id = uuid4()
+    card = _card(moderator_id=moderator_id, status=ModerationStatus.HARD_BLOCKED)
+    FakeModerationRepository.cards[card.id] = card
+
+    with pytest.raises(HTTPException) as approve_exc:
+        await ModerationService(FakeSession()).approve_product(card.id, moderator_id)
+    with pytest.raises(HTTPException) as decline_exc:
+        await ModerationService(FakeSession()).decline_product(
+            card.id,
+            moderator_id,
+            hard_block=True,
+            reason={"code": "FORBIDDEN"},
+        )
+
+    assert approve_exc.value.status_code == 403
+    assert decline_exc.value.status_code == 403
+    assert FakeB2BClient.events == []
+
+
+async def test_edited_event_on_hard_blocked_is_ignored() -> None:
+    moderator_id = uuid4()
+    card = _card(moderator_id=moderator_id, status=ModerationStatus.HARD_BLOCKED)
+    FakeModerationRepository.cards[card.id] = card
+
+    result = await ModerationService(FakeSession()).apply_product_event(
+        {
+            "event_type": "PRODUCT_EDITED",
+            "product_id": str(card.product_id),
+            "status": "EDITED",
+        }
+    )
+
+    assert result == {"status": "IGNORED"}
+    assert card.status == ModerationStatus.HARD_BLOCKED
+
+
+async def test_deleted_event_removes_hard_blocked() -> None:
+    moderator_id = uuid4()
+    card = _card(moderator_id=moderator_id, status=ModerationStatus.HARD_BLOCKED)
+    FakeModerationRepository.cards[card.id] = card
+
+    result = await ModerationService(FakeSession()).apply_product_event(
+        {
+            "event_type": "PRODUCT_DELETED",
+            "product_id": str(card.product_id),
+        }
+    )
+
+    assert result == {"status": "DELETED"}
+    assert FakeModerationRepository.deleted_cards == [card.id]
+    assert card.id not in FakeModerationRepository.cards

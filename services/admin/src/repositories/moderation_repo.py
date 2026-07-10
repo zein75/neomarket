@@ -20,3 +20,13 @@ class ModerationRepository(BaseRepository[ModerationCard]):
             .options(selectinload(ModerationCard.skus))
         )
         return result.scalar_one_or_none()
+
+    async def get_by_product_id(self, product_id: UUID) -> ModerationCard | None:
+        result = await self.session.execute(
+            select(ModerationCard).where(ModerationCard.product_id == product_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def delete(self, card: ModerationCard) -> None:
+        await self.session.delete(card)
+        await self.session.flush()
