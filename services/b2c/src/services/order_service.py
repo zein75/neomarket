@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 from uuid import uuid4
 
@@ -9,6 +10,9 @@ from src.core.config import settings
 from src.models.order import Order, OrderItem, OrderStatus
 from src.repositories.cart_repo import CartRepository
 from src.repositories.order_repo import OrderRepository
+
+
+logger = logging.getLogger(__name__)
 
 
 class OrderService:
@@ -45,7 +49,7 @@ class OrderService:
         order = await self.order_repo.create(
             id=order_id,
             user_id=user_id,
-            status=OrderStatus.CONFIRMED,
+            status=OrderStatus.PAID,
             total_amount=total,
             currency=cart.currency,
             idempotency_key=idempotency_key,
@@ -124,6 +128,34 @@ class OrderService:
             )
         return order
 
+    async def cancel_order(self, order_id: UUID, user_id: UUID) -> Order:
+        order = await self.order_repo.get_with_items(order_id)
+        if not order or order.user_id != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Order not found",
+            )
+        if order.status not in {OrderStatus.CREATED, OrderStatus.PAID}:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "CANCEL_NOT_ALLOWED",
+                    "current_status": order.status.value,
+                },
+            )
+
+        try:
+            await self._unreserve(order.id)
+        except HTTPException:
+            logger.exception("Failed to unreserve cancelled order %s", order.id)
+            order.status = OrderStatus.CANCEL_PENDING
+            await self.order_repo.session.flush()
+            return order
+
+        order.status = OrderStatus.CANCELLED
+        await self.order_repo.session.flush()
+        return order
+
     async def _build_item_snapshots(
         self,
         cart_items: list[object],
@@ -193,6 +225,10 @@ class OrderService:
                         detail=self._reserve_failure_detail(exc.detail),
                     )
                 raise
+
+    async def _unreserve(self, order_id: UUID) -> None:
+        async with B2BClient(settings.b2b_base_url) as client:
+            await client.unreserve({"order_id": str(order_id)})
 
     def _reserve_failure_detail(self, detail: object) -> object:
         if isinstance(detail, dict) and "failed_items" in detail:

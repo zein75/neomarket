@@ -13,11 +13,15 @@ if TYPE_CHECKING:
 
 
 class OrderStatus(enum.Enum):
+    CREATED = "CREATED"
+    PAID = "PAID"
     PENDING = "PENDING"
     CONFIRMED = "CONFIRMED"
+    ASSEMBLING = "ASSEMBLING"
     SHIPPED = "SHIPPED"
     DELIVERED = "DELIVERED"
     CANCELLED = "CANCELLED"
+    CANCEL_PENDING = "CANCEL_PENDING"
 
 
 class Order(Base, TimestampMixin):

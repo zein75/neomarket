@@ -18,6 +18,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    for value in ("CREATED", "PAID", "ASSEMBLING", "CANCEL_PENDING"):
+        op.execute(
+            f"ALTER TYPE orderstatus ADD VALUE IF NOT EXISTS '{value}'"
+        )
     op.add_column(
         "orders",
         sa.Column("idempotency_key", sa.String(length=128), nullable=True),

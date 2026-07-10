@@ -33,6 +33,19 @@ def _cart_item(
     )
 
 
+def _order(*, user_id: UUID, status: OrderStatus) -> Order:
+    order = Order(
+        user_id=user_id,
+        status=status,
+        total_amount=500,
+        currency="RUB",
+        idempotency_key=f"order-{uuid4()}",
+    )
+    order.id = uuid4()
+    order.items = []
+    return order
+
+
 class FakeSession:
     def __init__(self) -> None:
         self.added = []
@@ -63,6 +76,7 @@ class FakeCartRepository:
 
 class FakeOrderRepository:
     orders_by_key: dict[str, Order] = {}
+    orders_by_id: dict[UUID, Order] = {}
     created_orders: list[Order] = []
 
     def __init__(self, session) -> None:
@@ -72,6 +86,8 @@ class FakeOrderRepository:
         return self.orders_by_key.get(idempotency_key)
 
     async def get_with_items(self, order_id: UUID):
+        if order_id in self.orders_by_id:
+            return self.orders_by_id[order_id]
         for order in self.created_orders:
             if order.id == order_id:
                 return order
@@ -83,13 +99,16 @@ class FakeOrderRepository:
         order.items = []
         self.created_orders.append(order)
         self.orders_by_key[order.idempotency_key] = order
+        self.orders_by_id[order.id] = order
         return order
 
 
 class FakeB2BClient:
     products: list[dict[str, object]] = []
     reserve_calls: list[dict[str, object]] = []
+    unreserve_calls: list[dict[str, object]] = []
     reserve_error: HTTPException | None = None
+    unreserve_error: HTTPException | None = None
 
     def __init__(self, base_url: str) -> None:
         self.base_url = base_url
@@ -113,16 +132,25 @@ class FakeB2BClient:
             raise self.reserve_error
         return {"status": "RESERVED", "order_id": payload["order_id"]}
 
+    async def unreserve(self, payload: dict[str, object]):
+        self.unreserve_calls.append(payload)
+        if self.unreserve_error:
+            raise self.unreserve_error
+        return {"status": "UNRESERVED", "order_id": payload["order_id"]}
+
 
 @pytest.fixture(autouse=True)
 def patch_dependencies(monkeypatch):
     FakeCartRepository.cart = None
     FakeCartRepository.removed_items = []
     FakeOrderRepository.orders_by_key = {}
+    FakeOrderRepository.orders_by_id = {}
     FakeOrderRepository.created_orders = []
     FakeB2BClient.products = []
     FakeB2BClient.reserve_calls = []
+    FakeB2BClient.unreserve_calls = []
     FakeB2BClient.reserve_error = None
+    FakeB2BClient.unreserve_error = None
     monkeypatch.setattr(order_service_module, "CartRepository", FakeCartRepository)
     monkeypatch.setattr(order_service_module, "OrderRepository", FakeOrderRepository)
     monkeypatch.setattr(order_service_module, "B2BClient", FakeB2BClient, raising=False)
@@ -161,7 +189,7 @@ async def test_checkout_creates_paid_order_with_fixed_prices() -> None:
         idempotency_key="checkout-1",
     )
 
-    assert order.status == OrderStatus.CONFIRMED
+    assert order.status == OrderStatus.PAID
     assert order.total_amount == 300
     assert order.idempotency_key == "checkout-1"
     assert order.items[0].unit_price == 150
@@ -282,3 +310,68 @@ async def test_b2b_unavailable_returns_503() -> None:
 
     assert exc.value.status_code == 503
     assert FakeOrderRepository.created_orders == []
+
+
+async def test_cancel_paid_order_transitions_to_cancelled() -> None:
+    user_id = uuid4()
+    order = _order(user_id=user_id, status=OrderStatus.PAID)
+    FakeOrderRepository.orders_by_id[order.id] = order
+
+    cancelled = await OrderService(FakeSession()).cancel_order(
+        order_id=order.id,
+        user_id=user_id,
+    )
+
+    assert cancelled.status == OrderStatus.CANCELLED
+    assert FakeB2BClient.unreserve_calls == [{"order_id": str(order.id)}]
+
+
+async def test_unreserve_failure_transitions_to_cancel_pending() -> None:
+    user_id = uuid4()
+    order = _order(user_id=user_id, status=OrderStatus.PAID)
+    FakeOrderRepository.orders_by_id[order.id] = order
+    FakeB2BClient.unreserve_error = HTTPException(
+        status_code=503,
+        detail="B2B service unavailable",
+    )
+
+    pending = await OrderService(FakeSession()).cancel_order(
+        order_id=order.id,
+        user_id=user_id,
+    )
+
+    assert pending.status == OrderStatus.CANCEL_PENDING
+    assert FakeB2BClient.unreserve_calls == [{"order_id": str(order.id)}]
+
+
+async def test_cancel_assembling_order_returns_409() -> None:
+    user_id = uuid4()
+    order = _order(user_id=user_id, status=OrderStatus.ASSEMBLING)
+    FakeOrderRepository.orders_by_id[order.id] = order
+
+    with pytest.raises(HTTPException) as exc:
+        await OrderService(FakeSession()).cancel_order(
+            order_id=order.id,
+            user_id=user_id,
+        )
+
+    assert exc.value.status_code == 409
+    assert exc.value.detail == {
+        "code": "CANCEL_NOT_ALLOWED",
+        "current_status": "ASSEMBLING",
+    }
+    assert FakeB2BClient.unreserve_calls == []
+
+
+async def test_other_user_order_returns_404() -> None:
+    order = _order(user_id=uuid4(), status=OrderStatus.PAID)
+    FakeOrderRepository.orders_by_id[order.id] = order
+
+    with pytest.raises(HTTPException) as exc:
+        await OrderService(FakeSession()).cancel_order(
+            order_id=order.id,
+            user_id=uuid4(),
+        )
+
+    assert exc.value.status_code == 404
+    assert FakeB2BClient.unreserve_calls == []

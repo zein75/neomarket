@@ -49,3 +49,19 @@ async def get_order(
     db: AsyncSession = Depends(get_db),
 ) -> OrderResponse:
     return await OrderService(db).get_order(order_id, current_user.id)
+
+
+@router.post("/api/v1/orders/{order_id}/cancel", response_model=OrderResponse)
+@router.post(
+    "/orders/{order_id}/cancel",
+    response_model=OrderResponse,
+    include_in_schema=False,
+)
+async def cancel_order(
+    order_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> OrderResponse:
+    order = await OrderService(db).cancel_order(order_id, current_user.id)
+    await db.commit()
+    return order
