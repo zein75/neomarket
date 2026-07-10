@@ -36,6 +36,9 @@ class Order(Base, TimestampMixin):
     )
     total_amount: Mapped[int] = mapped_column(Integer, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), default="RUB", nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(
+        String(128), unique=True, nullable=False
+    )
 
     user: Mapped["User"] = relationship("User", back_populates="orders")
     items: Mapped[list["OrderItem"]] = relationship(

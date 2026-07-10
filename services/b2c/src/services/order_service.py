@@ -1,9 +1,12 @@
 from uuid import UUID
+from uuid import uuid4
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models.order import Order, OrderItem
+from src.clients.b2b_client import B2BClient
+from src.core.config import settings
+from src.models.order import Order, OrderItem, OrderStatus
 from src.repositories.cart_repo import CartRepository
 from src.repositories.order_repo import OrderRepository
 
@@ -12,6 +15,62 @@ class OrderService:
     def __init__(self, session: AsyncSession) -> None:
         self.order_repo = OrderRepository(session)
         self.cart_repo = CartRepository(session)
+
+    async def checkout(
+        self,
+        user_id: UUID,
+        cart_id: UUID,
+        idempotency_key: str,
+    ) -> Order:
+        existing = await self.order_repo.get_by_idempotency_key(idempotency_key)
+        if existing:
+            return existing
+
+        cart = await self.cart_repo.get_with_items(cart_id)
+        if not cart or not cart.items:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cart is empty",
+            )
+
+        snapshots = await self._build_item_snapshots(cart.items)
+        self._validate_snapshots(cart.items, snapshots)
+        order_id = uuid4()
+        await self._reserve(order_id, idempotency_key, cart.items)
+
+        total = sum(
+            item.quantity * int(snapshots[str(item.sku_id)]["price"])
+            for item in cart.items
+        )
+        order = await self.order_repo.create(
+            id=order_id,
+            user_id=user_id,
+            status=OrderStatus.CONFIRMED,
+            total_amount=total,
+            currency=cart.currency,
+            idempotency_key=idempotency_key,
+        )
+
+        for cart_item in cart.items:
+            snapshot = snapshots[str(cart_item.sku_id)]
+            order_item = OrderItem(
+                order_id=order.id,
+                sku_id=cart_item.sku_id,
+                product_id=cart_item.product_id,
+                product_title=str(snapshot["product_title"]),
+                sku_name=str(snapshot["sku_name"]),
+                quantity=cart_item.quantity,
+                unit_price=int(snapshot["price"]),
+                line_total=cart_item.quantity * int(snapshot["price"]),
+            )
+            self.order_repo.session.add(order_item)
+            order.items.append(order_item)
+
+        for cart_item in list(cart.items):
+            await self.cart_repo.remove_item(cart_item)
+
+        await self.order_repo.session.flush()
+        return await self.order_repo.get_with_items(order.id) or order
 
     async def create_from_cart(self, user_id: UUID, cart_id: UUID) -> Order:
         cart = await self.cart_repo.get_with_items(cart_id)
@@ -26,6 +85,7 @@ class OrderService:
             user_id=user_id,
             total_amount=total,
             currency=cart.currency,
+            idempotency_key=f"legacy-{uuid4()}",
         )
 
         for cart_item in cart.items:
@@ -63,3 +123,86 @@ class OrderService:
                 status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
             )
         return order
+
+    async def _build_item_snapshots(
+        self,
+        cart_items: list[object],
+    ) -> dict[str, dict[str, object]]:
+        product_ids = sorted({str(item.product_id) for item in cart_items})
+        async with B2BClient(settings.b2b_base_url) as client:
+            products = await client.get_products_batch(product_ids)
+
+        snapshots: dict[str, dict[str, object]] = {}
+        for product in products:
+            for sku in product.get("skus", []):
+                snapshots[str(sku.get("id"))] = {
+                    "product_id": str(product.get("id")),
+                    "product_title": product.get("title") or "",
+                    "sku_name": sku.get("name") or "",
+                    "price": int(sku.get("price", 0)),
+                    "active_quantity": int(sku.get("active_quantity", 0)),
+                }
+        return snapshots
+
+    def _validate_snapshots(
+        self,
+        cart_items: list[object],
+        snapshots: dict[str, dict[str, object]],
+    ) -> None:
+        failed_items = []
+        for item in cart_items:
+            snapshot = snapshots.get(str(item.sku_id))
+            if not snapshot:
+                failed_items.append({"sku_id": str(item.sku_id), "reason": "SKU_NOT_FOUND"})
+                continue
+            if str(snapshot["product_id"]) != str(item.product_id):
+                failed_items.append({"sku_id": str(item.sku_id), "reason": "SKU_NOT_FOUND"})
+                continue
+            if int(snapshot["active_quantity"]) < item.quantity:
+                failed_items.append(
+                    {"sku_id": str(item.sku_id), "reason": "INSUFFICIENT_STOCK"}
+                )
+
+        if failed_items:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"code": "RESERVE_FAILED", "failed_items": failed_items},
+            )
+
+    async def _reserve(
+        self,
+        order_id: UUID,
+        idempotency_key: str,
+        cart_items: list[object],
+    ) -> None:
+        payload = {
+            "order_id": str(order_id),
+            "idempotency_key": idempotency_key,
+            "items": [
+                {"sku_id": str(item.sku_id), "quantity": item.quantity}
+                for item in cart_items
+            ],
+        }
+        async with B2BClient(settings.b2b_base_url) as client:
+            try:
+                await client.reserve(payload)
+            except HTTPException as exc:
+                if exc.status_code == status.HTTP_409_CONFLICT:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail=self._reserve_failure_detail(exc.detail),
+                    )
+                raise
+
+    def _reserve_failure_detail(self, detail: object) -> object:
+        if isinstance(detail, dict) and "failed_items" in detail:
+            return detail
+        if isinstance(detail, dict) and "sku_ids" in detail:
+            return {
+                "code": "RESERVE_FAILED",
+                "failed_items": [
+                    {"sku_id": sku_id, "reason": "INSUFFICIENT_STOCK"}
+                    for sku_id in detail["sku_ids"]
+                ],
+            }
+        return {"code": "RESERVE_FAILED", "failed_items": []}

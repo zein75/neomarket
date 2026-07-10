@@ -21,6 +21,14 @@ class OrderRepository(BaseRepository[Order]):
         )
         return result.scalar_one_or_none()
 
+    async def get_by_idempotency_key(self, idempotency_key: str) -> Order | None:
+        result = await self.session.execute(
+            select(Order)
+            .where(Order.idempotency_key == idempotency_key)
+            .options(selectinload(Order.items))
+        )
+        return result.scalar_one_or_none()
+
     async def list_by_user(self, user_id: UUID) -> list[Order]:
         result = await self.session.execute(
             select(Order)

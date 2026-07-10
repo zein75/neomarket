@@ -31,6 +31,25 @@ class B2BClient:
         except httpx.RequestError:
             raise HTTPException(status_code=503, detail="B2B service unavailable")
 
+    async def _post_service(self, path: str, payload: dict[str, Any]) -> Any:
+        try:
+            response = await self._client.post(
+                path,
+                json=payload,
+                headers={"X-Service-Key": settings.service_key},
+            )
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            detail: Any
+            try:
+                detail = e.response.json().get("detail", str(e))
+            except ValueError:
+                detail = str(e)
+            raise HTTPException(status_code=e.response.status_code, detail=detail)
+        except httpx.RequestError:
+            raise HTTPException(status_code=503, detail="B2B service unavailable")
+
     async def get_products(
         self,
         page: int = 1,
@@ -60,6 +79,7 @@ class B2BClient:
             response = await self._client.post(
                 "/api/v1/public/products/batch",
                 json={"product_ids": product_ids},
+                headers={"X-Service-Key": settings.service_key},
             )
             response.raise_for_status()
             return response.json()
@@ -70,3 +90,6 @@ class B2BClient:
 
     async def get_sku(self, sku_id: str) -> Any:
         return await self._get(f"/api/v1/skus/{sku_id}")
+
+    async def reserve(self, payload: dict[str, Any]) -> Any:
+        return await self._post_service("/api/v1/reserve", payload)
