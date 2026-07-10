@@ -1,9 +1,5 @@
-from typing import Any
-
 from fastapi import APIRouter, Query
 
-from src.clients.b2b_client import B2BClient
-from src.core.config import settings
 from src.services.catalog_service import CatalogService
 
 router = APIRouter(tags=["catalog"])
@@ -46,7 +42,7 @@ async def get_facets() -> dict[str, object]:
 
 
 @router.get("/api/v1/catalog/products/{product_id}")
+@router.get("/api/v1/products/{product_id}", include_in_schema=False)
 @router.get("/catalog/products/{product_id}", include_in_schema=False)
-async def get_product(product_id: str) -> Any:
-    async with B2BClient(settings.b2b_base_url) as client:
-        return await client.get_product(product_id)
+async def get_product(product_id: str) -> dict[str, object]:
+    return await CatalogService().get_product_card(product_id)

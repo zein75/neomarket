@@ -68,6 +68,16 @@ class CatalogService:
             "in_stock": {"true": in_stock_count},
         }
 
+    async def get_product_card(self, product_id: str) -> dict[str, object]:
+        products = await self._load_products()
+        product = next(
+            (product for product in products if str(product.get("id")) == product_id),
+            None,
+        )
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+        return self._detail(product)
+
     async def _load_products(self) -> list[dict[str, Any]]:
         try:
             async with B2BClient(settings.b2b_base_url) as client:
@@ -134,6 +144,33 @@ class CatalogService:
             "has_stock": self._has_stock(product),
             "images": product.get("images") or [],
             "skus": product.get("skus") or [],
+        }
+
+    def _detail(self, product: dict[str, Any]) -> dict[str, object]:
+        return {
+            "id": product.get("id"),
+            "name": product.get("title"),
+            "title": product.get("title"),
+            "description": product.get("description"),
+            "category_id": product.get("category_id"),
+            "category": product.get("category"),
+            "images": product.get("images") or [],
+            "characteristics": product.get("characteristics") or {},
+            "min_price": self._min_price(product),
+            "has_stock": self._has_stock(product),
+            "skus": [self._public_sku(sku) for sku in product.get("skus", [])],
+        }
+
+    def _public_sku(self, sku: dict[str, Any]) -> dict[str, object]:
+        active_quantity = int(sku.get("active_quantity", 0))
+        return {
+            "id": sku.get("id"),
+            "name": sku.get("name"),
+            "price": sku.get("price"),
+            "discount": int(sku.get("discount", 0) or 0),
+            "available_quantity": active_quantity,
+            "in_stock": active_quantity > 0,
+            "images": sku.get("images") or [],
         }
 
     def _min_price(self, product: dict[str, Any]) -> int | None:

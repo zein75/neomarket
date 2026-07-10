@@ -54,6 +54,14 @@ class FakeB2BClient:
             raise HTTPException(status_code=503, detail="B2B service unavailable")
         return self.products
 
+    async def get_product(self, product_id: str):
+        if self.unavailable:
+            raise HTTPException(status_code=503, detail="B2B service unavailable")
+        for product in self.products:
+            if product["id"] == product_id:
+                return product
+        raise HTTPException(status_code=404, detail="Product not found")
+
 
 @pytest.fixture(autouse=True)
 def patch_b2b(monkeypatch: pytest.MonkeyPatch):
@@ -152,3 +160,120 @@ async def test_b2b_public_catalog_uses_service_key(
         await client.get_public_products()
 
     assert captured_headers["X-Service-Key"] == "dev-service-key-change-in-production"
+
+
+@pytest.mark.asyncio
+async def test_product_card_returns_full_data_with_skus() -> None:
+    FakeB2BClient.products = [
+        {
+            **_product(
+                "p1",
+                title="Premium keyboard",
+                category_id="keyboards",
+                category="Keyboards",
+                price=15000,
+            ),
+            "images": [{"url": "https://cdn.test/main.jpg"}],
+            "skus": [
+                {
+                    "id": "sku-p1-black",
+                    "name": "Black",
+                    "price": 15000,
+                    "discount": 1000,
+                    "active_quantity": 3,
+                    "cost_price": 9000,
+                    "reserved_quantity": 2,
+                    "images": [{"url": "https://cdn.test/black.jpg"}],
+                }
+            ],
+        }
+    ]
+
+    response = await CatalogService().get_product_card("p1")
+
+    assert response["id"] == "p1"
+    assert response["name"] == "Premium keyboard"
+    assert response["description"] == "Premium keyboard description"
+    assert response["images"] == [{"url": "https://cdn.test/main.jpg"}]
+    assert response["skus"] == [
+        {
+            "id": "sku-p1-black",
+            "name": "Black",
+            "price": 15000,
+            "discount": 1000,
+            "available_quantity": 3,
+            "in_stock": True,
+            "images": [{"url": "https://cdn.test/black.jpg"}],
+        }
+    ]
+
+
+@pytest.mark.asyncio
+async def test_cost_price_absent_in_response() -> None:
+    FakeB2BClient.products = [
+        {
+            **_product(
+                "p1",
+                title="Premium keyboard",
+                category_id="keyboards",
+                category="Keyboards",
+                price=15000,
+            ),
+            "skus": [
+                {
+                    "id": "sku-p1-black",
+                    "name": "Black",
+                    "price": 15000,
+                    "active_quantity": 3,
+                    "cost_price": 9000,
+                    "reserved_quantity": 2,
+                    "images": [],
+                }
+            ],
+        }
+    ]
+
+    response = await CatalogService().get_product_card("p1")
+
+    assert "cost_price" not in response["skus"][0]
+    assert "reserved_quantity" not in response["skus"][0]
+
+
+@pytest.mark.asyncio
+async def test_blocked_product_returns_404() -> None:
+    FakeB2BClient.products = []
+
+    with pytest.raises(HTTPException) as exc_info:
+        await CatalogService().get_product_card("blocked-product")
+
+    assert exc_info.value.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_sku_without_stock_is_shown_as_unavailable() -> None:
+    FakeB2BClient.products = [
+        {
+            **_product(
+                "p1",
+                title="Premium keyboard",
+                category_id="keyboards",
+                category="Keyboards",
+                price=15000,
+                active_quantity=0,
+            ),
+            "skus": [
+                {
+                    "id": "sku-p1-black",
+                    "name": "Black",
+                    "price": 15000,
+                    "active_quantity": 0,
+                    "images": [],
+                }
+            ],
+        }
+    ]
+
+    response = await CatalogService().get_product_card("p1")
+
+    assert response["skus"][0]["in_stock"] is False
+    assert response["skus"][0]["available_quantity"] == 0
