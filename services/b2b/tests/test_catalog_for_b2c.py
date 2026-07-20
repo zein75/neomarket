@@ -311,3 +311,20 @@ async def test_public_catalog_applies_filters_sort_and_pagination() -> None:
     assert body.total_count == 2
     assert body.limit == 1
     assert body.offset == 0
+
+
+@pytest.mark.asyncio
+async def test_public_catalog_search_matches_title_and_description() -> None:
+    title_match = _product(title="Wireless keyboard", description="Office device")
+    description_match = _product(title="Office device", description="Low keyboard")
+    miss = _product(title="Mouse", description="Pointing device")
+    FakeProductRepository.products = [title_match, description_match, miss]
+
+    body = await ProductService(SimpleNamespace()).list_public_catalog(
+        search="keyboard",
+    )
+
+    assert [str(item.id) for item in body.items] == [
+        str(title_match.id),
+        str(description_match.id),
+    ]

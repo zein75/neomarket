@@ -1,6 +1,6 @@
 from uuid import UUID, uuid4
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -33,7 +33,12 @@ class ProductRepository(BaseRepository[Product]):
             Product.deleted == False,  # noqa: E712
         )
         if search:
-            base_query = base_query.where(Product.title.ilike(f"%{search}%"))
+            base_query = base_query.where(
+                or_(
+                    Product.title.icontains(search, autoescape=True),
+                    Product.description.icontains(search, autoescape=True),
+                )
+            )
 
         total = (
             await self.session.execute(
@@ -88,7 +93,12 @@ class ProductRepository(BaseRepository[Product]):
         if status:
             base_query = base_query.where(Product.status == status)
         if search:
-            base_query = base_query.where(Product.title.ilike(f"%{search}%"))
+            base_query = base_query.where(
+                or_(
+                    Product.title.icontains(search, autoescape=True),
+                    Product.description.icontains(search, autoescape=True),
+                )
+            )
 
         total = (
             await self.session.execute(

@@ -25,9 +25,10 @@ class CatalogService:
         offset: int = 0,
     ) -> dict[str, object]:
         self._validate_sort(sort)
+        search = self._normalize_search(q)
         payload = await self._load_products(
             category_id=category_id,
-            search=q,
+            search=search,
             min_price=price_min,
             max_price=price_max,
             in_stock=in_stock,
@@ -159,6 +160,20 @@ class CatalogService:
                 status_code=400,
                 detail=f"Invalid sort '{sort}'. Allowed values: {allowed}",
             )
+
+    def _normalize_search(self, search: str | None) -> str | None:
+        if search is None:
+            return None
+        normalized = search.strip()
+        if len(normalized) < 3:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "INVALID_REQUEST",
+                    "message": "Search query must contain at least 3 characters",
+                },
+            )
+        return normalized
 
     def _card(self, product: dict[str, Any]) -> dict[str, object]:
         return {

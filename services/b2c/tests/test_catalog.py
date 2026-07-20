@@ -13,6 +13,7 @@ def _product(
     product_id: str,
     *,
     title: str,
+    description: str | None = None,
     category_id: str,
     category: str,
     price: int,
@@ -23,7 +24,7 @@ def _product(
         "id": product_id,
         "seller_id": seller_id,
         "title": title,
-        "description": f"{title} description",
+        "description": description or f"{title} description",
         "category_id": category_id,
         "category": category,
         "images": [{"url": f"https://cdn.test/{product_id}.jpg"}],
@@ -102,7 +103,10 @@ class FakeB2BClient:
             products = [
                 product
                 for product in products
-                if str(search).lower() in str(product.get("title", "")).lower()
+                if str(search).lower()
+                in " ".join(
+                    str(product.get(field, "")) for field in ("title", "description")
+                ).lower()
             ]
         if min_price is not None:
             products = [
@@ -199,6 +203,107 @@ async def test_catalog_returns_filtered_sorted_products() -> None:
     assert response["offset"] == 0
     assert [item["id"] for item in response["items"]] == ["p2"]
     assert response["items"][0]["min_price"] == 15000
+
+
+@pytest.mark.asyncio
+async def test_search_returns_matching_products() -> None:
+    FakeB2BClient.products = [
+        _product(
+            "p1",
+            title="Wireless keyboard",
+            description="Quiet office keys",
+            category_id="accessories",
+            category="Accessories",
+            price=5000,
+        ),
+        _product(
+            "p2",
+            title="Travel mug",
+            description="Keeps кофе hot",
+            category_id="kitchen",
+            category="Kitchen",
+            price=1200,
+        ),
+        _product(
+            "p3",
+            title="Desk lamp",
+            description="Warm light",
+            category_id="lighting",
+            category="Lighting",
+            price=3000,
+        ),
+    ]
+
+    by_title = await CatalogService().list_products(q="keyboard")
+    by_description = await CatalogService().list_products(q="кофе")
+
+    assert [item["id"] for item in by_title["items"]] == ["p1"]
+    assert [item["id"] for item in by_description["items"]] == ["p2"]
+    assert FakeB2BClient.last_public_products_kwargs["search"] == "кофе"
+
+
+def test_short_query_returns_400() -> None:
+    response = TestClient(app).get("/api/v1/products", params={"search": "ip"})
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "code": "INVALID_REQUEST",
+        "message": "Search query must contain at least 3 characters",
+    }
+    assert FakeB2BClient.get_public_products_calls == 0
+
+
+def test_special_chars_do_not_break_query() -> None:
+    FakeB2BClient.products = [
+        _product(
+            "p1",
+            title="iPhone%15 case",
+            description="Fits phone",
+            category_id="cases",
+            category="Cases",
+            price=2500,
+        ),
+        _product(
+            "p2",
+            title="Coffee press",
+            description="кофе' accessory",
+            category_id="kitchen",
+            category="Kitchen",
+            price=1800,
+        ),
+    ]
+
+    percent_response = TestClient(app).get(
+        "/api/v1/products",
+        params={"search": "iPhone%15"},
+    )
+    quote_response = TestClient(app).get(
+        "/api/v1/products",
+        params={"search": "кофе'"},
+    )
+
+    assert percent_response.status_code == 200
+    assert [item["id"] for item in percent_response.json()["items"]] == ["p1"]
+    assert quote_response.status_code == 200
+    assert [item["id"] for item in quote_response.json()["items"]] == ["p2"]
+
+
+def test_empty_results_returns_200() -> None:
+    FakeB2BClient.products = [
+        _product(
+            "p1",
+            title="Wireless keyboard",
+            category_id="accessories",
+            category="Accessories",
+            price=5000,
+        )
+    ]
+
+    response = TestClient(app).get("/api/v1/products", params={"search": "camera"})
+
+    assert response.status_code == 200
+    assert response.json()["items"] == []
+    assert response.json()["total_count"] == 0
 
 
 @pytest.mark.asyncio

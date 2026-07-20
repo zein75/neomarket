@@ -332,7 +332,7 @@ class ProductService:
         if search:
             haystack = " ".join(
                 value
-                for value in (product.title, product.description, product.category)
+                for value in (product.title, product.description)
                 if value
             ).lower()
             if search.lower() not in haystack:
