@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 import pytest
@@ -20,7 +21,9 @@ def _payload(**overrides: object) -> dict[str, object]:
         "name": "Keyboard / Black",
         "price": 129900,
         "stock": 10,
-        "images": ["https://cdn.neomarket.test/skus/keyboard-black.jpg"],
+        "images": [
+            {"url": "https://cdn.neomarket.test/skus/keyboard-black.jpg", "ordering": 0}
+        ],
     }
     data.update(overrides)
     return data
@@ -88,6 +91,8 @@ class FakeSKURepository:
             stock=stock,
             images=images,
             is_active=True,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
         self.created.append(sku)
         FakeProductRepository.product.skus.append(sku)
@@ -100,6 +105,25 @@ class FakeModerationClient:
     async def send_product_created(self, product: object) -> None:
         self.events.append(self.build_product_created_event(product))
 
+    async def send_product_edited(
+        self,
+        product: object,
+        *,
+        json_before: dict[str, object],
+    ) -> None:
+        self.events.append(
+            {
+                "event_type": "PRODUCT_EDITED",
+                "idempotency_key": str(uuid4()),
+                "payload": {
+                    "product_id": str(product.id),
+                    "seller_id": str(product.seller_id),
+                    "json_before": json_before,
+                    "json_after": self.product_snapshot(product),
+                },
+            }
+        )
+
     def build_product_created_event(self, product: object) -> dict[str, object]:
         return {
             "event_type": "PRODUCT_CREATED",
@@ -110,6 +134,13 @@ class FakeModerationClient:
                 "category_id": str(product.category_id),
                 "json_after": {"status": product.status.value},
             },
+        }
+
+    def product_snapshot(self, product: object) -> dict[str, object]:
+        return {
+            "id": str(product.id),
+            "status": product.status.value,
+            "skus": [str(sku.id) for sku in product.skus],
         }
 
 
@@ -166,7 +197,7 @@ async def test_first_sku_emits_created_event_to_moderation() -> None:
 
 
 @pytest.mark.asyncio
-async def test_second_sku_no_state_change() -> None:
+async def test_second_sku_while_on_moderation_does_not_emit_event() -> None:
     product_id = uuid4()
     seller_id = uuid4()
     existing_sku = SimpleNamespace(id=uuid4(), product_id=product_id)
@@ -183,6 +214,34 @@ async def test_second_sku_no_state_change() -> None:
 
     assert FakeProductRepository.product.status == ProductStatus.ON_MODERATION
     assert FakeModerationClient.events == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [ProductStatus.MODERATED, ProductStatus.BLOCKED])
+async def test_add_sku_to_reviewed_product_returns_to_moderation_and_emits_edited(
+    status: ProductStatus,
+) -> None:
+    product_id = uuid4()
+    seller_id = uuid4()
+    existing_sku = SimpleNamespace(id=uuid4(), product_id=product_id)
+    FakeProductRepository.product = _product(
+        product_id=product_id,
+        seller_id=seller_id,
+        status=status,
+        skus=[existing_sku],
+    )
+
+    await SKUService(FakeSession()).create(
+        seller_id, SKUCreate(**_payload(product_id=str(product_id)))
+    )
+
+    assert FakeProductRepository.product.status == ProductStatus.ON_MODERATION
+    assert len(FakeModerationClient.events) == 1
+    event = FakeModerationClient.events[0]
+    assert event["event_type"] == "PRODUCT_EDITED"
+    assert event["payload"]["product_id"] == str(product_id)
+    assert event["payload"]["json_before"]["status"] == status.value
+    assert event["payload"]["json_after"]["status"] == "ON_MODERATION"
 
 
 @pytest.mark.asyncio
@@ -231,7 +290,8 @@ def test_missing_image_returns_400() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 400
-    assert "images" in str(response.json()["detail"])
+    assert response.json()["code"] == "VALIDATION_ERROR"
+    assert "images" in str(response.json()["errors"])
 
 
 @pytest.mark.asyncio

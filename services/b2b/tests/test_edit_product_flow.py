@@ -168,7 +168,14 @@ async def test_edit_blocked_product_returns_to_on_moderation() -> None:
     updated = await ProductService(FakeSession()).update(
         product.id,
         seller_id,
-        ProductUpdate(images=["https://cdn.neomarket.test/products/fixed.jpg"]),
+        ProductUpdate(
+            images=[
+                {
+                    "url": "https://cdn.neomarket.test/products/fixed.jpg",
+                    "ordering": 0,
+                }
+            ]
+        ),
     )
 
     assert updated.status == ProductStatus.ON_MODERATION

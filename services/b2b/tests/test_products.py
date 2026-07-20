@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from types import SimpleNamespace
 from uuid import UUID, uuid4
 
@@ -14,8 +15,13 @@ def _payload(**overrides: object) -> dict[str, object]:
         "title": "Wireless keyboard",
         "description": "Low-profile keyboard for office work",
         "category_id": str(uuid4()),
-        "images": ["https://cdn.neomarket.test/products/keyboard.jpg"],
-        "characteristics": {"layout": "US"},
+        "images": [
+            {
+                "url": "https://cdn.neomarket.test/products/keyboard.jpg",
+                "ordering": 0,
+            }
+        ],
+        "characteristics": [{"name": "layout", "value": "US"}],
     }
     data.update(overrides)
     return data
@@ -59,6 +65,8 @@ class FakeProductService:
             category=data.category,
             is_active=False,
             skus=[],
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
 
 
@@ -81,6 +89,16 @@ def test_create_product_returns_201_with_created_status() -> None:
     body = response.json()
     assert body["status"] == "CREATED"
     assert body["skus"] == []
+    assert body["slug"].startswith("wireless-keyboard-")
+    assert body["images"][0]["url"] == _payload()["images"][0]["url"]
+    assert body["images"][0]["ordering"] == 0
+    assert body["characteristics"] == [{"name": "layout", "value": "US"}]
+    assert body["blocking_reason_id"] is None
+    assert body["moderator_comment"] is None
+    assert "created_at" in body
+    assert "updated_at" in body
+    assert "category" not in body
+    assert "is_active" not in body
 
 
 def test_seller_id_taken_from_jwt(override_dependencies: UUID) -> None:
@@ -103,7 +121,8 @@ def test_missing_images_returns_400() -> None:
     response = TestClient(app).post("/api/v1/products", json=payload)
 
     assert response.status_code == 400
-    assert "images" in str(response.json()["detail"])
+    assert response.json()["code"] == "VALIDATION_ERROR"
+    assert "images" in str(response.json()["errors"])
 
 
 def test_missing_category_returns_400() -> None:
@@ -113,7 +132,8 @@ def test_missing_category_returns_400() -> None:
     response = TestClient(app).post("/api/v1/products", json=payload)
 
     assert response.status_code == 400
-    assert "category_id" in str(response.json()["detail"])
+    assert response.json()["code"] == "VALIDATION_ERROR"
+    assert "category_id" in str(response.json()["errors"])
 
 
 def test_invalid_category_id_returns_400() -> None:
@@ -122,7 +142,19 @@ def test_invalid_category_id_returns_400() -> None:
     )
 
     assert response.status_code == 400
-    assert "category_id" in str(response.json()["detail"])
+    assert response.json()["code"] == "VALIDATION_ERROR"
+    assert "category_id" in str(response.json()["errors"])
+
+
+def test_missing_description_returns_400() -> None:
+    payload = _payload()
+    payload.pop("description")
+
+    response = TestClient(app).post("/api/v1/products", json=payload)
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "VALIDATION_ERROR"
+    assert "description" in str(response.json()["errors"])
 
 
 def test_legacy_seller_products_endpoint_not_available() -> None:

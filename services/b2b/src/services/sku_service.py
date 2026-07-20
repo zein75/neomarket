@@ -35,23 +35,40 @@ class SKUService:
         if product.status == ProductStatus.HARD_BLOCKED:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Cannot add SKU to hard-blocked product",
+                detail={
+                    "code": "SKU_HARD_BLOCKED_PRODUCT",
+                    "message": "Cannot add SKU to hard-blocked product",
+                },
             )
 
         is_first_sku = len(product.skus) == 0
+        should_send_edited = product.status in {
+            ProductStatus.MODERATED,
+            ProductStatus.BLOCKED,
+        }
+        moderation_client = ModerationClient()
+        json_before = (
+            moderation_client.product_snapshot(product) if should_send_edited else None
+        )
         sku = await self.sku_repo.create_sku(
             product_id=data.product_id,
             name=data.name,
             price=data.price,
             stock=data.stock,
-            images=data.images,
+            images=[image.url for image in data.images],
         )
-        if is_first_sku:
-            if all(existing.id != sku.id for existing in product.skus):
-                product.skus.append(sku)
+        if all(existing.id != sku.id for existing in product.skus):
+            product.skus.append(sku)
+        if is_first_sku or should_send_edited:
             product.status = ProductStatus.ON_MODERATION
             await self.sku_repo.session.flush()
-            await ModerationClient().send_product_created(product)
+        if is_first_sku:
+            await moderation_client.send_product_created(product)
+        elif should_send_edited and json_before is not None:
+            await moderation_client.send_product_edited(
+                product,
+                json_before=json_before,
+            )
         return sku
 
     async def update(self, sku_id: UUID, seller_id: UUID, data: SKUUpdate) -> SKU:
@@ -80,7 +97,7 @@ class SKUService:
         if data.stock is not None:
             sku.stock = data.stock
         if data.images is not None:
-            sku.images = data.images
+            sku.images = [image.url for image in data.images]
         if data.is_active is not None:
             sku.is_active = data.is_active
         should_send_to_moderation = product.status in {

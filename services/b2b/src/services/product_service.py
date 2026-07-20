@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -111,8 +112,10 @@ class ProductService:
             "title": product.title,
             "description": product.description,
             "category_id": str(product.category_id) if product.category_id else None,
-            "images": product.images,
-            "characteristics": product.characteristics,
+            "images": ProductResponse._normalize_images(product.images, product.id),
+            "characteristics": ProductResponse._normalize_characteristics(
+                product.characteristics
+            ),
             "status": self._status_value(product.status),
             "category": product.category,
             "is_active": product.is_active,
@@ -128,11 +131,23 @@ class ProductService:
             "title": product.title,
             "description": product.description,
             "category_id": str(product.category_id) if product.category_id else None,
-            "images": product.images,
-            "characteristics": product.characteristics,
+            "slug": ProductResponse._slug(product.title, product.id),
+            "images": ProductResponse._normalize_images(product.images, product.id),
+            "characteristics": ProductResponse._normalize_characteristics(
+                product.characteristics
+            ),
             "status": self._status_value(product.status),
-            "category": product.category,
-            "is_active": product.is_active,
+            "blocking_reason_id": ProductResponse._blocking_reason_id(
+                {"blocking_reason": getattr(product, "blocking_reason", None)}
+            ),
+            "moderator_comment": ProductResponse._moderator_comment(
+                {
+                    "blocking_reason": getattr(product, "blocking_reason", None),
+                    "field_reports": getattr(product, "field_reports", []),
+                }
+            ),
+            "created_at": getattr(product, "created_at", datetime.now(timezone.utc)),
+            "updated_at": getattr(product, "updated_at", datetime.now(timezone.utc)),
             "deleted": product.deleted,
             "blocked": product.status
             in {ProductStatus.BLOCKED, ProductStatus.HARD_BLOCKED},
@@ -155,6 +170,8 @@ class ProductService:
             "reserved_quantity": reserved_quantity,
             "images": sku.images,
             "is_active": sku.is_active,
+            "created_at": getattr(sku, "created_at", datetime.now(timezone.utc)),
+            "updated_at": getattr(sku, "updated_at", datetime.now(timezone.utc)),
         }
 
     def _is_publicly_visible(self, product: Product) -> bool:
@@ -170,10 +187,23 @@ class ProductService:
             "title": product.title,
             "description": product.description,
             "category_id": str(product.category_id) if product.category_id else None,
-            "images": product.images,
-            "characteristics": product.characteristics,
+            "slug": ProductResponse._slug(product.title, product.id),
+            "images": ProductResponse._normalize_images(product.images, product.id),
+            "characteristics": ProductResponse._normalize_characteristics(
+                product.characteristics
+            ),
             "status": self._status_value(product.status),
-            "category": product.category,
+            "blocking_reason_id": ProductResponse._blocking_reason_id(
+                {"blocking_reason": getattr(product, "blocking_reason", None)}
+            ),
+            "moderator_comment": ProductResponse._moderator_comment(
+                {
+                    "blocking_reason": getattr(product, "blocking_reason", None),
+                    "field_reports": getattr(product, "field_reports", []),
+                }
+            ),
+            "created_at": getattr(product, "created_at", datetime.now(timezone.utc)),
+            "updated_at": getattr(product, "updated_at", datetime.now(timezone.utc)),
             "skus": [
                 self._public_sku_detail(sku)
                 for sku in product.skus
@@ -191,6 +221,8 @@ class ProductService:
             "active_quantity": self._active_quantity(sku),
             "images": sku.images,
             "is_active": sku.is_active,
+            "created_at": getattr(sku, "created_at", datetime.now(timezone.utc)),
+            "updated_at": getattr(sku, "updated_at", datetime.now(timezone.utc)),
         }
 
     def _active_quantity(self, sku: object) -> int:
@@ -207,8 +239,11 @@ class ProductService:
             title=data.title,
             description=data.description,
             category_id=data.category_id,
-            images=data.images,
-            characteristics=data.characteristics,
+            images=[image.url for image in data.images],
+            characteristics={
+                characteristic.name: characteristic.value
+                for characteristic in data.characteristics
+            },
             category=data.category,
         )
         return await self.repo.get_with_skus(product.id)
@@ -238,9 +273,12 @@ class ProductService:
         if data.category_id is not None:
             product.category_id = data.category_id
         if data.images is not None:
-            product.images = data.images
+            product.images = [image.url for image in data.images]
         if data.characteristics is not None:
-            product.characteristics = data.characteristics
+            product.characteristics = {
+                characteristic.name: characteristic.value
+                for characteristic in data.characteristics
+            }
         if data.category is not None:
             product.category = data.category
         if data.is_active is not None:

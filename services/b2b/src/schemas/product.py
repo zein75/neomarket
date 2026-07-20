@@ -1,18 +1,40 @@
+import re
+from datetime import datetime, timezone
 from typing import Any
-from uuid import UUID
+from uuid import NAMESPACE_URL, UUID, uuid5
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from src.models.product import ProductStatus
 from src.schemas.sku import SKUResponse
 
 
+class ProductImageCreate(BaseModel):
+    url: str
+    ordering: int = 0
+
+
+class ProductImageResponse(BaseModel):
+    id: UUID
+    url: str
+    ordering: int
+
+
+class Characteristic(BaseModel):
+    name: str
+    value: str
+
+
+class CharacteristicResponse(Characteristic):
+    pass
+
+
 class ProductCreate(BaseModel):
     title: str
-    description: str | None = None
+    description: str
     category_id: UUID
-    images: list[str] = Field(min_length=1)
-    characteristics: dict[str, Any] = Field(default_factory=dict)
+    images: list[ProductImageCreate] = Field(min_length=1)
+    characteristics: list[Characteristic] = Field(default_factory=list)
     category: str | None = None
 
 
@@ -20,8 +42,8 @@ class ProductUpdate(BaseModel):
     title: str | None = None
     description: str | None = None
     category_id: UUID | None = None
-    images: list[str] | None = None
-    characteristics: dict[str, Any] | None = None
+    images: list[ProductImageCreate] | None = None
+    characteristics: list[Characteristic] | None = None
     category: str | None = None
     is_active: bool | None = None
 
@@ -34,13 +56,122 @@ class ProductResponse(BaseModel):
     title: str
     description: str | None
     category_id: UUID | None
-    images: list[str]
-    characteristics: dict[str, Any]
+    slug: str
+    images: list[ProductImageResponse]
+    characteristics: list[CharacteristicResponse]
     status: ProductStatus
-    category: str | None
-    is_active: bool
+    blocking_reason_id: UUID | None = None
+    moderator_comment: str | None = None
+    created_at: datetime
+    updated_at: datetime
     deleted: bool = False
     skus: list[SKUResponse] = []
+
+    @model_validator(mode="before")
+    @classmethod
+    def from_product_model(cls, value: Any) -> Any:
+        if isinstance(value, dict):
+            data = dict(value)
+        else:
+            data = {
+                "id": getattr(value, "id"),
+                "seller_id": getattr(value, "seller_id"),
+                "title": getattr(value, "title"),
+                "description": getattr(value, "description"),
+                "category_id": getattr(value, "category_id", None),
+                "images": getattr(value, "images", []),
+                "characteristics": getattr(value, "characteristics", {}),
+                "status": getattr(value, "status"),
+                "blocking_reason": getattr(value, "blocking_reason", None),
+                "field_reports": getattr(value, "field_reports", []),
+                "created_at": getattr(value, "created_at", None),
+                "updated_at": getattr(value, "updated_at", None),
+                "deleted": getattr(value, "deleted", False),
+                "skus": getattr(value, "skus", []),
+            }
+
+        now = datetime.now(timezone.utc)
+        if data.get("created_at") is None:
+            data["created_at"] = now
+        if data.get("updated_at") is None:
+            data["updated_at"] = now
+        data.setdefault("slug", cls._slug(data["title"], data["id"]))
+        data.setdefault("blocking_reason_id", cls._blocking_reason_id(data))
+        data.setdefault("moderator_comment", cls._moderator_comment(data))
+        data["images"] = cls._normalize_images(data.get("images", []), data.get("id"))
+        data["characteristics"] = cls._normalize_characteristics(
+            data.get("characteristics", [])
+        )
+        return data
+
+    @classmethod
+    def _normalize_images(
+        cls, images: list[Any], product_id: Any
+    ) -> list[dict[str, Any]]:
+        normalized = []
+        for index, image in enumerate(images):
+            if isinstance(image, dict):
+                url = image["url"]
+                ordering = image.get("ordering", index)
+                image_id = image.get("id")
+            elif hasattr(image, "url"):
+                url = image.url
+                ordering = getattr(image, "ordering", index)
+                image_id = getattr(image, "id", None)
+            else:
+                url = str(image)
+                ordering = index
+                image_id = None
+            normalized.append(
+                {
+                    "id": image_id
+                    or uuid5(NAMESPACE_URL, f"product-image:{product_id}:{ordering}:{url}"),
+                    "url": url,
+                    "ordering": ordering,
+                }
+            )
+        return normalized
+
+    @classmethod
+    def _normalize_characteristics(cls, characteristics: Any) -> list[dict[str, str]]:
+        if isinstance(characteristics, dict):
+            return [
+                {"name": str(name), "value": str(value)}
+                for name, value in characteristics.items()
+            ]
+        return [
+            {
+                "name": str(item["name"] if isinstance(item, dict) else item.name),
+                "value": str(item["value"] if isinstance(item, dict) else item.value),
+            }
+            for item in characteristics
+        ]
+
+    @classmethod
+    def _slug(cls, title: str, product_id: Any) -> str:
+        slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+        return f"{slug or 'product'}-{str(product_id)[:8]}"
+
+    @classmethod
+    def _blocking_reason_id(cls, data: dict[str, Any]) -> UUID | None:
+        reason = data.get("blocking_reason")
+        if isinstance(reason, dict) and reason.get("id"):
+            return UUID(str(reason["id"]))
+        return data.get("blocking_reason_id")
+
+    @classmethod
+    def _moderator_comment(cls, data: dict[str, Any]) -> str | None:
+        if data.get("moderator_comment") is not None:
+            return str(data["moderator_comment"])
+        reason = data.get("blocking_reason")
+        if isinstance(reason, dict) and reason.get("comment") is not None:
+            return str(reason["comment"])
+        field_reports = data.get("field_reports") or []
+        if field_reports:
+            report = field_reports[0]
+            if isinstance(report, dict) and report.get("comment") is not None:
+                return str(report["comment"])
+        return None
 
 
 class BlockingReasonResponse(BaseModel):
@@ -67,8 +198,8 @@ class ProductListItem(BaseModel):
     title: str
     description: str | None
     category_id: UUID | None
-    images: list[str]
-    characteristics: dict[str, Any]
+    images: list[ProductImageResponse]
+    characteristics: list[CharacteristicResponse]
     status: ProductStatus
     category: str | None
     is_active: bool
