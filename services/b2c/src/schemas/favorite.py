@@ -14,3 +14,4 @@ class FavoriteResponse(BaseModel):
     id: UUID
     product_id: UUID
     added_at: datetime
+    product: dict[str, object] | None = None
