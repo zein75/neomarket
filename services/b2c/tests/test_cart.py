@@ -2,13 +2,19 @@ from types import SimpleNamespace
 from uuid import UUID, uuid4
 
 import pytest
+from fastapi.testclient import TestClient
 
+from src.api.routers import cart as cart_router
+from src.main import app
 from src.services import cart_service as cart_service_module
 from src.services.cart_service import CartService
 
 
 class FakeSession:
     async def flush(self) -> None:
+        return None
+
+    async def commit(self) -> None:
         return None
 
 
@@ -85,6 +91,20 @@ class FakeCartRepository:
         item.quantity = quantity
         return item
 
+    async def get_item_by_sku(self, cart_id: UUID, sku_id: UUID):
+        cart = self.carts_by_id.get(cart_id)
+        if not cart:
+            return None
+        return next((item for item in cart.items if item.sku_id == sku_id), None)
+
+    async def remove_item(self, item) -> None:
+        cart = self.carts_by_id.get(item.cart_id)
+        if cart:
+            cart.items.remove(item)
+
+    async def clear_items(self, cart) -> None:
+        cart.items.clear()
+
     async def remove_cart(self, cart) -> None:
         self.removed_carts.append(cart.id)
         self.carts_by_id.pop(cart.id, None)
@@ -106,6 +126,13 @@ class FakeB2BClient:
 
     async def get_products_batch(self, product_ids: list[str]):
         return self.products
+
+    async def get_sku(self, sku_id: str):
+        for product in self.products:
+            for sku in product.get("skus", []):
+                if str(sku.get("id")) == sku_id:
+                    return {**sku, "product_id": product["id"]}
+        raise AssertionError("SKU was not found in public catalog fixture")
 
 
 @pytest.fixture(autouse=True)
@@ -136,6 +163,38 @@ async def test_add_sku_increments_quantity_if_already_in_cart() -> None:
     assert updated.id == item.id
     assert item.quantity == 5
     assert len(cart.items) == 1
+
+
+@pytest.mark.asyncio
+async def test_add_new_sku_uses_public_catalog_data() -> None:
+    cart = _cart(session_id="guest-1")
+    product_id = uuid4()
+    sku_id = uuid4()
+    FakeCartRepository.carts_by_id[cart.id] = cart
+    FakeB2BClient.products = [
+        {
+            "id": str(product_id),
+            "title": "Keyboard",
+            "skus": [
+                {
+                    "id": str(sku_id),
+                    "name": "Black",
+                    "price": 12500,
+                    "active_quantity": 7,
+                }
+            ],
+        }
+    ]
+
+    added = await CartService(FakeSession()).add_item(
+        cart.id,
+        cart_service_module.CartItemAdd(sku_id=sku_id, quantity=2),
+    )
+
+    assert added.sku_id == sku_id
+    assert added.product_id == product_id
+    assert added.unit_price == 12500
+    assert added.quantity == 2
 
 
 @pytest.mark.asyncio
@@ -237,3 +296,100 @@ async def test_guest_cart_merged_on_login() -> None:
     assert merged.id == auth_cart.id
     assert auth_item.quantity == 5
     assert FakeCartRepository.removed_carts == [guest_cart.id]
+
+
+def test_patch_cart_item_addresses_item_by_sku_id() -> None:
+    cart = _cart(session_id="guest-1")
+    product_id = uuid4()
+    sku_id = uuid4()
+    cart.items = [_item(cart_id=cart.id, product_id=product_id, sku_id=sku_id, quantity=2)]
+    FakeCartRepository.carts_by_id[cart.id] = cart
+    FakeCartRepository.carts_by_session["guest-1"] = cart
+    FakeB2BClient.products = [
+        {
+            "id": str(product_id),
+            "title": "Keyboard",
+            "skus": [{"id": str(sku_id), "name": "Black", "price": 12500, "active_quantity": 7}],
+        }
+    ]
+
+    async def fake_db():
+        yield FakeSession()
+
+    async def fake_optional_user():
+        return None
+
+    app.dependency_overrides[cart_router.get_db] = fake_db
+    app.dependency_overrides[cart_router.get_optional_user] = fake_optional_user
+    try:
+        response = TestClient(app).patch(
+            f"/api/v1/cart/items/{sku_id}",
+            json={"quantity": 4},
+            headers={"X-Session-Id": "guest-1"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["items"][0]["sku_id"] == str(sku_id)
+    assert response.json()["items"][0]["quantity"] == 4
+
+
+def test_delete_cart_item_addresses_item_by_sku_id() -> None:
+    cart = _cart(session_id="guest-1")
+    product_id = uuid4()
+    sku_id = uuid4()
+    item = _item(cart_id=cart.id, product_id=product_id, sku_id=sku_id, quantity=2)
+    cart.items = [item]
+    FakeCartRepository.carts_by_id[cart.id] = cart
+    FakeCartRepository.carts_by_session["guest-1"] = cart
+
+    async def fake_db():
+        yield FakeSession()
+
+    async def fake_optional_user():
+        return None
+
+    app.dependency_overrides[cart_router.get_db] = fake_db
+    app.dependency_overrides[cart_router.get_optional_user] = fake_optional_user
+    try:
+        response = TestClient(app).delete(
+            f"/api/v1/cart/items/{sku_id}",
+            headers={"X-Session-Id": "guest-1"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["items"] == []
+    assert cart.items == []
+
+
+def test_clear_cart_returns_204_and_removes_all_items() -> None:
+    cart = _cart(session_id="guest-1")
+    product_id = uuid4()
+    cart.items = [
+        _item(cart_id=cart.id, product_id=product_id, sku_id=uuid4(), quantity=2),
+        _item(cart_id=cart.id, product_id=product_id, sku_id=uuid4(), quantity=1),
+    ]
+    FakeCartRepository.carts_by_id[cart.id] = cart
+    FakeCartRepository.carts_by_session["guest-1"] = cart
+
+    async def fake_db():
+        yield FakeSession()
+
+    async def fake_optional_user():
+        return None
+
+    app.dependency_overrides[cart_router.get_db] = fake_db
+    app.dependency_overrides[cart_router.get_optional_user] = fake_optional_user
+    try:
+        response = TestClient(app).delete(
+            "/api/v1/cart",
+            headers={"X-Session-Id": "guest-1"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 204
+    assert cart.items == []

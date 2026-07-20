@@ -62,10 +62,15 @@ class B2BClient:
     async def get_product(self, product_id: str) -> Any:
         return await self._get(f"/products/{product_id}")
 
-    async def get_public_products(self) -> Any:
+    async def get_public_products(self, *, limit: int | None = None, offset: int | None = None) -> Any:
         try:
             response = await self._client.get(
                 "/api/v1/public/products",
+                params={
+                    k: v
+                    for k, v in {"limit": limit, "offset": offset}.items()
+                    if v is not None
+                },
                 headers={"X-Service-Key": settings.service_key},
             )
             response.raise_for_status()
@@ -90,7 +95,23 @@ class B2BClient:
             raise HTTPException(status_code=503, detail="B2B service unavailable")
 
     async def get_sku(self, sku_id: str) -> Any:
-        return await self._get(f"/api/v1/skus/{sku_id}")
+        offset = 0
+        limit = 100
+        while True:
+            payload = await self.get_public_products(limit=limit, offset=offset)
+            products = payload.get("items", []) if isinstance(payload, dict) else payload
+            for product in products:
+                for sku in product.get("skus", []):
+                    if str(sku.get("id")) == sku_id:
+                        return {
+                            **sku,
+                            "product_id": product.get("id"),
+                        }
+            total_count = int(payload.get("total_count", len(products))) if isinstance(payload, dict) else len(products)
+            offset += limit
+            if offset >= total_count or not products:
+                break
+        raise HTTPException(status_code=404, detail="SKU not found")
 
     async def reserve(self, payload: dict[str, Any]) -> Any:
         return await self._post_service("/api/v1/reserve", payload)

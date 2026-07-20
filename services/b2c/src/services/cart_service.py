@@ -75,12 +75,9 @@ class CartService:
                     item, item.quantity + data.quantity
                 )
 
-        product_id = data.product_id
-        unit_price = data.unit_price or 0
-        if product_id is None:
-            sku_data = await self._get_sku_data(data.sku_id)
-            product_id = UUID(str(sku_data["product_id"]))
-            unit_price = int(sku_data.get("price") or unit_price)
+        sku_data = await self._get_sku_data(data.sku_id)
+        product_id = UUID(str(sku_data["product_id"]))
+        unit_price = int(sku_data.get("price") or 0)
         return await self.repo.add_item(
             cart_id=cart_id,
             sku_id=data.sku_id,
@@ -91,24 +88,40 @@ class CartService:
 
     async def update_item(
         self,
-        item_id: UUID,
+        sku_id: UUID,
         data: CartItemUpdate,
         cart_id: UUID | None = None,
     ) -> CartItem:
-        item = await self.repo.get_item(item_id)
-        if not item or (cart_id is not None and item.cart_id != cart_id):
+        if cart_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Cart item not found"
+            )
+        item = await self.repo.get_item_by_sku(cart_id, sku_id)
+        if not item:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Cart item not found"
             )
         return await self.repo.update_item_quantity(item, data.quantity)
 
-    async def remove_item(self, item_id: UUID, cart_id: UUID | None = None) -> None:
-        item = await self.repo.get_item(item_id)
-        if not item or (cart_id is not None and item.cart_id != cart_id):
+    async def remove_item(self, sku_id: UUID, cart_id: UUID | None = None) -> None:
+        if cart_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Cart item not found"
+            )
+        item = await self.repo.get_item_by_sku(cart_id, sku_id)
+        if not item:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Cart item not found"
             )
         await self.repo.remove_item(item)
+
+    async def clear_cart(self, cart_id: UUID) -> None:
+        cart = await self.repo.get_with_items(cart_id)
+        if not cart:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Cart not found"
+            )
+        await self.repo.clear_items(cart)
 
     async def get_enriched_cart(self, cart_id: UUID) -> dict[str, object]:
         cart = await self.get_cart_with_items(cart_id)

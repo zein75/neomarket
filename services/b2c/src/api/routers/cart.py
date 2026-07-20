@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends, Header, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_db, get_optional_user
@@ -52,10 +52,24 @@ async def add_item(
     return await svc.get_enriched_cart(cart.id)
 
 
-@router.patch("/api/v1/cart/items/{item_id}", response_model=CartResponse)
-@router.patch("/cart/items/{item_id}", response_model=CartResponse, include_in_schema=False)
+@router.delete("/api/v1/cart", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/cart", status_code=status.HTTP_204_NO_CONTENT, include_in_schema=False)
+async def clear_cart(
+    x_session_id: str | None = Header(default=None),
+    current_user: User | None = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    svc = CartService(db)
+    cart = await svc.get_or_create_cart(user=current_user, session_id=x_session_id)
+    await svc.clear_cart(cart.id)
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.patch("/api/v1/cart/items/{sku_id}", response_model=CartResponse)
+@router.patch("/cart/items/{sku_id}", response_model=CartResponse, include_in_schema=False)
 async def update_item(
-    item_id: UUID,
+    sku_id: UUID,
     data: CartItemUpdate,
     x_session_id: str | None = Header(default=None),
     current_user: User | None = Depends(get_optional_user),
@@ -63,21 +77,21 @@ async def update_item(
 ) -> dict[str, object]:
     svc = CartService(db)
     cart = await svc.get_or_create_cart(user=current_user, session_id=x_session_id)
-    await svc.update_item(item_id, data, cart_id=cart.id)
+    await svc.update_item(sku_id, data, cart_id=cart.id)
     await db.commit()
     return await svc.get_enriched_cart(cart.id)
 
 
-@router.delete("/api/v1/cart/items/{item_id}", response_model=CartResponse)
-@router.delete("/cart/items/{item_id}", response_model=CartResponse, include_in_schema=False)
+@router.delete("/api/v1/cart/items/{sku_id}", response_model=CartResponse)
+@router.delete("/cart/items/{sku_id}", response_model=CartResponse, include_in_schema=False)
 async def remove_item(
-    item_id: UUID,
+    sku_id: UUID,
     x_session_id: str | None = Header(default=None),
     current_user: User | None = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, object]:
     svc = CartService(db)
     cart = await svc.get_or_create_cart(user=current_user, session_id=x_session_id)
-    await svc.remove_item(item_id, cart_id=cart.id)
+    await svc.remove_item(sku_id, cart_id=cart.id)
     await db.commit()
     return await svc.get_enriched_cart(cart.id)

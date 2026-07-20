@@ -39,8 +39,11 @@ class CartRepository(BaseRepository[Cart]):
         )
         return result.scalar_one_or_none()
 
-    async def get_item(self, item_id: UUID) -> CartItem | None:
-        return await self.session.get(CartItem, item_id)
+    async def get_item_by_sku(self, cart_id: UUID, sku_id: UUID) -> CartItem | None:
+        result = await self.session.execute(
+            select(CartItem).where(CartItem.cart_id == cart_id, CartItem.sku_id == sku_id)
+        )
+        return result.scalar_one_or_none()
 
     async def add_item(
         self,
@@ -69,6 +72,11 @@ class CartRepository(BaseRepository[Cart]):
 
     async def remove_item(self, item: CartItem) -> None:
         await self.session.delete(item)
+        await self.session.flush()
+
+    async def clear_items(self, cart: Cart) -> None:
+        for item in list(cart.items):
+            await self.session.delete(item)
         await self.session.flush()
 
     async def remove_cart(self, cart: Cart) -> None:

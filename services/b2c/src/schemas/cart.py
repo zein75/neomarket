@@ -8,8 +8,6 @@ from pydantic import BaseModel, ConfigDict, Field, computed_field
 class CartItemAdd(BaseModel):
     sku_id: UUID
     quantity: int = Field(gt=0)
-    product_id: UUID | None = None
-    unit_price: int | None = None  # legacy price-at-add, not used for totals
 
 
 class CartItemUpdate(BaseModel):
