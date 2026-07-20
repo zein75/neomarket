@@ -15,6 +15,7 @@ from src.models.product import ProductStatus
 from src.schemas.product import (
     ProductCreate,
     ProductDetailResponse,
+    ProductPublicBatchRequest,
     ProductPaginatedResponse,
     ProductPublicPaginatedResponse,
     ProductPublicResponse,
@@ -125,6 +126,19 @@ async def list_public_products(
         limit=limit,
         offset=offset,
     )
+
+
+@router.post(
+    "/api/v1/public/products/batch",
+    response_model=list[ProductPublicResponse],
+)
+async def get_public_products_batch(
+    data: ProductPublicBatchRequest,
+    _: None = Depends(verify_service_key),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    svc = ProductService(db)
+    return await svc.get_public_batch(data.product_ids)
 
 
 @router.get(

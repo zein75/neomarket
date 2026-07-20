@@ -54,6 +54,19 @@ class ProductService:
         product = await self.get_active(product_id)
         return self._public_product_detail(product)
 
+    async def get_public_batch(self, product_ids: list[UUID]) -> list[dict[str, object]]:
+        products = await self.repo.list_public_catalog(product_ids)
+        visible_by_id = {
+            product.id: product
+            for product in products
+            if self._is_publicly_visible(product)
+        }
+        return [
+            self._public_product_detail(visible_by_id[product_id])
+            for product_id in product_ids
+            if product_id in visible_by_id
+        ]
+
     async def get_for_seller(self, product_id: UUID, seller_id: UUID) -> dict[str, object]:
         product = await self.repo.get_with_skus(product_id)
         if not product or product.seller_id != seller_id:

@@ -220,6 +220,38 @@ def test_public_product_detail_route_uses_public_sku_shape() -> None:
     assert "reserved_quantity" not in sku
 
 
+def test_public_products_batch_route_returns_visible_public_details() -> None:
+    visible = _product(status=ProductStatus.MODERATED, deleted=False, stock=5, reserved=1)
+    hidden = _product(status=ProductStatus.BLOCKED, deleted=False, stock=5, reserved=0)
+    FakeProductRepository.products = [hidden, visible]
+
+    async def fake_db():
+        yield SimpleNamespace()
+
+    app.dependency_overrides[products_router.get_db] = fake_db
+    try:
+        response = TestClient(app).post(
+            "/api/v1/public/products/batch",
+            json={"product_ids": [str(hidden.id), str(visible.id), str(uuid4())]},
+            headers={"X-Service-Key": "dev-service-key-change-in-production"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [item["id"] for item in body] == [str(visible.id)]
+    assert body[0]["slug"].startswith("wireless-keyboard-")
+    assert body[0]["created_at"]
+    sku = body[0]["skus"][0]
+    assert sku["stock_quantity"] == 5
+    assert sku["discount"] == 0
+    assert sku["article"] is None
+    assert sku["characteristics"] == {}
+    assert "cost_price" not in sku
+    assert "reserved_quantity" not in sku
+
+
 @pytest.mark.asyncio
 async def test_batch_ids_returns_visible_subset() -> None:
     visible = _product(status=ProductStatus.MODERATED, deleted=False, stock=5, reserved=0)

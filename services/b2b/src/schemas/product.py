@@ -248,6 +248,10 @@ class ProductPublicPaginatedResponse(BaseModel):
     offset: int
 
 
+class ProductPublicBatchRequest(BaseModel):
+    product_ids: list[UUID] = Field(min_length=1)
+
+
 class BlockingReasonResponse(BaseModel):
     id: UUID
     title: str
