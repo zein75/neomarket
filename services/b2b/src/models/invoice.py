@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 class InvoiceStatus(StrEnum):
-    PENDING = "PENDING"
+    CREATED = "CREATED"
     ACCEPTED = "ACCEPTED"
     PARTIALLY_ACCEPTED = "PARTIALLY_ACCEPTED"
     CANCELLED = "CANCELLED"
@@ -32,7 +32,7 @@ class Invoice(Base, TimestampMixin):
         nullable=False,
     )
     status: Mapped[str] = mapped_column(
-        String(32), default=InvoiceStatus.PENDING.value, nullable=False
+        String(32), default=InvoiceStatus.CREATED.value, nullable=False
     )
 
     seller: Mapped["Seller"] = relationship("Seller")

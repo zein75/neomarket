@@ -19,7 +19,10 @@ class InvoiceService:
         if not data.items:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invoice must contain at least one item",
+                detail={
+                    "code": "INVALID_REQUEST",
+                    "message": "Invoice must contain at least one item",
+                },
             )
 
         seen_sku_ids = set()
@@ -27,7 +30,10 @@ class InvoiceService:
             if item.sku_id in seen_sku_ids:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Duplicate SKU in invoice",
+                    detail={
+                        "code": "INVALID_REQUEST",
+                        "message": "Duplicate SKU in invoice",
+                    },
                 )
             seen_sku_ids.add(item.sku_id)
 
@@ -35,17 +41,26 @@ class InvoiceService:
             if not sku:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail="SKU not found",
+                    detail={
+                        "code": "SKU_NOT_FOUND",
+                        "message": "SKU not found",
+                    },
                 )
             if sku.product.seller_id != seller_id:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Access denied",
+                    detail={
+                        "code": "SKU_ACCESS_DENIED",
+                        "message": "Access denied",
+                    },
                 )
             if str(sku.product.status) != ProductStatus.MODERATED.value:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Invoice can include only moderated product SKUs",
+                    detail={
+                        "code": "INVALID_REQUEST",
+                        "message": "Invoice can include only moderated product SKUs",
+                    },
                 )
 
         return await self.invoice_repo.create_invoice(
