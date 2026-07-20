@@ -98,7 +98,8 @@ async def decline_product(
     return card
 
 
-@router.post("/api/v1/events/products")
+@router.post("/api/v1/b2b/events")
+@router.post("/api/v1/events/products", include_in_schema=False)
 async def apply_product_event(
     event: dict[str, object],
     _: None = Depends(verify_service_key),

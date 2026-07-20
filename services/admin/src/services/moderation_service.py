@@ -145,7 +145,9 @@ class ModerationService:
         if card.status == ModerationStatus.HARD_BLOCKED:
             return {"status": "IGNORED"}
         if event_type.endswith("EDITED"):
-            card.status = ModerationStatus.EDITED
+            card.status = ModerationStatus.PENDING
+            card.moderator_id = None
+            card.queue_priority = self._edited_queue_priority(card)
             await self.repo.session.flush()
             return {"status": "UPDATED"}
         return {"status": "IGNORED"}
@@ -221,6 +223,9 @@ class ModerationService:
         if hasattr(card, "sku_ids"):
             return bool(card.sku_ids)
         return bool(getattr(card, "skus", []))
+
+    def _edited_queue_priority(self, card: object) -> int:
+        return max(int(getattr(card, "queue_priority", 0)), 0) + 1
 
     def _status_value(self, value: object) -> str:
         return value.value if isinstance(value, ModerationStatus) else str(value)

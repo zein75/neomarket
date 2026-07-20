@@ -10,6 +10,7 @@ from src.models.base import Base, TimestampMixin
 
 class ModerationStatus(enum.Enum):
     CREATED = "CREATED"
+    PENDING = "PENDING"
     IN_REVIEW = "IN_REVIEW"
     MODERATED = "MODERATED"
     BLOCKED = "BLOCKED"

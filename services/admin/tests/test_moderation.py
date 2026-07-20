@@ -324,6 +324,28 @@ async def test_edited_event_on_hard_blocked_is_ignored() -> None:
     assert card.status == ModerationStatus.HARD_BLOCKED
 
 
+async def test_edited_event_returns_card_to_pending_queue() -> None:
+    moderator_id = uuid4()
+    card = _card(
+        moderator_id=moderator_id,
+        status=ModerationStatus.IN_REVIEW,
+    )
+    card.queue_priority = 2
+    FakeModerationRepository.cards[card.id] = card
+
+    result = await ModerationService(FakeSession()).apply_product_event(
+        {
+            "event_type": "PRODUCT_EDITED",
+            "product_id": str(card.product_id),
+        }
+    )
+
+    assert result == {"status": "UPDATED"}
+    assert card.status == ModerationStatus.PENDING
+    assert card.moderator_id is None
+    assert card.queue_priority == 3
+
+
 async def test_deleted_event_removes_hard_blocked() -> None:
     moderator_id = uuid4()
     card = _card(moderator_id=moderator_id, status=ModerationStatus.HARD_BLOCKED)
@@ -343,7 +365,7 @@ async def test_deleted_event_removes_hard_blocked() -> None:
 
 def test_product_event_route_requires_service_key() -> None:
     response = TestClient(app).post(
-        "/api/v1/events/products",
+        "/api/v1/b2b/events",
         json={"event_type": "PRODUCT_EDITED", "product_id": str(uuid4())},
     )
 
@@ -365,7 +387,7 @@ def test_product_event_route_accepts_service_key() -> None:
     app.dependency_overrides[moderation_router.get_db] = fake_db
     try:
         response = TestClient(app).post(
-            "/api/v1/events/products",
+            "/api/v1/b2b/events",
             json={"event_type": "PRODUCT_EDITED", "product_id": str(card.product_id)},
             headers={"X-Service-Key": "dev-service-key"},
         )
@@ -374,3 +396,5 @@ def test_product_event_route_accepts_service_key() -> None:
 
     assert response.status_code == 200
     assert response.json() == {"status": "UPDATED"}
+    assert card.status == ModerationStatus.PENDING
+    assert card.moderator_id is None
