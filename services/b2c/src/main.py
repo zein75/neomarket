@@ -4,7 +4,7 @@ from collections.abc import AsyncGenerator
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from src.api.routers import auth, b2b_events, cart, catalog, favorites, health, orders
+from src.api.routers import auth, b2b_events, cart, catalog, favorites, health, home, orders
 
 
 @asynccontextmanager
@@ -38,5 +38,6 @@ app.include_router(auth.router)
 app.include_router(b2b_events.router)
 app.include_router(cart.router)
 app.include_router(favorites.router)
+app.include_router(home.router)
 app.include_router(orders.router)
 app.include_router(catalog.router)
