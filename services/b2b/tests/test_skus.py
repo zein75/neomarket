@@ -278,6 +278,54 @@ async def _fake_seller():
     return SimpleNamespace(id=uuid4(), is_active=True)
 
 
+def test_update_sku_response_matches_contract(monkeypatch: pytest.MonkeyPatch) -> None:
+    sku_id = uuid4()
+    product_id = uuid4()
+
+    class FakeRouteSKUService:
+        def __init__(self, db: object) -> None:
+            self.db = db
+
+        async def update(self, update_sku_id: UUID, seller_id: UUID, data: object):
+            assert update_sku_id == sku_id
+            return SimpleNamespace(
+                id=sku_id,
+                product_id=product_id,
+                name="Keyboard / Black",
+                price=139900,
+                stock=25,
+                reserved_quantity=7,
+                images=["https://cdn.neomarket.test/skus/keyboard-black.jpg"],
+                is_active=True,
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
+            )
+
+    monkeypatch.setattr(skus_router, "SKUService", FakeRouteSKUService)
+    app.dependency_overrides[skus_router.get_current_seller] = _fake_seller
+    app.dependency_overrides[skus_router.get_db] = _fake_db
+    try:
+        response = TestClient(app).put(
+            f"/api/v1/skus/{sku_id}",
+            json={"price": 139900, "stock": 25},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["stock_quantity"] == 25
+    assert "stock" not in body
+    assert body["discount"] == 0
+    assert body["article"] is None
+    assert body["characteristics"] == {}
+    assert body["reserved_quantity"] == 7
+    assert body["images"][0]["url"] == "https://cdn.neomarket.test/skus/keyboard-black.jpg"
+    assert body["images"][0]["ordering"] == 0
+    assert "created_at" in body
+    assert "updated_at" in body
+
+
 def test_missing_image_returns_400() -> None:
     payload = _payload()
     payload.pop("images")

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from uuid import NAMESPACE_URL, UUID, uuid5
 
@@ -78,6 +78,11 @@ class SKUResponse(BaseModel):
         data.setdefault("article", None)
         data.setdefault("characteristics", {})
         data.setdefault("cost_price", None)
+        now = datetime.now(timezone.utc)
+        if data.get("created_at") is None:
+            data["created_at"] = now
+        if data.get("updated_at") is None:
+            data["updated_at"] = now
         if "stock_quantity" not in data and "stock" in data:
             data["stock_quantity"] = data["stock"]
         data["images"] = cls._normalize_images(data.get("images", []), data.get("id"))

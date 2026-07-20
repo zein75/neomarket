@@ -1,10 +1,14 @@
 from copy import deepcopy
+from datetime import datetime, timezone
 from types import SimpleNamespace
 from uuid import UUID, uuid4
 
 import pytest
+from fastapi.testclient import TestClient
 
+from src.api.routers import products as products_router
 from src.clients.moderation import ModerationClient
+from src.main import app
 from src.models.product import ProductStatus
 from src.schemas.product import ProductUpdate
 from src.schemas.sku import SKUUpdate
@@ -19,6 +23,9 @@ class FakeSession:
         return None
 
     async def refresh(self, obj: object) -> None:
+        return None
+
+    async def commit(self) -> None:
         return None
 
 
@@ -54,7 +61,12 @@ def _product(
         status=status,
         category=None,
         is_active=False,
+        deleted=False,
+        blocking_reason=None,
+        field_reports=[],
         skus=skus or [],
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
     )
 
 
@@ -223,6 +235,10 @@ async def test_edit_hard_blocked_returns_403() -> None:
         )
 
     assert exc_info.value.status_code == 403
+    assert exc_info.value.detail == {
+        "code": "PRODUCT_HARD_BLOCKED",
+        "message": "Cannot edit hard-blocked product",
+    }
 
 
 @pytest.mark.asyncio
@@ -238,6 +254,89 @@ async def test_edit_others_product_returns_403() -> None:
         )
 
     assert exc_info.value.status_code == 403
+    assert exc_info.value.detail == {
+        "code": "PRODUCT_ACCESS_DENIED",
+        "message": "Access denied",
+    }
+
+
+async def _fake_db():
+    yield FakeSession()
+
+
+def _fake_seller(seller_id: UUID):
+    async def dependency():
+        return SimpleNamespace(id=seller_id, is_active=True)
+
+    return dependency
+
+
+def test_update_product_response_matches_contract() -> None:
+    seller_id = uuid4()
+    product = _product(seller_id=seller_id, status=ProductStatus.MODERATED)
+    FakeProductRepository.product = product
+    app.dependency_overrides[products_router.get_current_seller] = _fake_seller(
+        seller_id
+    )
+    app.dependency_overrides[products_router.get_db] = _fake_db
+    try:
+        response = TestClient(app).put(
+            f"/api/v1/products/{product.id}",
+            json={
+                "description": "Fixed description",
+                "images": [
+                    {
+                        "url": "https://cdn.neomarket.test/products/fixed.jpg",
+                        "ordering": 0,
+                    }
+                ],
+                "characteristics": [{"name": "layout", "value": "ISO"}],
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "ON_MODERATION"
+    assert body["slug"].startswith("wireless-keyboard-")
+    assert body["images"] == [
+        {
+            "id": body["images"][0]["id"],
+            "url": "https://cdn.neomarket.test/products/fixed.jpg",
+            "ordering": 0,
+        }
+    ]
+    assert body["characteristics"] == [{"name": "layout", "value": "ISO"}]
+    assert body["blocking_reason_id"] is None
+    assert body["moderator_comment"] is None
+    assert "created_at" in body
+    assert "updated_at" in body
+    assert "category" not in body
+    assert "is_active" not in body
+
+
+def test_update_hard_blocked_product_error_matches_contract() -> None:
+    seller_id = uuid4()
+    product = _product(seller_id=seller_id, status=ProductStatus.HARD_BLOCKED)
+    FakeProductRepository.product = product
+    app.dependency_overrides[products_router.get_current_seller] = _fake_seller(
+        seller_id
+    )
+    app.dependency_overrides[products_router.get_db] = _fake_db
+    try:
+        response = TestClient(app).put(
+            f"/api/v1/products/{product.id}",
+            json={"description": "Cannot fix"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 403
+    assert response.json() == {
+        "code": "PRODUCT_HARD_BLOCKED",
+        "message": "Cannot edit hard-blocked product",
+    }
 
 
 def test_product_edited_event_matches_moderation_contract() -> None:
