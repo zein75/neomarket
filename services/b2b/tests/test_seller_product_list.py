@@ -100,6 +100,8 @@ async def test_list_returns_only_own_products() -> None:
 
     assert body.total_count == 1
     assert [str(item.id) for item in body.items] == [str(own.id)]
+    assert body.items[0].slug.startswith("wireless-keyboard-")
+    assert body.items[0].created_at == own.created_at
     assert body.items[0].skus_count == 1
     assert body.items[0].total_active_quantity == 7
 

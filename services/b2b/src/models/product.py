@@ -1,5 +1,6 @@
 import uuid
 from enum import StrEnum
+import re
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, ForeignKey, JSON, String, Text
@@ -33,6 +34,7 @@ class Product(Base, TimestampMixin):
         nullable=False,
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
+    slug: Mapped[str | None] = mapped_column(String(320), nullable=True, index=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     category: Mapped[str | None] = mapped_column(String(100), nullable=True)
     category_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
@@ -52,3 +54,8 @@ class Product(Base, TimestampMixin):
     skus: Mapped[list["SKU"]] = relationship(
         "SKU", back_populates="product", cascade="all, delete-orphan"
     )
+
+    @staticmethod
+    def make_slug(title: str, product_id: uuid.UUID) -> str:
+        slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+        return f"{slug or 'product'}-{str(product_id)[:8]}"

@@ -77,6 +77,7 @@ class ProductResponse(BaseModel):
                 "id": getattr(value, "id"),
                 "seller_id": getattr(value, "seller_id"),
                 "title": getattr(value, "title"),
+                "slug": getattr(value, "slug", None),
                 "description": getattr(value, "description"),
                 "category_id": getattr(value, "category_id", None),
                 "images": getattr(value, "images", []),
@@ -95,7 +96,8 @@ class ProductResponse(BaseModel):
             data["created_at"] = now
         if data.get("updated_at") is None:
             data["updated_at"] = now
-        data.setdefault("slug", cls._slug(data["title"], data["id"]))
+        if not data.get("slug"):
+            data["slug"] = cls._slug(data["title"], data["id"])
         data.setdefault("blocking_reason_id", cls._blocking_reason_id(data))
         data.setdefault("moderator_comment", cls._moderator_comment(data))
         data["images"] = cls._normalize_images(data.get("images", []), data.get("id"))
@@ -270,12 +272,14 @@ class ProductListItem(BaseModel):
     title: str
     description: str | None
     category_id: UUID | None
+    slug: str
     images: list[ProductImageResponse]
     characteristics: list[CharacteristicResponse]
     status: ProductStatus
     category: str | None
     is_active: bool
     deleted: bool = False
+    created_at: datetime
     skus_count: int
     total_active_quantity: int
 

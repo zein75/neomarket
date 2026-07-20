@@ -1,4 +1,4 @@
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -147,9 +147,12 @@ class ProductRepository(BaseRepository[Product]):
         characteristics: dict[str, object],
         category: str | None = None,
     ) -> Product:
+        product_id = uuid4()
         product = Product(
+            id=product_id,
             seller_id=seller_id,
             title=title,
+            slug=Product.make_slug(title, product_id),
             description=description,
             category_id=category_id,
             images=images,

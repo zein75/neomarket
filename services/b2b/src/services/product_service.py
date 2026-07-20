@@ -131,6 +131,7 @@ class ProductService:
             "title": product.title,
             "description": product.description,
             "category_id": str(product.category_id) if product.category_id else None,
+            "slug": self._product_slug(product),
             "images": ProductResponse._normalize_images(product.images, product.id),
             "characteristics": ProductResponse._normalize_characteristics(
                 product.characteristics
@@ -139,6 +140,7 @@ class ProductService:
             "category": product.category,
             "is_active": product.is_active,
             "deleted": product.deleted,
+            "created_at": getattr(product, "created_at", datetime.now(timezone.utc)),
             "skus_count": skus_count,
             "total_active_quantity": total_active_quantity,
         }
@@ -150,7 +152,7 @@ class ProductService:
             "title": product.title,
             "description": product.description,
             "category_id": str(product.category_id) if product.category_id else None,
-            "slug": ProductResponse._slug(product.title, product.id),
+            "slug": self._product_slug(product),
             "images": ProductResponse._normalize_images(product.images, product.id),
             "characteristics": ProductResponse._normalize_characteristics(
                 product.characteristics
@@ -207,7 +209,7 @@ class ProductService:
             "title": product.title,
             "description": product.description,
             "category_id": str(product.category_id) if product.category_id else None,
-            "slug": ProductResponse._slug(product.title, product.id),
+            "slug": self._product_slug(product),
             "images": ProductResponse._normalize_images(product.images, product.id),
             "characteristics": ProductResponse._normalize_characteristics(
                 product.characteristics
@@ -224,7 +226,7 @@ class ProductService:
             "title": product.title,
             "description": product.description,
             "category_id": str(product.category_id) if product.category_id else None,
-            "slug": ProductResponse._slug(product.title, product.id),
+            "slug": self._product_slug(product),
             "images": ProductResponse._normalize_images(product.images, product.id),
             "characteristics": ProductResponse._normalize_characteristics(
                 product.characteristics
@@ -272,6 +274,11 @@ class ProductService:
             if self._active_quantity(sku) > 0 and sku.price is not None
         ]
         return min(prices) if prices else None
+
+    def _product_slug(self, product: Product) -> str:
+        return getattr(product, "slug", None) or ProductResponse._slug(
+            product.title, product.id
+        )
 
     def _active_quantity(self, sku: object) -> int:
         return max(sku.stock - getattr(sku, "reserved_quantity", 0), 0)
