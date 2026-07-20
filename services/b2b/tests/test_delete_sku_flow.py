@@ -2,7 +2,10 @@ from types import SimpleNamespace
 from uuid import UUID, uuid4
 
 import pytest
+from fastapi.testclient import TestClient
 
+from src.api.routers import skus as skus_router
+from src.main import app
 from src.models.product import ProductStatus
 from src.services import sku_service as sku_service_module
 from src.services.sku_service import SKUService
@@ -10,6 +13,9 @@ from src.services.sku_service import SKUService
 
 class FakeSession:
     async def flush(self) -> None:
+        return None
+
+    async def commit(self) -> None:
         return None
 
 
@@ -156,6 +162,10 @@ async def test_delete_sku_with_active_reserves_returns_409() -> None:
         await SKUService(FakeSession()).delete(sku.id, seller_id)
 
     assert exc_info.value.status_code == 409
+    assert exc_info.value.detail == {
+        "code": "SKU_ACTIVE_RESERVES",
+        "message": "Cannot delete SKU with active reserves",
+    }
     assert sku.id in FakeSKURepository.skus
 
 
@@ -203,6 +213,10 @@ async def test_delete_sku_hard_blocked_product_returns_403() -> None:
         await SKUService(FakeSession()).delete(sku.id, seller_id)
 
     assert exc_info.value.status_code == 403
+    assert exc_info.value.detail == {
+        "code": "SKU_HARD_BLOCKED_PRODUCT",
+        "message": "Cannot delete SKU of hard-blocked product",
+    }
     assert sku.id in FakeSKURepository.skus
 
 
@@ -228,3 +242,64 @@ async def test_sku_out_of_stock_event_on_moderated_product() -> None:
             "payload": {"sku_id": str(sku.id)},
         }
     ]
+
+
+def test_delete_sku_with_active_reserves_returns_error_contract() -> None:
+    seller_id = uuid4()
+    product_id = uuid4()
+    sku = _sku(product_id=product_id, reserved_quantity=2)
+    product = _product(seller_id=seller_id, product_id=product_id, skus=[sku])
+    FakeProductRepository.product = product
+    FakeSKURepository.skus = {sku.id: sku}
+
+    async def fake_current_seller():
+        return SimpleNamespace(id=seller_id, is_active=True)
+
+    async def fake_db():
+        yield FakeSession()
+
+    app.dependency_overrides[skus_router.get_current_seller] = fake_current_seller
+    app.dependency_overrides[skus_router.get_db] = fake_db
+    try:
+        response = TestClient(app).delete(f"/api/v1/skus/{sku.id}")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 409
+    assert response.json() == {
+        "code": "SKU_ACTIVE_RESERVES",
+        "message": "Cannot delete SKU with active reserves",
+    }
+
+
+def test_delete_sku_hard_blocked_product_returns_error_contract() -> None:
+    seller_id = uuid4()
+    product_id = uuid4()
+    sku = _sku(product_id=product_id, reserved_quantity=2)
+    product = _product(
+        seller_id=seller_id,
+        product_id=product_id,
+        status=ProductStatus.HARD_BLOCKED,
+        skus=[sku],
+    )
+    FakeProductRepository.product = product
+    FakeSKURepository.skus = {sku.id: sku}
+
+    async def fake_current_seller():
+        return SimpleNamespace(id=seller_id, is_active=True)
+
+    async def fake_db():
+        yield FakeSession()
+
+    app.dependency_overrides[skus_router.get_current_seller] = fake_current_seller
+    app.dependency_overrides[skus_router.get_db] = fake_db
+    try:
+        response = TestClient(app).delete(f"/api/v1/skus/{sku.id}")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 403
+    assert response.json() == {
+        "code": "SKU_HARD_BLOCKED_PRODUCT",
+        "message": "Cannot delete SKU of hard-blocked product",
+    }

@@ -129,12 +129,18 @@ class SKUService:
         if product.status == ProductStatus.HARD_BLOCKED:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Cannot delete SKU of hard-blocked product",
+                detail={
+                    "code": "SKU_HARD_BLOCKED_PRODUCT",
+                    "message": "Cannot delete SKU of hard-blocked product",
+                },
             )
         if getattr(sku, "reserved_quantity", 0) > 0:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="Cannot delete SKU with active reserves",
+                detail={
+                    "code": "SKU_ACTIVE_RESERVES",
+                    "message": "Cannot delete SKU with active reserves",
+                },
             )
 
         was_visible_in_b2c = (
