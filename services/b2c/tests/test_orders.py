@@ -5,6 +5,7 @@ import pytest
 from fastapi import HTTPException
 
 from src.models.order import Order, OrderStatus
+from src.schemas.order import OrderResponse
 from src.services import order_service as order_service_module
 from src.services.order_service import OrderService
 
@@ -195,6 +196,16 @@ async def test_checkout_creates_paid_order_with_fixed_prices() -> None:
     assert order.items[0].unit_price == 150
     assert order.items[0].product_title == "Phone"
     assert order.items[0].sku_name == "128 GB"
+    response = OrderResponse.model_validate(order).model_dump(mode="json")
+    assert response["buyer_id"] == str(user_id)
+    assert response["subtotal"] == 300
+    assert response["total"] == 300
+    assert response["address"] == {}
+    assert response["created_at"]
+    assert response["items"][0]["name"] == "Phone 128 GB"
+    assert "total_amount" not in response
+    assert "product_title" not in response["items"][0]
+    assert "sku_name" not in response["items"][0]
     assert FakeB2BClient.reserve_calls == [
         {
             "order_id": str(order.id),
@@ -243,6 +254,7 @@ async def test_partial_reserve_failure_returns_409() -> None:
     assert exc.value.status_code == 409
     assert exc.value.detail == {
         "code": "RESERVE_FAILED",
+        "message": "Unable to reserve one or more items",
         "failed_items": [{"sku_id": str(sku_id)}],
     }
     assert FakeOrderRepository.created_orders == []
@@ -358,6 +370,7 @@ async def test_cancel_assembling_order_returns_409() -> None:
     assert exc.value.status_code == 409
     assert exc.value.detail == {
         "code": "CANCEL_NOT_ALLOWED",
+        "message": "Order cannot be cancelled in current status",
         "current_status": "ASSEMBLING",
     }
     assert FakeB2BClient.unreserve_calls == []

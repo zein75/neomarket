@@ -140,6 +140,7 @@ class OrderService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
                     "code": "CANCEL_NOT_ALLOWED",
+                    "message": "Order cannot be cancelled in current status",
                     "current_status": order.status.value,
                 },
             )
@@ -198,7 +199,11 @@ class OrderService:
         if failed_items:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail={"code": "RESERVE_FAILED", "failed_items": failed_items},
+                detail={
+                    "code": "RESERVE_FAILED",
+                    "message": "Unable to reserve one or more items",
+                    "failed_items": failed_items,
+                },
             )
 
     async def _reserve(
@@ -232,13 +237,25 @@ class OrderService:
 
     def _reserve_failure_detail(self, detail: object) -> object:
         if isinstance(detail, dict) and "failed_items" in detail:
-            return detail
+            return {
+                "code": detail.get("code", "RESERVE_FAILED"),
+                "message": detail.get(
+                    "message",
+                    "Unable to reserve one or more items",
+                ),
+                "failed_items": detail["failed_items"],
+            }
         if isinstance(detail, dict) and "sku_ids" in detail:
             return {
                 "code": "RESERVE_FAILED",
+                "message": "Unable to reserve one or more items",
                 "failed_items": [
                     {"sku_id": sku_id, "reason": "INSUFFICIENT_STOCK"}
                     for sku_id in detail["sku_ids"]
                 ],
             }
-        return {"code": "RESERVE_FAILED", "failed_items": []}
+        return {
+            "code": "RESERVE_FAILED",
+            "message": "Unable to reserve one or more items",
+            "failed_items": [],
+        }
