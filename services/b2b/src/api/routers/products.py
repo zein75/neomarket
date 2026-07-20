@@ -8,10 +8,10 @@ from src.api.deps import get_current_seller, get_db, verify_service_key
 from src.models.seller import Seller
 from src.models.product import ProductStatus
 from src.schemas.product import (
-    PaginatedProducts,
     ProductCreate,
     ProductDetailResponse,
     ProductPaginatedResponse,
+    ProductPublicPaginatedResponse,
     ProductPublicResponse,
     ProductResponse,
     ProductUpdate,
@@ -29,20 +29,21 @@ def _parse_ids(ids: str | None) -> list[UUID] | None:
 
 # --- Public catalog (called by B2C) ---
 
-@router.get("/products", response_model=PaginatedProducts)
+@router.get("/products", response_model=ProductPublicPaginatedResponse)
 async def list_products(
-    page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
-    search: str | None = Query(None),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    _: None = Depends(verify_service_key),
     db: AsyncSession = Depends(get_db),
 ) -> Any:
     svc = ProductService(db)
-    return await svc.list_active(page=page, page_size=page_size, search=search)
+    return await svc.list_public_catalog(limit=limit, offset=offset)
 
 
 @router.get("/products/{product_id}", response_model=ProductPublicResponse)
 async def get_product(
     product_id: UUID,
+    _: None = Depends(verify_service_key),
     db: AsyncSession = Depends(get_db),
 ) -> Any:
     svc = ProductService(db)
@@ -71,14 +72,23 @@ async def list_seller_products(
     )
 
 
-@router.get("/api/v1/public/products")
+@router.get(
+    "/api/v1/public/products",
+    response_model=ProductPublicPaginatedResponse,
+)
 async def list_public_products(
     ids: str | None = Query(None),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     _: None = Depends(verify_service_key),
     db: AsyncSession = Depends(get_db),
 ) -> Any:
     svc = ProductService(db)
-    return await svc.list_public_catalog(product_ids=_parse_ids(ids))
+    return await svc.list_public_catalog(
+        product_ids=_parse_ids(ids),
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.post("/api/v1/products", response_model=ProductResponse, status_code=201)

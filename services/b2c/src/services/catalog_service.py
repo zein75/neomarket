@@ -81,7 +81,10 @@ class CatalogService:
     async def _load_products(self) -> list[dict[str, Any]]:
         try:
             async with B2BClient(settings.b2b_base_url) as client:
-                return await client.get_public_products()
+                payload = await client.get_public_products()
+                if isinstance(payload, dict):
+                    return list(payload.get("items", []))
+                return payload
         except HTTPException as exc:
             if exc.status_code == 503:
                 raise HTTPException(

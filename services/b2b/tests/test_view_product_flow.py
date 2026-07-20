@@ -214,7 +214,10 @@ def test_public_product_response_does_not_expose_seller_sku_fields() -> None:
     FakeProductRepository.product = product
     app.dependency_overrides[products_router.get_db] = _fake_db
     try:
-        response = TestClient(app).get(f"/products/{product.id}")
+        response = TestClient(app).get(
+            f"/products/{product.id}",
+            headers={"X-Service-Key": "dev-service-key-change-in-production"},
+        )
     finally:
         app.dependency_overrides.clear()
 

@@ -174,13 +174,17 @@ class ProductResponse(BaseModel):
         return None
 
 
-class PublicSKUResponse(BaseModel):
+class SKUPublicResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     product_id: UUID
     name: str
     price: int
+    discount: int = 0
+    article: str | None = None
+    characteristics: dict[str, Any] = Field(default_factory=dict)
+    stock_quantity: int
     active_quantity: int | None = None
     images: list[dict[str, Any]]
     is_active: bool
@@ -198,10 +202,19 @@ class PublicSKUResponse(BaseModel):
                 "product_id": getattr(value, "product_id"),
                 "name": getattr(value, "name"),
                 "price": getattr(value, "price"),
+                "stock_quantity": getattr(value, "stock"),
                 "active_quantity": max(stock - reserved, 0),
                 "images": getattr(value, "images", []),
                 "is_active": getattr(value, "is_active"),
             }
+            for optional in ("discount", "article", "characteristics"):
+                if hasattr(value, optional):
+                    data[optional] = getattr(value, optional)
+        data.setdefault("discount", 0)
+        data.setdefault("article", None)
+        data.setdefault("characteristics", {})
+        if "stock_quantity" not in data and "stock" in data:
+            data["stock_quantity"] = data["stock"]
         data["images"] = SKUResponse._normalize_images(
             data.get("images", []), data.get("id")
         )
@@ -209,7 +222,28 @@ class PublicSKUResponse(BaseModel):
 
 
 class ProductPublicResponse(ProductResponse):
-    skus: list[PublicSKUResponse] = []
+    skus: list[SKUPublicResponse] = []
+
+
+class ProductPublicShortResponse(BaseModel):
+    id: UUID
+    seller_id: UUID
+    title: str
+    description: str | None
+    category_id: UUID | None
+    slug: str
+    images: list[ProductImageResponse]
+    characteristics: list[CharacteristicResponse]
+    status: ProductStatus
+    min_price: int | None
+    created_at: datetime
+
+
+class ProductPublicPaginatedResponse(BaseModel):
+    items: list[ProductPublicShortResponse]
+    total_count: int
+    limit: int
+    offset: int
 
 
 class BlockingReasonResponse(BaseModel):

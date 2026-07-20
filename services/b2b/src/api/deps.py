@@ -19,7 +19,10 @@ async def verify_service_key(
     if x_service_key != settings.service_key:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or missing service key",
+            detail={
+                "code": "SERVICE_KEY_INVALID",
+                "message": "Invalid or missing service key",
+            },
         )
 
 

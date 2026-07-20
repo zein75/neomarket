@@ -14,6 +14,7 @@ from src.schemas.product import (
     PaginatedProducts,
     ProductCreate,
     ProductPaginatedResponse,
+    ProductPublicPaginatedResponse,
     ProductResponse,
     ProductUpdate,
 )
@@ -39,7 +40,7 @@ class ProductService:
 
     async def get_active(self, product_id: UUID) -> Product:
         product = await self.repo.get_with_skus(product_id)
-        if not product or not product.is_active:
+        if not product or not self._is_publicly_visible(product):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
@@ -64,13 +65,23 @@ class ProductService:
     async def list_public_catalog(
         self,
         product_ids: list[UUID] | None = None,
-    ) -> list[dict[str, object]]:
+        *,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> ProductPublicPaginatedResponse:
         products = await self.repo.list_public_catalog(product_ids)
-        return [
-            self._public_product_detail(product)
+        visible = [
+            product
             for product in products
             if self._is_publicly_visible(product)
         ]
+        page = visible[offset : offset + limit]
+        return ProductPublicPaginatedResponse(
+            items=[self._public_product_short(product) for product in page],
+            total_count=len(visible),
+            limit=limit,
+            offset=offset,
+        )
 
     async def list_by_seller(self, seller_id: UUID) -> list[Product]:
         return await self.repo.list_by_seller(seller_id)
@@ -189,9 +200,27 @@ class ProductService:
             return False
         return any(self._active_quantity(sku) > 0 for sku in product.skus)
 
+    def _public_product_short(self, product: Product) -> dict[str, object]:
+        return {
+            "id": str(product.id),
+            "seller_id": str(product.seller_id),
+            "title": product.title,
+            "description": product.description,
+            "category_id": str(product.category_id) if product.category_id else None,
+            "slug": ProductResponse._slug(product.title, product.id),
+            "images": ProductResponse._normalize_images(product.images, product.id),
+            "characteristics": ProductResponse._normalize_characteristics(
+                product.characteristics
+            ),
+            "status": self._status_value(product.status),
+            "min_price": self._min_public_price(product),
+            "created_at": getattr(product, "created_at", datetime.now(timezone.utc)),
+        }
+
     def _public_product_detail(self, product: Product) -> dict[str, object]:
         return {
             "id": str(product.id),
+            "seller_id": str(product.seller_id),
             "title": product.title,
             "description": product.description,
             "category_id": str(product.category_id) if product.category_id else None,
@@ -225,13 +254,24 @@ class ProductService:
             "product_id": str(sku.product_id),
             "name": sku.name,
             "price": sku.price,
-            "stock": sku.stock,
+            "discount": getattr(sku, "discount", 0),
+            "article": getattr(sku, "article", None),
+            "characteristics": getattr(sku, "characteristics", {}),
+            "stock_quantity": sku.stock,
             "active_quantity": self._active_quantity(sku),
             "images": sku.images,
             "is_active": sku.is_active,
             "created_at": getattr(sku, "created_at", datetime.now(timezone.utc)),
             "updated_at": getattr(sku, "updated_at", datetime.now(timezone.utc)),
         }
+
+    def _min_public_price(self, product: Product) -> int | None:
+        prices = [
+            sku.price
+            for sku in product.skus
+            if self._active_quantity(sku) > 0 and sku.price is not None
+        ]
+        return min(prices) if prices else None
 
     def _active_quantity(self, sku: object) -> int:
         return max(sku.stock - getattr(sku, "reserved_quantity", 0), 0)

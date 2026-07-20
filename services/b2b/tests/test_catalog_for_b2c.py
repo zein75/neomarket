@@ -54,6 +54,9 @@ class FakeProductRepository:
             return list(self.products)
         return [product for product in self.products if product.id in product_ids]
 
+    async def get_with_skus(self, product_id):
+        return next((product for product in self.products if product.id == product_id), None)
+
 
 @pytest.fixture(autouse=True)
 def patch_repo(monkeypatch: pytest.MonkeyPatch):
@@ -73,7 +76,10 @@ async def test_catalog_returns_moderated_in_stock_products() -> None:
 
     body = await ProductService(SimpleNamespace()).list_public_catalog()
 
-    assert [item["id"] for item in body] == [str(visible.id)]
+    assert [str(item.id) for item in body.items] == [str(visible.id)]
+    assert body.total_count == 1
+    assert body.limit == 20
+    assert body.offset == 0
 
 
 @pytest.mark.asyncio
@@ -88,7 +94,8 @@ async def test_catalog_excludes_hard_blocked() -> None:
 
     body = await ProductService(SimpleNamespace()).list_public_catalog()
 
-    assert body == []
+    assert body.items == []
+    assert body.total_count == 0
 
 
 def test_catalog_missing_service_key_returns_401() -> None:
@@ -97,7 +104,7 @@ def test_catalog_missing_service_key_returns_401() -> None:
 
     app.dependency_overrides[products_router.get_db] = fake_db
     try:
-        response = TestClient(app).get("/api/v1/products")
+        response = TestClient(app).get("/api/v1/public/products")
     finally:
         app.dependency_overrides.clear()
 
@@ -111,8 +118,88 @@ async def test_catalog_response_has_no_cost_price() -> None:
 
     body = await ProductService(SimpleNamespace()).list_public_catalog()
 
-    assert "cost_price" not in body[0]["skus"][0]
-    assert "reserved_quantity" not in body[0]["skus"][0]
+    item = body.items[0].model_dump()
+    assert item["slug"].startswith("wireless-keyboard-")
+    assert item["min_price"] == 129900
+    assert "created_at" in item
+    assert "skus" not in item
+
+
+def test_public_catalog_route_returns_contract_envelope() -> None:
+    visible = _product(status=ProductStatus.MODERATED, deleted=False, stock=5, reserved=1)
+    FakeProductRepository.products = [visible]
+
+    async def fake_db():
+        yield SimpleNamespace()
+
+    app.dependency_overrides[products_router.get_db] = fake_db
+    try:
+        response = TestClient(app).get(
+            "/api/v1/public/products",
+            headers={"X-Service-Key": "dev-service-key-change-in-production"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total_count"] == 1
+    assert body["limit"] == 20
+    assert body["offset"] == 0
+    assert body["items"][0]["slug"].startswith("wireless-keyboard-")
+    assert body["items"][0]["min_price"] == 129900
+    assert "created_at" in body["items"][0]
+
+
+def test_legacy_products_route_requires_service_key_and_uses_public_shape() -> None:
+    visible = _product(status=ProductStatus.MODERATED, deleted=False, stock=5, reserved=1)
+    FakeProductRepository.products = [visible]
+
+    async def fake_db():
+        yield SimpleNamespace()
+
+    app.dependency_overrides[products_router.get_db] = fake_db
+    try:
+        missing_key = TestClient(app).get("/products")
+        response = TestClient(app).get(
+            "/products",
+            headers={"X-Service-Key": "dev-service-key-change-in-production"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert missing_key.status_code == 401
+    assert response.status_code == 200
+    body = response.json()
+    assert "items" in body
+    assert body["items"][0]["slug"].startswith("wireless-keyboard-")
+    assert "skus" not in body["items"][0]
+
+
+def test_public_product_detail_route_uses_public_sku_shape() -> None:
+    visible = _product(status=ProductStatus.MODERATED, deleted=False, stock=5, reserved=1)
+    FakeProductRepository.products = [visible]
+
+    async def fake_db():
+        yield SimpleNamespace()
+
+    app.dependency_overrides[products_router.get_db] = fake_db
+    try:
+        response = TestClient(app).get(
+            f"/products/{visible.id}",
+            headers={"X-Service-Key": "dev-service-key-change-in-production"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    sku = response.json()["skus"][0]
+    assert sku["stock_quantity"] == 5
+    assert sku["discount"] == 0
+    assert sku["article"] is None
+    assert sku["characteristics"] == {}
+    assert "cost_price" not in sku
+    assert "reserved_quantity" not in sku
 
 
 @pytest.mark.asyncio
@@ -125,4 +212,5 @@ async def test_batch_ids_returns_visible_subset() -> None:
         product_ids=[visible.id, hidden.id, uuid4()]
     )
 
-    assert [item["id"] for item in body] == [str(visible.id)]
+    assert [str(item.id) for item in body.items] == [str(visible.id)]
+    assert body.total_count == 1

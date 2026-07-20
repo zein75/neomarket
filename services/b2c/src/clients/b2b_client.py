@@ -21,6 +21,7 @@ class B2BClient:
             response = await self._client.get(
                 path,
                 params={k: v for k, v in params.items() if v is not None},
+                headers={"X-Service-Key": settings.service_key},
             )
             response.raise_for_status()
             return response.json()
