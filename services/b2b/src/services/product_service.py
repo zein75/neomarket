@@ -312,17 +312,27 @@ class ProductService:
             )
         if product.seller_id != seller_id:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "code": "PRODUCT_ACCESS_DENIED",
+                    "message": "Access denied",
+                },
             )
         if product.status == ProductStatus.HARD_BLOCKED:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Cannot delete hard-blocked product",
+                detail={
+                    "code": "PRODUCT_HARD_BLOCKED",
+                    "message": "Cannot delete hard-blocked product",
+                },
             )
         if product.deleted:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Product already deleted",
+                detail={
+                    "code": "INVALID_REQUEST",
+                    "message": "Product already deleted",
+                },
             )
 
         product.deleted = True

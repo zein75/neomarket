@@ -47,7 +47,7 @@ class B2CClient:
             "occurred_at": datetime.now(timezone.utc).isoformat(),
             "payload": {
                 "product_id": str(product.id),
-                "sku_ids": [str(sku.id) for sku in product.skus],
+                "reason": "PRODUCT_DELETED",
             },
         }
 
