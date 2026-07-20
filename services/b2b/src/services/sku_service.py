@@ -26,6 +26,31 @@ class SKUService:
             )
         return await self.sku_repo.list_by_product(product_id)
 
+    async def get_public_sku(self, sku_id: UUID) -> dict[str, object]:
+        sku = await self.sku_repo.get_with_product(sku_id)
+        product = getattr(sku, "product", None) if sku else None
+        if not sku or not product or not self._is_publicly_visible(product, sku):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "code": "SKU_NOT_FOUND",
+                    "message": "SKU not found",
+                },
+            )
+        return {
+            "id": str(sku.id),
+            "product_id": str(sku.product_id),
+            "name": sku.name,
+            "price": sku.price,
+            "discount": getattr(sku, "discount", 0),
+            "article": getattr(sku, "article", None),
+            "characteristics": getattr(sku, "characteristics", {}),
+            "stock_quantity": sku.stock,
+            "active_quantity": self._active_quantity(sku),
+            "images": sku.images,
+            "is_active": sku.is_active,
+        }
+
     async def create(self, seller_id: UUID, data: SKUCreate) -> SKU:
         product = await self.product_repo.get_seller_product_for_update(
             data.product_id,
@@ -170,3 +195,12 @@ class SKUService:
 
     def _active_quantity(self, sku: object) -> int:
         return max(sku.stock - getattr(sku, "reserved_quantity", 0), 0)
+
+    def _is_publicly_visible(self, product: object, sku: object) -> bool:
+        if str(product.status) != ProductStatus.MODERATED.value:
+            return False
+        if getattr(product, "deleted", False):
+            return False
+        if not getattr(sku, "is_active", False):
+            return False
+        return self._active_quantity(sku) > 0

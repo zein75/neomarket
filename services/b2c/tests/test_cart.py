@@ -5,6 +5,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.api.routers import cart as cart_router
+from src.clients import b2b_client as b2b_client_module
+from src.clients.b2b_client import B2BClient
 from src.main import app
 from src.services import cart_service as cart_service_module
 from src.services.cart_service import CartService
@@ -393,3 +395,40 @@ def test_clear_cart_returns_204_and_removes_all_items() -> None:
 
     assert response.status_code == 204
     assert cart.items == []
+
+
+@pytest.mark.asyncio
+async def test_b2b_client_get_sku_uses_public_sku_route(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sku_id = uuid4()
+    captured = {}
+
+    class FakeResponse:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self):
+            return {"id": str(sku_id), "product_id": str(uuid4())}
+
+    class FakeAsyncClient:
+        def __init__(self, *args, **kwargs) -> None:
+            return None
+
+        async def aclose(self) -> None:
+            return None
+
+        async def get(self, path: str, *, headers=None, **kwargs):
+            captured["path"] = path
+            captured["headers"] = headers
+            return FakeResponse()
+
+    monkeypatch.setattr(b2b_client_module.httpx, "AsyncClient", FakeAsyncClient)
+
+    async with B2BClient("http://b2b") as client:
+        await client.get_sku(str(sku_id))
+
+    assert captured["path"] == f"/api/v1/public/skus/{sku_id}"
+    assert captured["headers"] == {
+        "X-Service-Key": "dev-service-key-change-in-production"
+    }

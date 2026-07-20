@@ -78,12 +78,18 @@ class FakeProductRepository:
 
 class FakeSKURepository:
     created: list[SimpleNamespace] = []
+    sku: SimpleNamespace | None = None
 
     def __init__(self, session: object) -> None:
         self.session = session
 
     async def list_by_product(self, product_id: UUID) -> list[object]:
         return list(FakeProductRepository.product.skus)
+
+    async def get_with_product(self, sku_id: UUID) -> SimpleNamespace | None:
+        if self.sku and self.sku.id == sku_id:
+            return self.sku
+        return None
 
     async def create_sku(
         self,
@@ -163,6 +169,7 @@ class FakeSession:
 @pytest.fixture(autouse=True)
 def reset_fakes(monkeypatch: pytest.MonkeyPatch):
     FakeSKURepository.created = []
+    FakeSKURepository.sku = None
     FakeModerationClient.events = []
     FakeProductRepository.locked_product_reads = 0
     FakeProductRepository.unlocked_product_reads = 0
@@ -357,6 +364,51 @@ def test_update_sku_response_matches_contract(monkeypatch: pytest.MonkeyPatch) -
     assert body["images"][0]["ordering"] == 0
     assert "created_at" in body
     assert "updated_at" in body
+
+
+def test_public_sku_route_uses_public_catalog_shape() -> None:
+    product_id = uuid4()
+    sku_id = uuid4()
+    product = _product(
+        product_id=product_id,
+        seller_id=uuid4(),
+        status=ProductStatus.MODERATED,
+    )
+    product.deleted = False
+    sku = SimpleNamespace(
+        id=sku_id,
+        product_id=product_id,
+        product=product,
+        name="Keyboard / Black",
+        price=129900,
+        stock=10,
+        reserved_quantity=3,
+        images=["https://cdn.neomarket.test/skus/keyboard-black.jpg"],
+        is_active=True,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+    FakeSKURepository.sku = sku
+    app.dependency_overrides[skus_router.get_db] = _fake_db
+    try:
+        response = TestClient(app).get(
+            f"/api/v1/public/skus/{sku_id}",
+            headers={"X-Service-Key": "dev-service-key-change-in-production"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == str(sku_id)
+    assert body["product_id"] == str(product_id)
+    assert body["stock_quantity"] == 10
+    assert body["active_quantity"] == 7
+    assert body["discount"] == 0
+    assert body["article"] is None
+    assert body["characteristics"] == {}
+    assert "cost_price" not in body
+    assert "reserved_quantity" not in body
 
 
 def test_missing_image_returns_400() -> None:

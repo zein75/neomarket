@@ -4,12 +4,23 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.deps import get_current_seller, get_db
+from src.api.deps import get_current_seller, get_db, verify_service_key
 from src.models.seller import Seller
+from src.schemas.product import SKUPublicResponse
 from src.schemas.sku import SKUCreate, SKUResponse, SKUUpdate
 from src.services.sku_service import SKUService
 
 router = APIRouter(tags=["skus"])
+
+
+@router.get("/api/v1/public/skus/{sku_id}", response_model=SKUPublicResponse)
+async def get_public_sku(
+    sku_id: UUID,
+    _: None = Depends(verify_service_key),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    svc = SKUService(db)
+    return await svc.get_public_sku(sku_id)
 
 
 @router.get("/api/v1/products/{product_id}/skus", response_model=list[SKUResponse])
