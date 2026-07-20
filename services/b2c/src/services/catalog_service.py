@@ -69,13 +69,27 @@ class CatalogService:
         }
 
     async def get_product_card(self, product_id: str) -> dict[str, object]:
-        products = await self._load_products()
-        product = next(
-            (product for product in products if str(product.get("id")) == product_id),
-            None,
-        )
-        if not product:
-            raise HTTPException(status_code=404, detail="Product not found")
+        try:
+            async with B2BClient(settings.b2b_base_url) as client:
+                product = await client.get_product(product_id)
+        except HTTPException as exc:
+            if exc.status_code == 404:
+                raise HTTPException(
+                    status_code=404,
+                    detail={
+                        "code": "PRODUCT_NOT_FOUND",
+                        "message": "Product not found",
+                    },
+                ) from exc
+            if exc.status_code == 503:
+                raise HTTPException(
+                    status_code=502,
+                    detail={
+                        "code": "B2B_UNAVAILABLE",
+                        "message": "B2B catalog is unavailable",
+                    },
+                ) from exc
+            raise
         return self._detail(product)
 
     async def _load_products(self) -> list[dict[str, Any]]:

@@ -1,8 +1,10 @@
 import pytest
 from fastapi import HTTPException
+from fastapi.testclient import TestClient
 
 from src.clients import b2b_client as b2b_client_module
 from src.clients.b2b_client import B2BClient
+from src.main import app
 from src.services import catalog_service as catalog_service_module
 from src.services.catalog_service import CatalogService
 
@@ -39,6 +41,8 @@ def _product(
 class FakeB2BClient:
     products: list[dict[str, object]] = []
     unavailable = False
+    get_public_products_calls = 0
+    get_product_calls: list[str] = []
 
     def __init__(self, base_url: str) -> None:
         self.base_url = base_url
@@ -49,12 +53,14 @@ class FakeB2BClient:
     async def __aexit__(self, *args):
         return None
 
-    async def get_public_products(self):
+    async def get_public_products(self, **kwargs):
+        self.__class__.get_public_products_calls += 1
         if self.unavailable:
             raise HTTPException(status_code=503, detail="B2B service unavailable")
         return self.products
 
     async def get_product(self, product_id: str):
+        self.__class__.get_product_calls.append(product_id)
         if self.unavailable:
             raise HTTPException(status_code=503, detail="B2B service unavailable")
         for product in self.products:
@@ -67,6 +73,8 @@ class FakeB2BClient:
 def patch_b2b(monkeypatch: pytest.MonkeyPatch):
     FakeB2BClient.products = []
     FakeB2BClient.unavailable = False
+    FakeB2BClient.get_public_products_calls = 0
+    FakeB2BClient.get_product_calls = []
     monkeypatch.setattr(catalog_service_module, "B2BClient", FakeB2BClient)
 
 
@@ -191,6 +199,8 @@ async def test_product_card_returns_full_data_with_skus() -> None:
 
     response = await CatalogService().get_product_card("p1")
 
+    assert FakeB2BClient.get_product_calls == ["p1"]
+    assert FakeB2BClient.get_public_products_calls == 0
     assert response["id"] == "p1"
     assert response["name"] == "Premium keyboard"
     assert response["description"] == "Premium keyboard description"
@@ -247,6 +257,23 @@ async def test_blocked_product_returns_404() -> None:
         await CatalogService().get_product_card("blocked-product")
 
     assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == {
+        "code": "PRODUCT_NOT_FOUND",
+        "message": "Product not found",
+    }
+
+
+@pytest.mark.asyncio
+async def test_product_card_http_404_returns_error_contract() -> None:
+    FakeB2BClient.products = []
+
+    response = TestClient(app).get("/api/v1/catalog/products/blocked-product")
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "code": "PRODUCT_NOT_FOUND",
+        "message": "Product not found",
+    }
 
 
 @pytest.mark.asyncio

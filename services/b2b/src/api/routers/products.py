@@ -91,6 +91,19 @@ async def list_public_products(
     )
 
 
+@router.get(
+    "/api/v1/public/products/{product_id}",
+    response_model=ProductPublicResponse,
+)
+async def get_public_product(
+    product_id: UUID,
+    _: None = Depends(verify_service_key),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    svc = ProductService(db)
+    return await svc.get_public_detail(product_id)
+
+
 @router.post("/api/v1/products", response_model=ProductResponse, status_code=201)
 async def create_product(
     data: ProductCreate,

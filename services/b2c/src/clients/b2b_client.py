@@ -60,7 +60,7 @@ class B2BClient:
         return await self._get("/products", page=page, page_size=page_size, search=search)
 
     async def get_product(self, product_id: str) -> Any:
-        return await self._get(f"/products/{product_id}")
+        return await self._get(f"/api/v1/public/products/{product_id}")
 
     async def get_public_products(self, *, limit: int | None = None, offset: int | None = None) -> Any:
         try:

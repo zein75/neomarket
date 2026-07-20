@@ -50,6 +50,10 @@ class ProductService:
             )
         return product
 
+    async def get_public_detail(self, product_id: UUID) -> dict[str, object]:
+        product = await self.get_active(product_id)
+        return self._public_product_detail(product)
+
     async def get_for_seller(self, product_id: UUID, seller_id: UUID) -> dict[str, object]:
         product = await self.repo.get_with_skus(product_id)
         if not product or product.seller_id != seller_id:

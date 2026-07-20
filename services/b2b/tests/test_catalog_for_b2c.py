@@ -186,7 +186,7 @@ def test_public_product_detail_route_uses_public_sku_shape() -> None:
     app.dependency_overrides[products_router.get_db] = fake_db
     try:
         response = TestClient(app).get(
-            f"/products/{visible.id}",
+            f"/api/v1/public/products/{visible.id}",
             headers={"X-Service-Key": "dev-service-key-change-in-production"},
         )
     finally:
