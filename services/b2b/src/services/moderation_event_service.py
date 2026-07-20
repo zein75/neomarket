@@ -18,14 +18,6 @@ class ModerationEventService:
     async def apply(self, event: ModerationDecisionEvent) -> dict[str, str]:
         if await self.processed_event_repo.exists(event.idempotency_key):
             return {"status": "DUPLICATE"}
-        if not event.product_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "code": "INVALID_REQUEST",
-                    "message": "product_id is required",
-                },
-            )
         product = await self.product_repo.get_with_skus(event.product_id)
         if not product:
             raise HTTPException(
@@ -36,7 +28,7 @@ class ModerationEventService:
                 },
             )
 
-        decision = (event.decision or "").upper()
+        decision = event.event_type.upper()
         if decision not in {
             ProductStatus.MODERATED.value,
             ProductStatus.BLOCKED.value,
@@ -80,7 +72,7 @@ class ModerationEventService:
             ProductStatus.HARD_BLOCKED if event.hard_block else ProductStatus.BLOCKED
         )
         product.is_active = False
-        product.blocking_reason = event.blocking_reason or (
+        product.blocking_reason = (
             {"id": str(event.blocking_reason_id)} if event.blocking_reason_id else None
         )
         product.field_reports = event.field_reports
