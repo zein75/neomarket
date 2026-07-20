@@ -151,11 +151,19 @@ class ReservationService:
 
     async def fulfill(self, data: FulfillRequest) -> dict[str, object]:
         if await self.fulfilled_order_repo.exists(data.order_id):
-            return {"status": "FULFILLED", "order_id": data.order_id}
+            return {
+                "status": "FULFILLED",
+                "order_id": data.order_id,
+                "processed_at": datetime.now(timezone.utc),
+            }
 
         reservations = await self.reservation_repo.list_by_order(data.order_id)
         if not reservations:
-            return {"status": "FULFILLED", "order_id": data.order_id}
+            return {
+                "status": "FULFILLED",
+                "order_id": data.order_id,
+                "processed_at": datetime.now(timezone.utc),
+            }
 
         skus = await self.sku_repo.list_for_update(
             [reservation.sku_id for reservation in reservations]
@@ -172,7 +180,11 @@ class ReservationService:
         await self.reservation_repo.delete_many(reservations)
         await self.fulfilled_order_repo.mark_fulfilled(data.order_id)
         await self.reservation_repo.session.flush()
-        return {"status": "FULFILLED", "order_id": data.order_id}
+        return {
+            "status": "FULFILLED",
+            "order_id": data.order_id,
+            "processed_at": datetime.now(timezone.utc),
+        }
 
     async def cancel_by_order(self, order_id: UUID) -> None:
         await self.unreserve(UnreserveRequest(order_id=order_id))

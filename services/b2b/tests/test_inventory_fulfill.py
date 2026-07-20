@@ -15,6 +15,9 @@ class FakeSession:
     async def flush(self) -> None:
         return None
 
+    async def commit(self) -> None:
+        return None
+
 
 def _sku(*, stock=10, reserved_quantity=3):
     return SimpleNamespace(
@@ -102,6 +105,7 @@ async def test_fulfill_decreases_reserved_quantity() -> None:
     )
 
     assert response["status"] == "FULFILLED"
+    assert response["processed_at"] is not None
     assert sku.reserved_quantity == 0
 
 
@@ -134,7 +138,10 @@ async def test_idempotent_fulfill_no_double_deduction() -> None:
     first = await service.fulfill(FulfillRequest(order_id=order_id))
     second = await service.fulfill(FulfillRequest(order_id=order_id))
 
-    assert first == second
+    assert first["status"] == second["status"] == "FULFILLED"
+    assert first["order_id"] == second["order_id"] == order_id
+    assert first["processed_at"] is not None
+    assert second["processed_at"] is not None
     assert sku.stock == 7
     assert sku.reserved_quantity == 0
 
@@ -152,9 +159,45 @@ async def test_empty_fulfill_does_not_block_later_reservation() -> None:
     }
     later = await service.fulfill(FulfillRequest(order_id=order_id))
 
-    assert early == later
+    assert early["status"] == later["status"] == "FULFILLED"
+    assert early["order_id"] == later["order_id"] == order_id
+    assert early["processed_at"] is not None
+    assert later["processed_at"] is not None
     assert sku.stock == 7
     assert sku.reserved_quantity == 0
+
+
+def test_fulfill_routes_include_processed_at() -> None:
+    order_id = uuid4()
+    sku = _sku(stock=10, reserved_quantity=3)
+    FakeSKURepository.skus = {sku.id: sku}
+    FakeReservationRepository.reservations_by_order = {
+        order_id: [_reservation(order_id=order_id, sku_id=sku.id, quantity=3)]
+    }
+
+    async def fake_db():
+        yield FakeSession()
+
+    app.dependency_overrides[reservations_router.get_db] = fake_db
+    try:
+        client = TestClient(app)
+        first = client.post(
+            "/api/v1/fulfill",
+            json={"order_id": str(order_id)},
+            headers={"X-Service-Key": "dev-service-key-change-in-production"},
+        )
+        alias = client.post(
+            "/api/v1/inventory/fulfill",
+            json={"order_id": str(order_id)},
+            headers={"X-Service-Key": "dev-service-key-change-in-production"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert first.status_code == 200
+    assert first.json()["processed_at"]
+    assert alias.status_code == 200
+    assert alias.json()["processed_at"]
 
 
 def test_fulfill_missing_service_key_returns_401() -> None:

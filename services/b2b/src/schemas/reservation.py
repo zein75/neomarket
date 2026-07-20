@@ -49,3 +49,7 @@ class InventoryReserveResponse(InventoryResponse):
 
 class InventoryUnreserveResponse(InventoryResponse):
     processed_at: datetime
+
+
+class InventoryFulfillResponse(InventoryResponse):
+    processed_at: datetime
