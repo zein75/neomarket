@@ -174,6 +174,44 @@ class ProductResponse(BaseModel):
         return None
 
 
+class PublicSKUResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    product_id: UUID
+    name: str
+    price: int
+    active_quantity: int | None = None
+    images: list[dict[str, Any]]
+    is_active: bool
+
+    @model_validator(mode="before")
+    @classmethod
+    def from_sku_model(cls, value: Any) -> Any:
+        if isinstance(value, dict):
+            data = dict(value)
+        else:
+            stock = getattr(value, "stock")
+            reserved = getattr(value, "reserved_quantity", 0)
+            data = {
+                "id": getattr(value, "id"),
+                "product_id": getattr(value, "product_id"),
+                "name": getattr(value, "name"),
+                "price": getattr(value, "price"),
+                "active_quantity": max(stock - reserved, 0),
+                "images": getattr(value, "images", []),
+                "is_active": getattr(value, "is_active"),
+            }
+        data["images"] = SKUResponse._normalize_images(
+            data.get("images", []), data.get("id")
+        )
+        return data
+
+
+class ProductPublicResponse(ProductResponse):
+    skus: list[PublicSKUResponse] = []
+
+
 class BlockingReasonResponse(BaseModel):
     id: UUID
     title: str
@@ -216,7 +254,7 @@ class ProductPaginatedResponse(BaseModel):
 
 
 class PaginatedProducts(BaseModel):
-    items: list[ProductResponse]
+    items: list[ProductPublicResponse]
     total: int
     page: int
     page_size: int

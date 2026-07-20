@@ -12,6 +12,7 @@ from src.schemas.product import (
     ProductCreate,
     ProductDetailResponse,
     ProductPaginatedResponse,
+    ProductPublicResponse,
     ProductResponse,
     ProductUpdate,
 )
@@ -39,7 +40,7 @@ async def list_products(
     return await svc.list_active(page=page, page_size=page_size, search=search)
 
 
-@router.get("/products/{product_id}", response_model=ProductResponse)
+@router.get("/products/{product_id}", response_model=ProductPublicResponse)
 async def get_product(
     product_id: UUID,
     db: AsyncSession = Depends(get_db),

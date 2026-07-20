@@ -3,7 +3,10 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
+from fastapi.testclient import TestClient
 
+from src.api.routers import products as products_router
+from src.main import app
 from src.models.product import ProductStatus
 from src.services import product_service as product_service_module
 from src.services.product_service import ProductService
@@ -84,6 +87,12 @@ async def test_get_moderated_product_returns_full_payload() -> None:
     assert body["title"] == "Wireless keyboard"
     assert body["description"] == "Low-profile keyboard"
     assert body["status"] == "MODERATED"
+    assert body["slug"].startswith("wireless-keyboard-")
+    assert body["images"][0]["url"] == "https://cdn.neomarket.test/products/keyboard.jpg"
+    assert body["images"][0]["ordering"] == 0
+    assert body["characteristics"] == [{"name": "layout", "value": "US"}]
+    assert body["created_at"] == product.created_at
+    assert body["updated_at"] == product.updated_at
     assert body["blocked"] is False
     assert body["blocking_reason"] is None
     assert body["field_reports"] == []
@@ -135,6 +144,10 @@ async def test_get_others_product_returns_404() -> None:
         await ProductService(SimpleNamespace()).get_for_seller(product.id, uuid4())
 
     assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == {
+        "code": "PRODUCT_NOT_FOUND",
+        "message": "Product not found",
+    }
 
 
 @pytest.mark.asyncio
@@ -143,3 +156,72 @@ async def test_get_nonexistent_returns_404() -> None:
         await ProductService(SimpleNamespace()).get_for_seller(uuid4(), uuid4())
 
     assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == {
+        "code": "PRODUCT_NOT_FOUND",
+        "message": "Product not found",
+    }
+
+
+async def _fake_db():
+    yield SimpleNamespace()
+
+
+def _fake_seller(seller_id):
+    async def dependency():
+        return SimpleNamespace(id=seller_id, is_active=True)
+
+    return dependency
+
+
+def test_get_others_product_response_matches_error_contract() -> None:
+    product = _product(seller_id=uuid4())
+    FakeProductRepository.product = product
+    app.dependency_overrides[products_router.get_current_seller] = _fake_seller(
+        uuid4()
+    )
+    app.dependency_overrides[products_router.get_db] = _fake_db
+    try:
+        response = TestClient(app).get(f"/api/v1/products/{product.id}")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "code": "PRODUCT_NOT_FOUND",
+        "message": "Product not found",
+    }
+
+
+def test_get_nonexistent_response_matches_error_contract() -> None:
+    app.dependency_overrides[products_router.get_current_seller] = _fake_seller(
+        uuid4()
+    )
+    app.dependency_overrides[products_router.get_db] = _fake_db
+    try:
+        response = TestClient(app).get(f"/api/v1/products/{uuid4()}")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "code": "PRODUCT_NOT_FOUND",
+        "message": "Product not found",
+    }
+
+
+def test_public_product_response_does_not_expose_seller_sku_fields() -> None:
+    product = _product(seller_id=uuid4())
+    FakeProductRepository.product = product
+    app.dependency_overrides[products_router.get_db] = _fake_db
+    try:
+        response = TestClient(app).get(f"/products/{product.id}")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["slug"].startswith("wireless-keyboard-")
+    assert body["images"][0]["url"] == "https://cdn.neomarket.test/products/keyboard.jpg"
+    assert body["characteristics"] == [{"name": "layout", "value": "US"}]
+    assert "cost_price" not in body["skus"][0]
+    assert "reserved_quantity" not in body["skus"][0]

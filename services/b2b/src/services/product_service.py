@@ -41,7 +41,11 @@ class ProductService:
         product = await self.repo.get_with_skus(product_id)
         if not product or not product.is_active:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Product not found"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "code": "PRODUCT_NOT_FOUND",
+                    "message": "Product not found",
+                },
             )
         return product
 
@@ -49,7 +53,11 @@ class ProductService:
         product = await self.repo.get_with_skus(product_id)
         if not product or product.seller_id != seller_id:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Product not found"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "code": "PRODUCT_NOT_FOUND",
+                    "message": "Product not found",
+                },
             )
         return self._seller_product_detail(product)
 
