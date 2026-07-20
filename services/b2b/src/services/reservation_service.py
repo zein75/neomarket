@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -46,13 +47,24 @@ class ReservationService:
             data.idempotency_key
         )
         if existing:
-            return {"status": "RESERVED", "order_id": existing.order_id}
+            return {
+                "status": "RESERVED",
+                "order_id": existing.order_id,
+                "reserved_at": getattr(
+                    existing,
+                    "created_at",
+                    datetime.now(timezone.utc),
+                ),
+            }
 
         sku_ids = [item.sku_id for item in data.items]
         if len(set(sku_ids)) != len(sku_ids):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="Duplicate SKU in reservation",
+                detail={
+                    "code": "INVALID_REQUEST",
+                    "message": "Duplicate SKU in reservation",
+                },
             )
 
         skus = await self.sku_repo.list_for_update(sku_ids)
@@ -60,7 +72,10 @@ class ReservationService:
         if len(skus_by_id) != len(sku_ids):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="One or more SKUs are unavailable",
+                detail={
+                    "code": "SKU_UNAVAILABLE",
+                    "message": "One or more SKUs are unavailable",
+                },
             )
 
         insufficient_skus = []
@@ -73,8 +88,8 @@ class ReservationService:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
+                    "code": "INSUFFICIENT_STOCK",
                     "message": "Insufficient stock",
-                    "sku_ids": insufficient_skus,
                 },
             )
 
@@ -86,7 +101,7 @@ class ReservationService:
                 out_of_stock_skus.append(sku)
 
         await self.sku_repo.session.flush()
-        await self.reservation_repo.create_batch(
+        reservations = await self.reservation_repo.create_batch(
             order_id=data.order_id,
             idempotency_key=data.idempotency_key,
             items=data.items,
@@ -96,12 +111,24 @@ class ReservationService:
                 await B2CClient().send_sku_out_of_stock(sku)
             except httpx.HTTPError:
                 pass
-        return {"status": "RESERVED", "order_id": data.order_id}
+        return {
+            "status": "RESERVED",
+            "order_id": data.order_id,
+            "reserved_at": getattr(
+                reservations[0],
+                "created_at",
+                datetime.now(timezone.utc),
+            ),
+        }
 
     async def unreserve(self, data: UnreserveRequest) -> dict[str, object]:
         reservations = await self.reservation_repo.list_by_order(data.order_id)
         if not reservations:
-            return {"status": "UNRESERVED", "order_id": data.order_id}
+            return {
+                "status": "UNRESERVED",
+                "order_id": data.order_id,
+                "processed_at": datetime.now(timezone.utc),
+            }
 
         skus = await self.sku_repo.list_for_update(
             [reservation.sku_id for reservation in reservations]
@@ -116,7 +143,11 @@ class ReservationService:
                 )
         await self.reservation_repo.delete_many(reservations)
         await self.reservation_repo.session.flush()
-        return {"status": "UNRESERVED", "order_id": data.order_id}
+        return {
+            "status": "UNRESERVED",
+            "order_id": data.order_id,
+            "processed_at": datetime.now(timezone.utc),
+        }
 
     async def fulfill(self, data: FulfillRequest) -> dict[str, object]:
         if await self.fulfilled_order_repo.exists(data.order_id):

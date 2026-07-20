@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -40,3 +41,11 @@ class FulfillRequest(BaseModel):
 class InventoryResponse(BaseModel):
     status: str
     order_id: UUID
+
+
+class InventoryReserveResponse(InventoryResponse):
+    reserved_at: datetime
+
+
+class InventoryUnreserveResponse(InventoryResponse):
+    processed_at: datetime

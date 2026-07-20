@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -13,6 +14,9 @@ from src.services.reservation_service import ReservationService
 
 class FakeSession:
     async def flush(self) -> None:
+        return None
+
+    async def commit(self) -> None:
         return None
 
 
@@ -46,6 +50,7 @@ class FakeReservationRepository:
         return self.reservations_by_key.get(idempotency_key)
 
     async def create_batch(self, *, order_id, idempotency_key, items):
+        created_at = datetime.now(timezone.utc)
         reservations = [
             SimpleNamespace(
                 id=uuid4(),
@@ -53,6 +58,7 @@ class FakeReservationRepository:
                 sku_id=item.sku_id,
                 quantity=item.quantity,
                 idempotency_key=idempotency_key,
+                created_at=created_at,
             )
             for item in items
         ]
@@ -114,6 +120,7 @@ async def test_reserve_all_skus_succeeds() -> None:
     )
 
     assert response["status"] == "RESERVED"
+    assert response["reserved_at"] is not None
     assert sku_a.stock == 10
     assert sku_a.reserved_quantity == 4
     assert sku_b.stock == 5
@@ -132,6 +139,10 @@ async def test_partial_insufficient_stock_returns_409_all_rollback() -> None:
         )
 
     assert exc_info.value.status_code == 409
+    assert exc_info.value.detail == {
+        "code": "INSUFFICIENT_STOCK",
+        "message": "Insufficient stock",
+    }
     assert sku_a.reserved_quantity == 1
     assert sku_b.reserved_quantity == 4
 
@@ -200,6 +211,7 @@ async def test_unreserve_restores_quantities() -> None:
     response = await service.unreserve(UnreserveRequest(order_id=order_id))
 
     assert response["status"] == "UNRESERVED"
+    assert response["processed_at"] is not None
     assert sku.stock == 10
     assert sku.reserved_quantity == 0
 
@@ -215,3 +227,78 @@ def test_reserve_missing_service_key_returns_401() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 401
+
+
+async def _fake_db():
+    yield FakeSession()
+
+
+def test_reserve_response_includes_reserved_at() -> None:
+    sku = _sku(stock=10, reserved_quantity=0)
+    FakeSKURepository.skus = {sku.id: sku}
+    order_id = uuid4()
+
+    app.dependency_overrides[reservations_router.get_db] = _fake_db
+    try:
+        response = TestClient(app).post(
+            "/api/v1/inventory/reserve",
+            headers={"X-Service-Key": "dev-service-key-change-in-production"},
+            json={
+                "order_id": str(order_id),
+                "idempotency_key": str(uuid4()),
+                "items": [{"sku_id": str(sku.id), "quantity": 3}],
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "RESERVED"
+    assert body["order_id"] == str(order_id)
+    assert "reserved_at" in body
+
+
+def test_unreserve_response_includes_processed_at() -> None:
+    order_id = uuid4()
+
+    app.dependency_overrides[reservations_router.get_db] = _fake_db
+    try:
+        response = TestClient(app).post(
+            "/api/v1/inventory/unreserve",
+            headers={"X-Service-Key": "dev-service-key-change-in-production"},
+            json={"order_id": str(order_id)},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "UNRESERVED"
+    assert body["order_id"] == str(order_id)
+    assert "processed_at" in body
+
+
+def test_insufficient_stock_response_matches_error_contract() -> None:
+    sku = _sku(stock=1, reserved_quantity=0)
+    FakeSKURepository.skus = {sku.id: sku}
+
+    app.dependency_overrides[reservations_router.get_db] = _fake_db
+    try:
+        response = TestClient(app).post(
+            "/api/v1/inventory/reserve",
+            headers={"X-Service-Key": "dev-service-key-change-in-production"},
+            json={
+                "order_id": str(uuid4()),
+                "idempotency_key": str(uuid4()),
+                "items": [{"sku_id": str(sku.id), "quantity": 2}],
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 409
+    assert response.json() == {
+        "code": "INSUFFICIENT_STOCK",
+        "message": "Insufficient stock",
+    }
