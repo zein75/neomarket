@@ -21,13 +21,19 @@ class ModerationEventService:
         if not event.product_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="product_id is required",
+                detail={
+                    "code": "INVALID_REQUEST",
+                    "message": "product_id is required",
+                },
             )
         product = await self.product_repo.get_with_skus(event.product_id)
         if not product:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Product not found",
+                detail={
+                    "code": "PRODUCT_NOT_FOUND",
+                    "message": "Product not found",
+                },
             )
 
         decision = (event.decision or "").upper()
@@ -37,7 +43,10 @@ class ModerationEventService:
         }:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Unsupported moderation decision",
+                detail={
+                    "code": "INVALID_REQUEST",
+                    "message": "Unsupported moderation decision",
+                },
             )
 
         try:
@@ -71,5 +80,7 @@ class ModerationEventService:
             ProductStatus.HARD_BLOCKED if event.hard_block else ProductStatus.BLOCKED
         )
         product.is_active = False
-        product.blocking_reason = event.blocking_reason
+        product.blocking_reason = event.blocking_reason or (
+            {"id": str(event.blocking_reason_id)} if event.blocking_reason_id else None
+        )
         product.field_reports = event.field_reports

@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -17,6 +18,9 @@ from src.services.product_service import ProductService
 
 class FakeSession:
     async def flush(self) -> None:
+        return None
+
+    async def commit(self) -> None:
         return None
 
 
@@ -98,18 +102,21 @@ def patch_dependencies(monkeypatch: pytest.MonkeyPatch):
     )
 
 
-def _event(product_id, *, decision: str, hard_block: bool = False, key: str | None = None):
+def _event(
+    product_id,
+    *,
+    event_type: str,
+    hard_block: bool = False,
+    key: str | None = None,
+    blocking_reason_id=None,
+):
     return ModerationDecisionEvent(
         idempotency_key=key or str(uuid4()),
-        event_type="PRODUCT_MODERATION_DECIDED",
+        event_type=event_type,
+        occurred_at=datetime.now(timezone.utc),
         product_id=product_id,
-        decision=decision,
         hard_block=hard_block,
-        blocking_reason={
-            "id": str(uuid4()),
-            "title": "Bad content",
-            "comment": "Fix content",
-        },
+        blocking_reason_id=blocking_reason_id or uuid4(),
         field_reports=[
             {
                 "field_name": "images[0]",
@@ -126,7 +133,7 @@ async def test_moderated_event_clears_blocking_data() -> None:
     FakeProductRepository.product = product
 
     response = await ModerationEventService(FakeSession()).apply(
-        _event(product.id, decision="MODERATED")
+        _event(product.id, event_type="MODERATED")
     )
 
     assert response == {"status": "APPLIED"}
@@ -142,14 +149,27 @@ async def test_blocked_soft_saves_field_reports() -> None:
     FakeProductRepository.product = product
 
     await ModerationEventService(FakeSession()).apply(
-        _event(product.id, decision="BLOCKED", hard_block=False)
+        _event(product.id, event_type="BLOCKED", hard_block=False)
     )
 
     assert product.status == ProductStatus.BLOCKED
     assert product.is_active is False
-    assert product.blocking_reason["title"] == "Bad content"
+    assert product.blocking_reason["id"]
     assert product.field_reports[0]["field_name"] == "images[0]"
     assert len(FakeB2CClient.blocked_events) == 1
+
+
+@pytest.mark.asyncio
+async def test_blocked_event_saves_blocking_reason_id() -> None:
+    product = _product()
+    reason_id = uuid4()
+    FakeProductRepository.product = product
+
+    await ModerationEventService(FakeSession()).apply(
+        _event(product.id, event_type="BLOCKED", blocking_reason_id=reason_id)
+    )
+
+    assert product.blocking_reason == {"id": str(reason_id)}
 
 
 @pytest.mark.asyncio
@@ -158,7 +178,7 @@ async def test_blocked_hard_sets_terminal_status() -> None:
     FakeProductRepository.product = product
 
     await ModerationEventService(FakeSession()).apply(
-        _event(product.id, decision="BLOCKED", hard_block=True)
+        _event(product.id, event_type="BLOCKED", hard_block=True)
     )
 
     assert product.status == ProductStatus.HARD_BLOCKED
@@ -183,11 +203,11 @@ async def test_duplicate_event_same_idempotency_key_no_side_effects() -> None:
     service = ModerationEventService(FakeSession())
     key = str(uuid4())
 
-    first = await service.apply(_event(product.id, decision="BLOCKED", key=key))
+    first = await service.apply(_event(product.id, event_type="BLOCKED", key=key))
     product.status = ProductStatus.ON_MODERATION
     product.blocking_reason = None
     product.field_reports = []
-    second = await service.apply(_event(product.id, decision="BLOCKED", key=key))
+    second = await service.apply(_event(product.id, event_type="BLOCKED", key=key))
 
     assert first == {"status": "APPLIED"}
     assert second == {"status": "DUPLICATE"}
@@ -220,7 +240,7 @@ async def test_parallel_duplicate_event_no_side_effects(
     )
 
     response = await ModerationEventService(FakeSession()).apply(
-        _event(product.id, decision="BLOCKED")
+        _event(product.id, event_type="BLOCKED")
     )
 
     assert response == {"status": "DUPLICATE"}
@@ -239,3 +259,55 @@ def test_missing_service_key_returns_401() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 401
+
+
+def test_moderation_event_route_returns_204() -> None:
+    product = _product()
+    FakeProductRepository.product = product
+
+    async def fake_db():
+        yield FakeSession()
+
+    app.dependency_overrides[moderation_router.get_db] = fake_db
+    try:
+        response = TestClient(app).post(
+            "/api/v1/events/moderation",
+            headers={"X-Service-Key": "dev-service-key-change-in-production"},
+            json={
+                "idempotency_key": str(uuid4()),
+                "event_type": "MODERATED",
+                "product_id": str(product.id),
+                "occurred_at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 204
+    assert response.content == b""
+
+
+def test_moderation_event_alias_returns_204() -> None:
+    product = _product()
+    FakeProductRepository.product = product
+
+    async def fake_db():
+        yield FakeSession()
+
+    app.dependency_overrides[moderation_router.get_db] = fake_db
+    try:
+        response = TestClient(app).post(
+            "/api/v1/moderation/events",
+            headers={"X-Service-Key": "dev-service-key-change-in-production"},
+            json={
+                "idempotency_key": str(uuid4()),
+                "event_type": "MODERATED",
+                "product_id": str(product.id),
+                "occurred_at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 204
+    assert response.content == b""
