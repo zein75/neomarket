@@ -3,6 +3,8 @@ from uuid import UUID
 
 from fastapi import Header, HTTPException, status
 
+from src.core.config import settings
+
 
 async def get_current_moderator(
     x_moderator_id: str | None = Header(default=None, alias="X-Moderator-Id"),
@@ -20,3 +22,13 @@ async def get_current_moderator(
             detail="Invalid moderator identity",
         )
     return SimpleNamespace(id=moderator_id)
+
+
+async def verify_service_key(
+    x_service_key: str | None = Header(default=None, alias="X-Service-Key"),
+) -> None:
+    if x_service_key != settings.service_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "UNAUTHORIZED", "message": "Invalid service key"},
+        )

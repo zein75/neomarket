@@ -21,13 +21,17 @@ class ModerationService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
                     "code": "APPROVE_NOT_ALLOWED",
+                    "message": "Ticket cannot be approved in current status",
                     "current_status": self._status_value(card.status),
                 },
             )
         if not self._has_skus(card):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail={"code": "APPROVE_REQUIRES_SKU"},
+                detail={
+                    "code": "APPROVE_REQUIRES_SKU",
+                    "message": "Ticket cannot be approved without SKU",
+                },
             )
 
         card.status = ModerationStatus.MODERATED
@@ -50,6 +54,7 @@ class ModerationService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
                     "code": "DECLINE_NOT_ALLOWED",
+                    "message": "Ticket cannot be declined in current status",
                     "current_status": self._status_value(card.status),
                 },
             )
@@ -76,6 +81,7 @@ class ModerationService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
                     "code": "BLOCK_NOT_ALLOWED",
+                    "message": "Ticket cannot be blocked in current status",
                     "current_status": self._status_value(card.status),
                 },
             )
@@ -92,6 +98,7 @@ class ModerationService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
                     "code": "BLOCKING_REASON_NOT_FOUND",
+                    "message": "Blocking reason not found",
                     "blocking_reason_ids": missing_ids,
                 },
             )
@@ -152,14 +159,18 @@ class ModerationService:
             )
         if card.moderator_id != moderator_id:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Moderation card assigned to another moderator",
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "TICKET_NOT_ASSIGNED",
+                    "message": "Ticket is assigned to another moderator",
+                },
             )
         if card.status == ModerationStatus.HARD_BLOCKED:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+                status_code=status.HTTP_409_CONFLICT,
                 detail={
                     "code": "HARD_BLOCKED_TERMINAL",
+                    "message": "Hard blocked ticket cannot be modified",
                     "current_status": "HARD_BLOCKED",
                 },
             )

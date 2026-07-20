@@ -4,7 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.deps import get_current_moderator
+from src.api.deps import get_current_moderator, verify_service_key
 from src.core.database import get_db
 from src.schemas.moderation import (
     BlockDecisionRequest,
@@ -101,6 +101,7 @@ async def decline_product(
 @router.post("/api/v1/events/products")
 async def apply_product_event(
     event: dict[str, object],
+    _: None = Depends(verify_service_key),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, str]:
     result = await ModerationService(db).apply_product_event(event)

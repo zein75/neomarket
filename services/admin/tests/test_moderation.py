@@ -148,14 +148,18 @@ def test_approve_ticket_route_returns_contract_response() -> None:
     assert body["created_at"]
 
 
-async def test_approve_others_card_returns_403() -> None:
+async def test_approve_others_card_returns_409() -> None:
     card = _card(moderator_id=uuid4())
     FakeModerationRepository.cards[card.id] = card
 
     with pytest.raises(HTTPException) as exc:
         await ModerationService(FakeSession()).approve_product(card.id, uuid4())
 
-    assert exc.value.status_code == 403
+    assert exc.value.status_code == 409
+    assert exc.value.detail == {
+        "code": "TICKET_NOT_ASSIGNED",
+        "message": "Ticket is assigned to another moderator",
+    }
     assert FakeB2BClient.events == []
 
 
@@ -170,6 +174,7 @@ async def test_approve_after_edited_returns_409() -> None:
     assert exc.value.status_code == 409
     assert exc.value.detail == {
         "code": "APPROVE_NOT_ALLOWED",
+        "message": "Ticket cannot be approved in current status",
         "current_status": "EDITED",
     }
     assert FakeB2BClient.events == []
@@ -184,7 +189,10 @@ async def test_approve_without_sku_returns_409() -> None:
         await ModerationService(FakeSession()).approve_product(card.id, moderator_id)
 
     assert exc.value.status_code == 409
-    assert exc.value.detail == {"code": "APPROVE_REQUIRES_SKU"}
+    assert exc.value.detail == {
+        "code": "APPROVE_REQUIRES_SKU",
+        "message": "Ticket cannot be approved without SKU",
+    }
     assert FakeB2BClient.events == []
 
 
@@ -273,7 +281,7 @@ async def test_hard_block_event_carries_hard_block_true() -> None:
     assert FakeB2BClient.events[0]["blocking_reason_id"] == str(reason_id)
 
 
-async def test_any_modify_on_hard_blocked_returns_403() -> None:
+async def test_any_modify_on_hard_blocked_returns_409() -> None:
     moderator_id = uuid4()
     card = _card(moderator_id=moderator_id, status=ModerationStatus.HARD_BLOCKED)
     FakeModerationRepository.cards[card.id] = card
@@ -288,8 +296,14 @@ async def test_any_modify_on_hard_blocked_returns_403() -> None:
             reason={"code": "FORBIDDEN"},
         )
 
-    assert approve_exc.value.status_code == 403
-    assert decline_exc.value.status_code == 403
+    assert approve_exc.value.status_code == 409
+    assert decline_exc.value.status_code == 409
+    assert approve_exc.value.detail == {
+        "code": "HARD_BLOCKED_TERMINAL",
+        "message": "Hard blocked ticket cannot be modified",
+        "current_status": "HARD_BLOCKED",
+    }
+    assert decline_exc.value.detail == approve_exc.value.detail
     assert FakeB2BClient.events == []
 
 
@@ -325,3 +339,38 @@ async def test_deleted_event_removes_hard_blocked() -> None:
     assert result == {"status": "DELETED"}
     assert FakeModerationRepository.deleted_cards == [card.id]
     assert card.id not in FakeModerationRepository.cards
+
+
+def test_product_event_route_requires_service_key() -> None:
+    response = TestClient(app).post(
+        "/api/v1/events/products",
+        json={"event_type": "PRODUCT_EDITED", "product_id": str(uuid4())},
+    )
+
+    assert response.status_code == 401
+    assert response.json() == {
+        "code": "UNAUTHORIZED",
+        "message": "Invalid service key",
+    }
+
+
+def test_product_event_route_accepts_service_key() -> None:
+    moderator_id = uuid4()
+    card = _card(moderator_id=moderator_id)
+    FakeModerationRepository.cards[card.id] = card
+
+    async def fake_db():
+        yield FakeSession()
+
+    app.dependency_overrides[moderation_router.get_db] = fake_db
+    try:
+        response = TestClient(app).post(
+            "/api/v1/events/products",
+            json={"event_type": "PRODUCT_EDITED", "product_id": str(card.product_id)},
+            headers={"X-Service-Key": "dev-service-key"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "UPDATED"}

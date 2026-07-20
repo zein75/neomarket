@@ -28,6 +28,9 @@ class B2BClient:
 
     def _response_detail(self, response: httpx.Response) -> Any:
         try:
-            return response.json().get("detail")
+            body = response.json()
+            if isinstance(body, dict):
+                return body.get("detail", body)
+            return body
         except ValueError:
             return response.text
