@@ -62,13 +62,33 @@ class B2BClient:
     async def get_product(self, product_id: str) -> Any:
         return await self._get(f"/api/v1/public/products/{product_id}")
 
-    async def get_public_products(self, *, limit: int | None = None, offset: int | None = None) -> Any:
+    async def get_public_products(
+        self,
+        *,
+        category_id: str | None = None,
+        search: str | None = None,
+        min_price: int | None = None,
+        max_price: int | None = None,
+        in_stock: bool | None = None,
+        sort: str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> Any:
         try:
             response = await self._client.get(
                 "/api/v1/public/products",
                 params={
                     k: v
-                    for k, v in {"limit": limit, "offset": offset}.items()
+                    for k, v in {
+                        "category_id": category_id,
+                        "search": search,
+                        "min_price": min_price,
+                        "max_price": max_price,
+                        "in_stock": in_stock,
+                        "sort": sort,
+                        "limit": limit,
+                        "offset": offset,
+                    }.items()
                     if v is not None
                 },
                 headers={"X-Service-Key": settings.service_key},

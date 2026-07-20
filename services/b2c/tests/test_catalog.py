@@ -16,10 +16,12 @@ def _product(
     category_id: str,
     category: str,
     price: int,
+    seller_id: str = "seller-1",
     active_quantity: int = 5,
 ) -> dict[str, object]:
     return {
         "id": product_id,
+        "seller_id": seller_id,
         "title": title,
         "description": f"{title} description",
         "category_id": category_id,
@@ -42,6 +44,7 @@ class FakeB2BClient:
     products: list[dict[str, object]] = []
     unavailable = False
     get_public_products_calls = 0
+    last_public_products_kwargs: dict[str, object] = {}
     get_product_calls: list[str] = []
 
     def __init__(self, base_url: str) -> None:
@@ -55,9 +58,92 @@ class FakeB2BClient:
 
     async def get_public_products(self, **kwargs):
         self.__class__.get_public_products_calls += 1
+        self.__class__.last_public_products_kwargs = {
+            key: value for key, value in kwargs.items() if value is not None
+        }
         if self.unavailable:
             raise HTTPException(status_code=503, detail="B2B service unavailable")
-        return self.products
+        products = self._filtered_products(kwargs)
+        limit = int(kwargs.get("limit") or len(products) or 20)
+        offset = int(kwargs.get("offset") or 0)
+        return {
+            "items": products[offset : offset + limit],
+            "total_count": len(products),
+            "limit": limit,
+            "offset": offset,
+        }
+
+    def _filtered_products(
+        self,
+        kwargs: dict[str, object],
+    ) -> list[dict[str, object]]:
+        products = list(self.products)
+        category_id = kwargs.get("category_id")
+        search = kwargs.get("search")
+        min_price = kwargs.get("min_price")
+        max_price = kwargs.get("max_price")
+        seller_id = kwargs.get("seller_id")
+        in_stock = kwargs.get("in_stock")
+        sort = kwargs.get("sort")
+
+        if category_id:
+            products = [
+                product
+                for product in products
+                if str(product.get("category_id")) == str(category_id)
+            ]
+        if seller_id:
+            products = [
+                product
+                for product in products
+                if str(product.get("seller_id")) == str(seller_id)
+            ]
+        if search:
+            products = [
+                product
+                for product in products
+                if str(search).lower() in str(product.get("title", "")).lower()
+            ]
+        if min_price is not None:
+            products = [
+                product
+                for product in products
+                if self._min_price(product) is not None
+                and self._min_price(product) >= int(min_price)
+            ]
+        if max_price is not None:
+            products = [
+                product
+                for product in products
+                if self._min_price(product) is not None
+                and self._min_price(product) <= int(max_price)
+            ]
+        if in_stock is True:
+            products = [
+                product
+                for product in products
+                if any(
+                    int(sku.get("active_quantity", 0)) > 0
+                    for sku in product.get("skus", [])
+                )
+            ]
+        if sort == "price_asc":
+            products = sorted(products, key=lambda product: self._min_price(product) or 0)
+        elif sort == "price_desc":
+            products = sorted(
+                products,
+                key=lambda product: self._min_price(product) or 0,
+                reverse=True,
+            )
+        return products
+
+    def _min_price(self, product: dict[str, object]) -> int | None:
+        prices = [
+            int(sku["price"])
+            for sku in product.get("skus", [])
+            if int(sku.get("active_quantity", 0)) > 0 and sku.get("price") is not None
+        ]
+        return min(prices) if prices else None
 
     async def get_product(self, product_id: str):
         self.__class__.get_product_calls.append(product_id)
@@ -74,6 +160,7 @@ def patch_b2b(monkeypatch: pytest.MonkeyPatch):
     FakeB2BClient.products = []
     FakeB2BClient.unavailable = False
     FakeB2BClient.get_public_products_calls = 0
+    FakeB2BClient.last_public_products_kwargs = {}
     FakeB2BClient.get_product_calls = []
     monkeypatch.setattr(catalog_service_module, "B2BClient", FakeB2BClient)
 
@@ -88,11 +175,25 @@ async def test_catalog_returns_filtered_sorted_products() -> None:
 
     response = await CatalogService().list_products(
         category_id="keyboards",
+        price_min=4000,
+        price_max=20000,
+        in_stock=True,
+        q="keyboard",
         sort="price_desc",
         limit=1,
         offset=0,
     )
 
+    assert FakeB2BClient.last_public_products_kwargs == {
+        "category_id": "keyboards",
+        "search": "keyboard",
+        "min_price": 4000,
+        "max_price": 20000,
+        "in_stock": True,
+        "sort": "price_desc",
+        "limit": 1,
+        "offset": 0,
+    }
     assert response["total_count"] == 2
     assert response["limit"] == 1
     assert response["offset"] == 0

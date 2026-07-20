@@ -11,12 +11,12 @@ from src.services import product_service as product_service_module
 from src.services.product_service import ProductService
 
 
-def _sku(*, product_id, stock=10, reserved_quantity=2, cost_price=70000):
+def _sku(*, product_id, stock=10, reserved_quantity=2, cost_price=70000, price=129900):
     return SimpleNamespace(
         id=uuid4(),
         product_id=product_id,
         name="Keyboard / Black",
-        price=129900,
+        price=price,
         cost_price=cost_price,
         stock=stock,
         reserved_quantity=reserved_quantity,
@@ -25,21 +25,39 @@ def _sku(*, product_id, stock=10, reserved_quantity=2, cost_price=70000):
     )
 
 
-def _product(*, status=ProductStatus.MODERATED, deleted=False, stock=10, reserved=2):
+def _product(
+    *,
+    status=ProductStatus.MODERATED,
+    deleted=False,
+    stock=10,
+    reserved=2,
+    title="Wireless keyboard",
+    description="Low-profile keyboard",
+    category_id=None,
+    seller_id=None,
+    price=129900,
+):
     product_id = uuid4()
     return SimpleNamespace(
         id=product_id,
-        seller_id=uuid4(),
-        title="Wireless keyboard",
-        description="Low-profile keyboard",
-        category_id=uuid4(),
+        seller_id=seller_id or uuid4(),
+        title=title,
+        description=description,
+        category_id=category_id or uuid4(),
         images=["https://cdn.neomarket.test/products/keyboard.jpg"],
         characteristics={"layout": "US"},
         status=status,
         category=None,
         is_active=True,
         deleted=deleted,
-        skus=[_sku(product_id=product_id, stock=stock, reserved_quantity=reserved)],
+        skus=[
+            _sku(
+                product_id=product_id,
+                stock=stock,
+                reserved_quantity=reserved,
+                price=price,
+            )
+        ],
     )
 
 
@@ -214,3 +232,50 @@ async def test_batch_ids_returns_visible_subset() -> None:
 
     assert [str(item.id) for item in body.items] == [str(visible.id)]
     assert body.total_count == 1
+
+
+@pytest.mark.asyncio
+async def test_public_catalog_applies_filters_sort_and_pagination() -> None:
+    category_id = uuid4()
+    seller_id = uuid4()
+    matched_high = _product(
+        title="Premium keyboard",
+        category_id=category_id,
+        seller_id=seller_id,
+        price=15000,
+        stock=5,
+        reserved=0,
+    )
+    matched_low = _product(
+        title="Budget keyboard",
+        category_id=category_id,
+        seller_id=seller_id,
+        price=7000,
+        stock=5,
+        reserved=0,
+    )
+    wrong_category = _product(
+        title="Premium keyboard",
+        seller_id=seller_id,
+        price=20000,
+        stock=5,
+        reserved=0,
+    )
+    FakeProductRepository.products = [matched_low, wrong_category, matched_high]
+
+    body = await ProductService(SimpleNamespace()).list_public_catalog(
+        category_id=category_id,
+        search="keyboard",
+        min_price=6000,
+        max_price=16000,
+        seller_id=seller_id,
+        in_stock=True,
+        sort="price_desc",
+        limit=1,
+        offset=0,
+    )
+
+    assert [str(item.id) for item in body.items] == [str(matched_high.id)]
+    assert body.total_count == 2
+    assert body.limit == 1
+    assert body.offset == 0

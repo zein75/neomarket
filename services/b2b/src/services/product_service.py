@@ -70,19 +70,36 @@ class ProductService:
         self,
         product_ids: list[UUID] | None = None,
         *,
+        category_id: UUID | None = None,
+        search: str | None = None,
+        min_price: int | None = None,
+        max_price: int | None = None,
+        seller_id: UUID | None = None,
+        in_stock: bool | None = None,
+        sort: str | None = None,
         limit: int = 20,
         offset: int = 0,
     ) -> ProductPublicPaginatedResponse:
         products = await self.repo.list_public_catalog(product_ids)
-        visible = [
+        filtered = [
             product
             for product in products
             if self._is_publicly_visible(product)
+            and self._matches_public_catalog(
+                product,
+                category_id=category_id,
+                search=search,
+                min_price=min_price,
+                max_price=max_price,
+                seller_id=seller_id,
+                in_stock=in_stock,
+            )
         ]
-        page = visible[offset : offset + limit]
+        sorted_products = self._sort_public_catalog(filtered, sort)
+        page = sorted_products[offset : offset + limit]
         return ProductPublicPaginatedResponse(
             items=[self._public_product_short(product) for product in page],
-            total_count=len(visible),
+            total_count=len(filtered),
             limit=limit,
             offset=offset,
         )
@@ -270,6 +287,69 @@ class ProductService:
             "created_at": getattr(sku, "created_at", datetime.now(timezone.utc)),
             "updated_at": getattr(sku, "updated_at", datetime.now(timezone.utc)),
         }
+
+    def _matches_public_catalog(
+        self,
+        product: Product,
+        *,
+        category_id: UUID | None,
+        search: str | None,
+        min_price: int | None,
+        max_price: int | None,
+        seller_id: UUID | None,
+        in_stock: bool | None,
+    ) -> bool:
+        public_min_price = self._min_public_price(product)
+        if category_id and product.category_id != category_id:
+            return False
+        if seller_id and product.seller_id != seller_id:
+            return False
+        if min_price is not None and (
+            public_min_price is None or public_min_price < min_price
+        ):
+            return False
+        if max_price is not None and (
+            public_min_price is None or public_min_price > max_price
+        ):
+            return False
+        if in_stock is True and not any(
+            self._active_quantity(sku) > 0 for sku in product.skus
+        ):
+            return False
+        if search:
+            haystack = " ".join(
+                value
+                for value in (product.title, product.description, product.category)
+                if value
+            ).lower()
+            if search.lower() not in haystack:
+                return False
+        return True
+
+    def _sort_public_catalog(
+        self,
+        products: list[Product],
+        sort: str | None,
+    ) -> list[Product]:
+        if sort == "price_asc":
+            return sorted(products, key=lambda product: self._min_public_price(product) or 0)
+        if sort == "price_desc":
+            return sorted(
+                products,
+                key=lambda product: self._min_public_price(product) or 0,
+                reverse=True,
+            )
+        if sort == "new":
+            return sorted(
+                products,
+                key=lambda product: getattr(
+                    product,
+                    "created_at",
+                    datetime.now(timezone.utc),
+                ),
+                reverse=True,
+            )
+        return products
 
     def _min_public_price(self, product: Product) -> int | None:
         prices = [

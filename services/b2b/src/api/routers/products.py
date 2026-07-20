@@ -31,13 +31,30 @@ def _parse_ids(ids: str | None) -> list[UUID] | None:
 
 @router.get("/products", response_model=ProductPublicPaginatedResponse)
 async def list_products(
+    category_id: UUID | None = Query(None),
+    search: str | None = Query(None),
+    min_price: int | None = Query(None, ge=0),
+    max_price: int | None = Query(None, ge=0),
+    seller_id: UUID | None = Query(None),
+    in_stock: bool | None = Query(None),
+    sort: str | None = Query(None),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     _: None = Depends(verify_service_key),
     db: AsyncSession = Depends(get_db),
 ) -> Any:
     svc = ProductService(db)
-    return await svc.list_public_catalog(limit=limit, offset=offset)
+    return await svc.list_public_catalog(
+        category_id=category_id,
+        search=search,
+        min_price=min_price,
+        max_price=max_price,
+        seller_id=seller_id,
+        in_stock=in_stock,
+        sort=sort,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.get("/products/{product_id}", response_model=ProductPublicResponse)
@@ -78,6 +95,13 @@ async def list_seller_products(
 )
 async def list_public_products(
     ids: str | None = Query(None),
+    category_id: UUID | None = Query(None),
+    search: str | None = Query(None),
+    min_price: int | None = Query(None, ge=0),
+    max_price: int | None = Query(None, ge=0),
+    seller_id: UUID | None = Query(None),
+    in_stock: bool | None = Query(None),
+    sort: str | None = Query(None),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     _: None = Depends(verify_service_key),
@@ -86,6 +110,13 @@ async def list_public_products(
     svc = ProductService(db)
     return await svc.list_public_catalog(
         product_ids=_parse_ids(ids),
+        category_id=category_id,
+        search=search,
+        min_price=min_price,
+        max_price=max_price,
+        seller_id=seller_id,
+        in_stock=in_stock,
+        sort=sort,
         limit=limit,
         offset=offset,
     )
