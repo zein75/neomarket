@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.models.category import Category
 from src.models.product import Product
 from src.models.sku import SKU
 from .base import BaseRepository
@@ -127,6 +128,15 @@ class ProductRepository(BaseRepository[Product]):
             query = query.where(Product.id.in_(product_ids))
         result = await self.session.execute(query)
         return list(result.scalars().all())
+
+    async def category_exists(self, category_id: UUID) -> bool:
+        result = await self.session.execute(
+            select(Category.id).where(
+                Category.id == category_id,
+                Category.is_active == True,  # noqa: E712
+            )
+        )
+        return result.scalar_one_or_none() is not None
 
     async def get_seller_product(self, product_id: UUID, seller_id: UUID) -> Product | None:
         result = await self.session.execute(

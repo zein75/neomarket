@@ -373,6 +373,7 @@ class ProductService:
         return str(product_status)
 
     async def create(self, seller_id: UUID, data: ProductCreate) -> Product:
+        await self._ensure_category_exists(data.category_id)
         product = await self.repo.create_product(
             seller_id=seller_id,
             title=data.title,
@@ -417,6 +418,7 @@ class ProductService:
         if data.description is not None:
             product.description = data.description
         if data.category_id is not None:
+            await self._ensure_category_exists(data.category_id)
             product.category_id = data.category_id
         if data.images is not None:
             product.images = [image.url for image in data.images]
@@ -442,6 +444,16 @@ class ProductService:
                 json_before=json_before,
             )
         return await self.repo.get_with_skus(product.id)
+
+    async def _ensure_category_exists(self, category_id: UUID) -> None:
+        if not await self.repo.category_exists(category_id):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "code": "CATEGORY_NOT_FOUND",
+                    "message": "Category not found",
+                },
+            )
 
     async def delete(self, product_id: UUID, seller_id: UUID) -> None:
         product = await self.repo.get_with_skus(product_id)
