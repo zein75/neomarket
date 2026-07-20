@@ -1,4 +1,6 @@
+from datetime import datetime, timezone
 from uuid import UUID
+from uuid import NAMESPACE_URL, uuid5
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -109,18 +111,12 @@ class ModerationService:
     def _moderated_event(self, card: object) -> dict[str, object]:
         product_id = str(card.product_id)
         return {
-            "idempotency_key": f"moderation-approved:{product_id}",
-            "event_type": "PRODUCT_MODERATION_DECIDED",
+            "idempotency_key": str(
+                uuid5(NAMESPACE_URL, f"moderation:approved:{product_id}")
+            ),
+            "event_type": "MODERATED",
             "product_id": product_id,
-            "decision": "MODERATED",
-            "status": "MODERATED",
-            "hard_block": False,
-            "payload": {
-                "product_id": product_id,
-                "status": "MODERATED",
-                "decision": "MODERATED",
-                "hard_block": False,
-            },
+            "occurred_at": datetime.now(timezone.utc).isoformat(),
         }
 
     def _blocked_event(

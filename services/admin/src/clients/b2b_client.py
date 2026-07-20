@@ -13,7 +13,7 @@ class B2BClient:
                 timeout=settings.b2b_timeout_seconds,
             ) as client:
                 response = await client.post(
-                    f"{settings.b2b_base_url.rstrip('/')}/api/v1/events/moderation",
+                    f"{settings.b2b_base_url.rstrip('/')}/api/v1/moderation/events",
                     json=event,
                     headers={"X-Service-Key": settings.service_key},
                 )

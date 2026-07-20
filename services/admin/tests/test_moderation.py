@@ -2,9 +2,13 @@ from types import SimpleNamespace
 from uuid import UUID, uuid4
 
 import pytest
+from fastapi.testclient import TestClient
 from fastapi import HTTPException
 
+from src.api.routers import moderation as moderation_router
+from src.main import app
 from src.models.moderation import ModerationStatus
+from src.schemas.moderation import ModerationCardResponse
 from src.services import moderation_service as moderation_service_module
 from src.services.moderation_service import ModerationService
 
@@ -21,6 +25,9 @@ def _card(
     return SimpleNamespace(
         id=uuid4(),
         product_id=uuid4(),
+        seller_id=uuid4(),
+        kind="PRODUCT",
+        queue_priority=0,
         moderator_id=moderator_id,
         status=status,
         sku_ids=sku_ids if sku_ids is not None else [uuid4()],
@@ -32,6 +39,9 @@ class FakeSession:
 
     async def flush(self) -> None:
         self.flushed = True
+
+    async def commit(self) -> None:
+        return None
 
 
 class FakeModerationRepository:
@@ -86,22 +96,47 @@ async def test_approve_transitions_to_moderated_and_emits_event() -> None:
     )
 
     assert approved.status == ModerationStatus.MODERATED
-    assert FakeB2BClient.events == [
-        {
-            "idempotency_key": f"moderation-approved:{card.product_id}",
-            "event_type": "PRODUCT_MODERATION_DECIDED",
-            "product_id": str(card.product_id),
-            "decision": "MODERATED",
-            "status": "MODERATED",
-            "hard_block": False,
-            "payload": {
-                "product_id": str(card.product_id),
-                "status": "MODERATED",
-                "decision": "MODERATED",
-                "hard_block": False,
-            },
-        }
-    ]
+    response = ModerationCardResponse.model_validate(approved).model_dump(mode="json")
+    assert response["seller_id"] == str(card.seller_id)
+    assert response["kind"] == "PRODUCT"
+    assert response["queue_priority"] == 0
+    assert response["status"] == "APPROVED"
+    assert response["created_at"]
+    assert len(FakeB2BClient.events) == 1
+    event = FakeB2BClient.events[0]
+    assert UUID(str(event["idempotency_key"]))
+    assert event["event_type"] == "MODERATED"
+    assert event["product_id"] == str(card.product_id)
+    assert event["occurred_at"]
+    assert "PRODUCT_MODERATION_DECIDED" not in event.values()
+
+
+def test_approve_ticket_route_returns_contract_response() -> None:
+    moderator_id = uuid4()
+    card = _card(moderator_id=moderator_id)
+    FakeModerationRepository.cards[card.id] = card
+
+    async def fake_db():
+        yield FakeSession()
+
+    app.dependency_overrides[moderation_router.get_db] = fake_db
+    try:
+        response = TestClient(app).post(
+            f"/api/v1/tickets/{card.id}/approve",
+            headers={"X-Moderator-Id": str(moderator_id)},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == str(card.id)
+    assert body["product_id"] == str(card.product_id)
+    assert body["seller_id"] == str(card.seller_id)
+    assert body["kind"] == "PRODUCT"
+    assert body["queue_priority"] == 0
+    assert body["status"] == "APPROVED"
+    assert body["created_at"]
 
 
 async def test_approve_others_card_returns_403() -> None:

@@ -14,8 +14,13 @@ router = APIRouter(tags=["moderation"])
 
 
 @router.post(
+    "/api/v1/tickets/{card_id}/approve",
+    response_model=ModerationCardResponse,
+)
+@router.post(
     "/api/v1/moderation/{card_id}/approve",
     response_model=ModerationCardResponse,
+    include_in_schema=False,
 )
 @router.post(
     "/api/v1/products/{card_id}/approve",

@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 
 revision: str = "0001_moderation_cards"
@@ -18,7 +19,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    status_enum = sa.Enum(
+    status_enum = postgresql.ENUM(
         "CREATED",
         "IN_REVIEW",
         "MODERATED",
@@ -26,12 +27,16 @@ def upgrade() -> None:
         "HARD_BLOCKED",
         "EDITED",
         name="moderationstatus",
+        create_type=False,
     )
     status_enum.create(op.get_bind(), checkfirst=True)
     op.create_table(
         "moderation_cards",
         sa.Column("id", sa.UUID(), nullable=False),
         sa.Column("product_id", sa.UUID(), nullable=False),
+        sa.Column("seller_id", sa.UUID(), nullable=True),
+        sa.Column("kind", sa.String(length=32), nullable=False, server_default="PRODUCT"),
+        sa.Column("queue_priority", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("moderator_id", sa.UUID(), nullable=True),
         sa.Column("status", status_enum, nullable=False),
         sa.Column(
