@@ -59,13 +59,7 @@ def _order(*, user_id: UUID, status: OrderStatus) -> Order:
 
 
 def _unreserve_payload(order: Order) -> dict[str, object]:
-    return {
-        "order_id": str(order.id),
-        "items": [
-            {"sku_id": str(item.sku_id), "quantity": item.quantity}
-            for item in order.items
-        ],
-    }
+    return {"order_id": str(order.id)}
 
 
 def _order_request() -> OrderCreateRequest:

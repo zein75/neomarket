@@ -246,15 +246,7 @@ class OrderService:
 
     async def _unreserve(self, order: Order) -> None:
         async with B2BClient(settings.b2b_base_url) as client:
-            await client.unreserve(
-                {
-                    "order_id": str(order.id),
-                    "items": [
-                        {"sku_id": str(item.sku_id), "quantity": item.quantity}
-                        for item in order.items
-                    ],
-                }
-            )
+            await client.unreserve({"order_id": str(order.id)})
 
     def _reserve_failure_detail(self, detail: object) -> object:
         if isinstance(detail, dict) and "failed_items" in detail:
