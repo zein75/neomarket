@@ -200,6 +200,23 @@ def test_fulfill_routes_include_processed_at() -> None:
     assert alias.json()["processed_at"]
 
 
+def test_fulfill_request_accepts_contract_items() -> None:
+    order_id = uuid4()
+    sku_id = uuid4()
+
+    request = FulfillRequest.model_validate(
+        {
+            "order_id": str(order_id),
+            "items": [{"sku_id": str(sku_id), "quantity": 1}],
+        }
+    )
+
+    assert request.order_id == order_id
+    assert request.items is not None
+    assert request.items[0].sku_id == sku_id
+    assert request.items[0].quantity == 1
+
+
 def test_fulfill_missing_service_key_returns_401() -> None:
     async def fake_db():
         yield FakeSession()
