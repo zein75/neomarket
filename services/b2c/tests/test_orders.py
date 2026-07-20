@@ -356,9 +356,37 @@ async def test_unreserve_failure_transitions_to_cancel_pending() -> None:
     assert FakeB2BClient.unreserve_calls == [{"order_id": str(order.id)}]
 
 
-async def test_cancel_assembling_order_returns_409() -> None:
+async def test_cancel_assembling_order_transitions_to_cancelled() -> None:
     user_id = uuid4()
     order = _order(user_id=user_id, status=OrderStatus.ASSEMBLING)
+    FakeOrderRepository.orders_by_id[order.id] = order
+
+    cancelled = await OrderService(FakeSession()).cancel_order(
+        order_id=order.id,
+        user_id=user_id,
+    )
+
+    assert cancelled.status == OrderStatus.CANCELLED
+    assert FakeB2BClient.unreserve_calls == [{"order_id": str(order.id)}]
+
+
+async def test_cancel_delivering_order_transitions_to_cancelled() -> None:
+    user_id = uuid4()
+    order = _order(user_id=user_id, status=OrderStatus.DELIVERING)
+    FakeOrderRepository.orders_by_id[order.id] = order
+
+    cancelled = await OrderService(FakeSession()).cancel_order(
+        order_id=order.id,
+        user_id=user_id,
+    )
+
+    assert cancelled.status == OrderStatus.CANCELLED
+    assert FakeB2BClient.unreserve_calls == [{"order_id": str(order.id)}]
+
+
+async def test_cancel_delivered_order_returns_409() -> None:
+    user_id = uuid4()
+    order = _order(user_id=user_id, status=OrderStatus.DELIVERED)
     FakeOrderRepository.orders_by_id[order.id] = order
 
     with pytest.raises(HTTPException) as exc:
@@ -371,7 +399,7 @@ async def test_cancel_assembling_order_returns_409() -> None:
     assert exc.value.detail == {
         "code": "CANCEL_NOT_ALLOWED",
         "message": "Order cannot be cancelled in current status",
-        "current_status": "ASSEMBLING",
+        "current_status": "DELIVERED",
     }
     assert FakeB2BClient.unreserve_calls == []
 

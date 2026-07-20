@@ -135,7 +135,13 @@ class OrderService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Order not found",
             )
-        if order.status not in {OrderStatus.CREATED, OrderStatus.PAID}:
+        cancellable_statuses = {
+            OrderStatus.CREATED,
+            OrderStatus.PAID,
+            OrderStatus.ASSEMBLING,
+            OrderStatus.DELIVERING,
+        }
+        if order.status not in cancellable_statuses:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
