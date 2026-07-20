@@ -27,7 +27,10 @@ class SKUService:
         return await self.sku_repo.list_by_product(product_id)
 
     async def create(self, seller_id: UUID, data: SKUCreate) -> SKU:
-        product = await self.product_repo.get_seller_product(data.product_id, seller_id)
+        product = await self.product_repo.get_seller_product_for_update(
+            data.product_id,
+            seller_id,
+        )
         if not product:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Product not found"

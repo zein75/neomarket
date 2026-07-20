@@ -53,6 +53,8 @@ def _product(
 
 class FakeProductRepository:
     product: SimpleNamespace
+    locked_product_reads = 0
+    unlocked_product_reads = 0
 
     def __init__(self, session: object) -> None:
         self.session = session
@@ -60,6 +62,15 @@ class FakeProductRepository:
     async def get_seller_product(
         self, product_id: UUID, seller_id: UUID
     ) -> SimpleNamespace | None:
+        self.__class__.unlocked_product_reads += 1
+        if self.product.id == product_id and self.product.seller_id == seller_id:
+            return self.product
+        return None
+
+    async def get_seller_product_for_update(
+        self, product_id: UUID, seller_id: UUID
+    ) -> SimpleNamespace | None:
+        self.__class__.locked_product_reads += 1
         if self.product.id == product_id and self.product.seller_id == seller_id:
             return self.product
         return None
@@ -153,6 +164,8 @@ class FakeSession:
 def reset_fakes(monkeypatch: pytest.MonkeyPatch):
     FakeSKURepository.created = []
     FakeModerationClient.events = []
+    FakeProductRepository.locked_product_reads = 0
+    FakeProductRepository.unlocked_product_reads = 0
     monkeypatch.setattr(sku_service_module, "ProductRepository", FakeProductRepository)
     monkeypatch.setattr(sku_service_module, "SKURepository", FakeSKURepository)
     monkeypatch.setattr(
@@ -173,6 +186,26 @@ async def test_first_sku_transitions_product_to_on_moderation() -> None:
     )
 
     assert FakeProductRepository.product.status == ProductStatus.ON_MODERATION
+    assert FakeProductRepository.locked_product_reads == 1
+    assert FakeProductRepository.unlocked_product_reads == 0
+
+
+@pytest.mark.asyncio
+async def test_create_sku_loads_product_for_update_before_first_sku_check() -> None:
+    product_id = uuid4()
+    seller_id = uuid4()
+    FakeProductRepository.product = _product(
+        product_id=product_id,
+        seller_id=seller_id,
+    )
+
+    await SKUService(FakeSession()).create(
+        seller_id,
+        SKUCreate(**_payload(product_id=str(product_id))),
+    )
+
+    assert FakeProductRepository.locked_product_reads == 1
+    assert FakeProductRepository.unlocked_product_reads == 0
 
 
 @pytest.mark.asyncio
