@@ -2,7 +2,7 @@ import enum
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Enum, ForeignKey, Integer, String
+from sqlalchemy import JSON, Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 
@@ -41,6 +41,9 @@ class Order(Base, TimestampMixin):
     )
     total_amount: Mapped[int] = mapped_column(Integer, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), default="RUB", nullable=False)
+    address_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    payment_method_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    address: Mapped[dict[str, object]] = mapped_column(JSON, default=dict, nullable=False)
     idempotency_key: Mapped[str] = mapped_column(
         String(128), unique=True, nullable=False
     )

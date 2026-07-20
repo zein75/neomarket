@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_current_user, get_db
 from src.models.user import User
-from src.schemas.order import OrderResponse
+from src.schemas.order import OrderCreateRequest, OrderResponse
 from src.services.cart_service import CartService
 from src.services.order_service import OrderService
 
@@ -24,6 +24,7 @@ async def list_orders(
 @router.post("/api/v1/orders", response_model=OrderResponse, status_code=201)
 @router.post("/orders", response_model=OrderResponse, status_code=201, include_in_schema=False)
 async def create_order(
+    order_request: OrderCreateRequest,
     idempotency_key: str = Header(alias="Idempotency-Key"),
     x_session_id: str | None = Header(default=None),
     current_user: User = Depends(get_current_user),
@@ -36,6 +37,7 @@ async def create_order(
         current_user.id,
         cart.id,
         idempotency_key=idempotency_key,
+        order_request=order_request,
     )
     await db.commit()
     return order

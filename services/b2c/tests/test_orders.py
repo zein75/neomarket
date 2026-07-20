@@ -5,7 +5,7 @@ import pytest
 from fastapi import HTTPException
 
 from src.models.order import Order, OrderItem, OrderStatus
-from src.schemas.order import OrderResponse
+from src.schemas.order import OrderCreateRequest, OrderResponse
 from src.services import order_service as order_service_module
 from src.services.order_service import OrderService
 
@@ -66,6 +66,10 @@ def _unreserve_payload(order: Order) -> dict[str, object]:
             for item in order.items
         ],
     }
+
+
+def _order_request() -> OrderCreateRequest:
+    return OrderCreateRequest(address_id=uuid4(), payment_method_id=uuid4())
 
 
 class FakeSession:
@@ -182,6 +186,7 @@ async def test_checkout_creates_paid_order_with_fixed_prices() -> None:
     user_id = uuid4()
     product_id = uuid4()
     sku_id = uuid4()
+    order_request = _order_request()
     cart_item = _cart_item(
         product_id=product_id,
         sku_id=sku_id,
@@ -209,11 +214,15 @@ async def test_checkout_creates_paid_order_with_fixed_prices() -> None:
         user_id=user_id,
         cart_id=cart.id,
         idempotency_key="checkout-1",
+        order_request=order_request,
     )
 
     assert order.status == OrderStatus.PAID
     assert order.total_amount == 300
     assert order.idempotency_key == "checkout-1"
+    assert order.address_id == order_request.address_id
+    assert order.payment_method_id == order_request.payment_method_id
+    assert order.address == {"id": str(order_request.address_id)}
     assert order.items[0].unit_price == 150
     assert order.items[0].product_title == "Phone"
     assert order.items[0].sku_name == "128 GB"
@@ -221,7 +230,7 @@ async def test_checkout_creates_paid_order_with_fixed_prices() -> None:
     assert response["buyer_id"] == str(user_id)
     assert response["subtotal"] == 300
     assert response["total"] == 300
-    assert response["address"] == {}
+    assert response["address"] == {"id": str(order_request.address_id)}
     assert response["created_at"]
     assert response["items"][0]["name"] == "Phone 128 GB"
     assert "total_amount" not in response

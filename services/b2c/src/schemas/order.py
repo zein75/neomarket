@@ -7,6 +7,11 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from src.models.order import OrderStatus
 
 
+class OrderCreateRequest(BaseModel):
+    address_id: UUID
+    payment_method_id: UUID
+
+
 class OrderItemResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

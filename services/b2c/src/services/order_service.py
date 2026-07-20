@@ -10,6 +10,7 @@ from src.core.config import settings
 from src.models.order import Order, OrderItem, OrderStatus
 from src.repositories.cart_repo import CartRepository
 from src.repositories.order_repo import OrderRepository
+from src.schemas.order import OrderCreateRequest
 
 
 logger = logging.getLogger(__name__)
@@ -25,6 +26,7 @@ class OrderService:
         user_id: UUID,
         cart_id: UUID,
         idempotency_key: str,
+        order_request: OrderCreateRequest | None = None,
     ) -> Order:
         existing = await self.order_repo.get_by_idempotency_key(idempotency_key)
         if existing:
@@ -52,6 +54,11 @@ class OrderService:
             status=OrderStatus.PAID,
             total_amount=total,
             currency=cart.currency,
+            address_id=order_request.address_id if order_request else None,
+            payment_method_id=(
+                order_request.payment_method_id if order_request else None
+            ),
+            address=self._address_snapshot(order_request),
             idempotency_key=idempotency_key,
         )
 
@@ -273,3 +280,11 @@ class OrderService:
             "message": "Unable to reserve one or more items",
             "failed_items": [],
         }
+
+    def _address_snapshot(
+        self,
+        order_request: OrderCreateRequest | None,
+    ) -> dict[str, object]:
+        if order_request is None:
+            return {}
+        return {"id": str(order_request.address_id)}

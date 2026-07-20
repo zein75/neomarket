@@ -44,7 +44,8 @@ class B2BClient:
         except httpx.HTTPStatusError as e:
             detail: Any
             try:
-                detail = e.response.json().get("detail", str(e))
+                body = e.response.json()
+                detail = body.get("detail", body) if isinstance(body, dict) else body
             except ValueError:
                 detail = str(e)
             raise HTTPException(status_code=e.response.status_code, detail=detail)
@@ -121,4 +122,4 @@ class B2BClient:
         return await self._post_service("/api/v1/inventory/reserve", payload)
 
     async def unreserve(self, payload: dict[str, Any]) -> Any:
-        return await self._post_service("/api/v1/unreserve", payload)
+        return await self._post_service("/api/v1/inventory/unreserve", payload)
