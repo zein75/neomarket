@@ -31,6 +31,28 @@ def upgrade() -> None:
     )
     status_enum.create(op.get_bind(), checkfirst=True)
     op.create_table(
+        "blocking_reasons",
+        sa.Column("id", sa.UUID(), nullable=False),
+        sa.Column("code", sa.String(length=64), nullable=False),
+        sa.Column("title", sa.String(length=255), nullable=False),
+        sa.Column("description", sa.Text(), nullable=True),
+        sa.Column("hard_block", sa.Boolean(), nullable=False, server_default=sa.false()),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("code"),
+    )
+    op.create_table(
         "moderation_cards",
         sa.Column("id", sa.UUID(), nullable=False),
         sa.Column("product_id", sa.UUID(), nullable=False),
@@ -79,4 +101,5 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_table("moderation_skus")
     op.drop_table("moderation_cards")
+    op.drop_table("blocking_reasons")
     sa.Enum(name="moderationstatus").drop(op.get_bind(), checkfirst=True)

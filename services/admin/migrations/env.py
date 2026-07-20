@@ -6,7 +6,7 @@ from sqlalchemy import create_engine, pool
 from alembic import context
 
 from src.models.base import Base
-from src.models.moderation import ModerationCard, ModerationSKU  # noqa: F401
+from src.models.moderation import BlockingReason, ModerationCard, ModerationSKU  # noqa: F401
 
 config = context.config
 

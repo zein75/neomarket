@@ -2,12 +2,17 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class DeclineRequest(BaseModel):
     hard_block: bool = False
     reason: dict[str, object]
+    field_reports: list[dict[str, object]] = []
+
+
+class BlockDecisionRequest(BaseModel):
+    blocking_reason_ids: list[UUID] = Field(min_length=1)
     field_reports: list[dict[str, object]] = []
 
 

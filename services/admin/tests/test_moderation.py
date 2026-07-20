@@ -46,6 +46,7 @@ class FakeSession:
 
 class FakeModerationRepository:
     cards: dict[UUID, SimpleNamespace] = {}
+    blocking_reasons: dict[UUID, SimpleNamespace] = {}
     deleted_cards: list[UUID] = []
 
     def __init__(self, session) -> None:
@@ -64,6 +65,13 @@ class FakeModerationRepository:
         self.deleted_cards.append(card.id)
         self.cards.pop(card.id, None)
 
+    async def list_blocking_reasons(self, reason_ids: list[UUID]):
+        return [
+            self.blocking_reasons[reason_id]
+            for reason_id in reason_ids
+            if reason_id in self.blocking_reasons
+        ]
+
 
 class FakeB2BClient:
     events: list[dict[str, object]] = []
@@ -75,6 +83,7 @@ class FakeB2BClient:
 @pytest.fixture(autouse=True)
 def patch_dependencies(monkeypatch):
     FakeModerationRepository.cards = {}
+    FakeModerationRepository.blocking_reasons = {}
     FakeModerationRepository.deleted_cards = []
     FakeB2BClient.events = []
     monkeypatch.setattr(
@@ -181,57 +190,87 @@ async def test_approve_without_sku_returns_409() -> None:
 
 async def test_hard_block_transitions_to_terminal_and_emits_event() -> None:
     moderator_id = uuid4()
+    reason_id = uuid4()
     card = _card(moderator_id=moderator_id)
     FakeModerationRepository.cards[card.id] = card
+    FakeModerationRepository.blocking_reasons[reason_id] = SimpleNamespace(
+        id=reason_id,
+        hard_block=True,
+    )
 
-    blocked = await ModerationService(FakeSession()).decline_product(
+    blocked = await ModerationService(FakeSession()).block_product(
         card.id,
         moderator_id,
-        hard_block=True,
-        reason={"code": "COUNTERFEIT", "message": "Counterfeit goods"},
+        blocking_reason_ids=[reason_id],
     )
 
     assert blocked.status == ModerationStatus.HARD_BLOCKED
-    assert FakeB2BClient.events == [
-        {
-            "idempotency_key": f"moderation-hard-blocked:{card.product_id}",
-            "event_type": "PRODUCT_MODERATION_DECIDED",
-            "product_id": str(card.product_id),
-            "decision": "BLOCKED",
-            "status": "BLOCKED",
-            "hard_block": True,
-            "blocking_reason": {"code": "COUNTERFEIT", "message": "Counterfeit goods"},
-            "field_reports": [],
-            "payload": {
-                "product_id": str(card.product_id),
-                "status": "BLOCKED",
-                "decision": "BLOCKED",
-                "hard_block": True,
-                "blocking_reason": {
-                    "code": "COUNTERFEIT",
-                    "message": "Counterfeit goods",
-                },
-                "field_reports": [],
-            },
-        }
-    ]
+    assert len(FakeB2BClient.events) == 1
+    event = FakeB2BClient.events[0]
+    assert UUID(str(event["idempotency_key"]))
+    assert event["event_type"] == "BLOCKED"
+    assert event["product_id"] == str(card.product_id)
+    assert event["occurred_at"]
+    assert event["hard_block"] is True
+    assert event["blocking_reason_id"] == str(reason_id)
+    assert "blocking_reason" not in event
+    assert "PRODUCT_MODERATION_DECIDED" not in event.values()
+
+
+def test_block_ticket_route_returns_contract_response_and_emits_event() -> None:
+    moderator_id = uuid4()
+    reason_id = uuid4()
+    card = _card(moderator_id=moderator_id)
+    FakeModerationRepository.cards[card.id] = card
+    FakeModerationRepository.blocking_reasons[reason_id] = SimpleNamespace(
+        id=reason_id,
+        hard_block=True,
+    )
+
+    async def fake_db():
+        yield FakeSession()
+
+    app.dependency_overrides[moderation_router.get_db] = fake_db
+    try:
+        response = TestClient(app).post(
+            f"/api/v1/tickets/{card.id}/block",
+            json={"blocking_reason_ids": [str(reason_id)]},
+            headers={"X-Moderator-Id": str(moderator_id)},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == str(card.id)
+    assert body["seller_id"] == str(card.seller_id)
+    assert body["kind"] == "PRODUCT"
+    assert body["queue_priority"] == 0
+    assert body["status"] == "REJECTED"
+    assert body["created_at"]
+    assert FakeB2BClient.events[0]["event_type"] == "BLOCKED"
+    assert FakeB2BClient.events[0]["blocking_reason_id"] == str(reason_id)
 
 
 async def test_hard_block_event_carries_hard_block_true() -> None:
     moderator_id = uuid4()
+    reason_id = uuid4()
     card = _card(moderator_id=moderator_id)
     FakeModerationRepository.cards[card.id] = card
-
-    await ModerationService(FakeSession()).decline_product(
-        card.id,
-        moderator_id,
+    FakeModerationRepository.blocking_reasons[reason_id] = SimpleNamespace(
+        id=reason_id,
         hard_block=True,
-        reason={"code": "FORBIDDEN"},
     )
 
-    assert FakeB2BClient.events[0]["decision"] == "BLOCKED"
+    await ModerationService(FakeSession()).block_product(
+        card.id,
+        moderator_id,
+        blocking_reason_ids=[reason_id],
+    )
+
+    assert FakeB2BClient.events[0]["event_type"] == "BLOCKED"
     assert FakeB2BClient.events[0]["hard_block"] is True
-    assert FakeB2BClient.events[0]["payload"]["hard_block"] is True
+    assert FakeB2BClient.events[0]["blocking_reason_id"] == str(reason_id)
 
 
 async def test_any_modify_on_hard_blocked_returns_403() -> None:

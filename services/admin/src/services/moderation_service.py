@@ -54,6 +54,63 @@ class ModerationService:
                 },
             )
 
+        blocking_reason_id = self._reason_id(reason)
+        return await self._block_card(
+            card,
+            hard_block=hard_block,
+            blocking_reason_id=blocking_reason_id,
+            field_reports=field_reports or [],
+        )
+
+    async def block_product(
+        self,
+        card_id: UUID,
+        moderator_id: UUID,
+        *,
+        blocking_reason_ids: list[UUID],
+        field_reports: list[dict[str, object]] | None = None,
+    ):
+        card = await self._get_mutable_card(card_id, moderator_id)
+        if card.status != ModerationStatus.IN_REVIEW:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "BLOCK_NOT_ALLOWED",
+                    "current_status": self._status_value(card.status),
+                },
+            )
+
+        reasons = await self.repo.list_blocking_reasons(blocking_reason_ids)
+        found_ids = {reason.id for reason in reasons}
+        missing_ids = [
+            str(reason_id)
+            for reason_id in blocking_reason_ids
+            if reason_id not in found_ids
+        ]
+        if missing_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "code": "BLOCKING_REASON_NOT_FOUND",
+                    "blocking_reason_ids": missing_ids,
+                },
+            )
+
+        return await self._block_card(
+            card,
+            hard_block=any(reason.hard_block for reason in reasons),
+            blocking_reason_id=blocking_reason_ids[0],
+            field_reports=field_reports or [],
+        )
+
+    async def _block_card(
+        self,
+        card: object,
+        *,
+        hard_block: bool,
+        blocking_reason_id: UUID | None,
+        field_reports: list[dict[str, object]],
+    ):
         card.status = (
             ModerationStatus.HARD_BLOCKED if hard_block else ModerationStatus.BLOCKED
         )
@@ -61,7 +118,7 @@ class ModerationService:
             self._blocked_event(
                 card,
                 hard_block=hard_block,
-                reason=reason,
+                blocking_reason_id=blocking_reason_id,
                 field_reports=field_reports or [],
             )
         )
@@ -124,30 +181,30 @@ class ModerationService:
         card: object,
         *,
         hard_block: bool,
-        reason: dict[str, object],
+        blocking_reason_id: UUID | None,
         field_reports: list[dict[str, object]],
     ) -> dict[str, object]:
         product_id = str(card.product_id)
-        decision = "BLOCKED"
         key_part = "hard-blocked" if hard_block else "blocked"
         return {
-            "idempotency_key": f"moderation-{key_part}:{product_id}",
-            "event_type": "PRODUCT_MODERATION_DECIDED",
+            "idempotency_key": str(
+                uuid5(NAMESPACE_URL, f"moderation:{key_part}:{product_id}")
+            ),
+            "event_type": "BLOCKED",
             "product_id": product_id,
-            "decision": decision,
-            "status": decision,
+            "occurred_at": datetime.now(timezone.utc).isoformat(),
             "hard_block": hard_block,
-            "blocking_reason": reason,
+            "blocking_reason_id": str(blocking_reason_id)
+            if blocking_reason_id
+            else None,
             "field_reports": field_reports,
-            "payload": {
-                "product_id": product_id,
-                "status": decision,
-                "decision": decision,
-                "hard_block": hard_block,
-                "blocking_reason": reason,
-                "field_reports": field_reports,
-            },
         }
+
+    def _reason_id(self, reason: dict[str, object]) -> UUID | None:
+        raw_reason_id = reason.get("id") or reason.get("blocking_reason_id")
+        if raw_reason_id is None:
+            return None
+        return UUID(str(raw_reason_id))
 
     def _has_skus(self, card: object) -> bool:
         if hasattr(card, "sku_ids"):

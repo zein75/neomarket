@@ -6,7 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_current_moderator
 from src.core.database import get_db
-from src.schemas.moderation import DeclineRequest, ModerationCardResponse
+from src.schemas.moderation import (
+    BlockDecisionRequest,
+    DeclineRequest,
+    ModerationCardResponse,
+)
 from src.services.moderation_service import ModerationService
 
 
@@ -14,9 +18,19 @@ router = APIRouter(tags=["moderation"])
 
 
 @router.post(
-    "/api/v1/tickets/{card_id}/approve",
+    "/api/v1/tickets/{ticket_id}/approve",
     response_model=ModerationCardResponse,
 )
+async def approve_ticket(
+    ticket_id: UUID,
+    current_moderator: SimpleNamespace = Depends(get_current_moderator),
+    db: AsyncSession = Depends(get_db),
+) -> ModerationCardResponse:
+    card = await ModerationService(db).approve_product(ticket_id, current_moderator.id)
+    await db.commit()
+    return card
+
+
 @router.post(
     "/api/v1/moderation/{card_id}/approve",
     response_model=ModerationCardResponse,
@@ -38,8 +52,29 @@ async def approve_product(
 
 
 @router.post(
+    "/api/v1/tickets/{ticket_id}/block",
+    response_model=ModerationCardResponse,
+)
+async def block_ticket(
+    ticket_id: UUID,
+    data: BlockDecisionRequest,
+    current_moderator: SimpleNamespace = Depends(get_current_moderator),
+    db: AsyncSession = Depends(get_db),
+) -> ModerationCardResponse:
+    card = await ModerationService(db).block_product(
+        ticket_id,
+        current_moderator.id,
+        blocking_reason_ids=data.blocking_reason_ids,
+        field_reports=data.field_reports,
+    )
+    await db.commit()
+    return card
+
+
+@router.post(
     "/api/v1/moderation/{card_id}/decline",
     response_model=ModerationCardResponse,
+    include_in_schema=False,
 )
 @router.post(
     "/api/v1/products/{card_id}/decline",

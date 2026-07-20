@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.models.moderation import ModerationCard
+from src.models.moderation import BlockingReason, ModerationCard
 
 from .base import BaseRepository
 
@@ -30,3 +30,12 @@ class ModerationRepository(BaseRepository[ModerationCard]):
     async def delete(self, card: ModerationCard) -> None:
         await self.session.delete(card)
         await self.session.flush()
+
+    async def list_blocking_reasons(
+        self,
+        reason_ids: list[UUID],
+    ) -> list[BlockingReason]:
+        result = await self.session.execute(
+            select(BlockingReason).where(BlockingReason.id.in_(reason_ids))
+        )
+        return list(result.scalars().all())
