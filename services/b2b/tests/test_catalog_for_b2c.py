@@ -63,6 +63,7 @@ def _product(
 
 class FakeProductRepository:
     products: list[SimpleNamespace] = []
+    category_parents: dict[object, object | None] = {}
 
     def __init__(self, session: object) -> None:
         self.session = session
@@ -75,10 +76,21 @@ class FakeProductRepository:
     async def get_with_skus(self, product_id):
         return next((product for product in self.products if product.id == product_id), None)
 
+    async def get_category_parent_id(self, category_id):
+        return self.category_parents.get(category_id)
+
+    async def list_category_ids_by_parent(self, parent_id):
+        return [
+            category_id
+            for category_id, current_parent_id in self.category_parents.items()
+            if current_parent_id == parent_id
+        ]
+
 
 @pytest.fixture(autouse=True)
 def patch_repo(monkeypatch: pytest.MonkeyPatch):
     FakeProductRepository.products = []
+    FakeProductRepository.category_parents = {}
     monkeypatch.setattr(
         product_service_module, "ProductRepository", FakeProductRepository
     )
@@ -328,3 +340,49 @@ async def test_public_catalog_search_matches_title_and_description() -> None:
         str(title_match.id),
         str(description_match.id),
     ]
+
+
+@pytest.mark.asyncio
+async def test_public_similar_returns_same_category_without_current() -> None:
+    category_id = uuid4()
+    current = _product(title="Current keyboard", category_id=category_id)
+    same_category = [
+        _product(title=f"Keyboard {idx}", category_id=category_id)
+        for idx in range(10)
+    ]
+    other_category = _product(title="Mouse")
+    FakeProductRepository.products = [current, *same_category, other_category]
+
+    body = await ProductService(SimpleNamespace()).list_similar_public(current.id)
+
+    assert len(body) == 8
+    assert str(current.id) not in {str(item["id"]) for item in body}
+    assert {str(item["category_id"]) for item in body} == {str(category_id)}
+
+
+@pytest.mark.asyncio
+async def test_public_similar_falls_back_to_parent_category() -> None:
+    parent_id = uuid4()
+    current_category_id = uuid4()
+    sibling_category_id = uuid4()
+    current = _product(title="Current keyboard", category_id=current_category_id)
+    same_category = _product(title="Same category", category_id=current_category_id)
+    sibling_category = _product(title="Sibling category", category_id=sibling_category_id)
+    unrelated = _product(title="Unrelated")
+    FakeProductRepository.products = [
+        current,
+        same_category,
+        sibling_category,
+        unrelated,
+    ]
+    FakeProductRepository.category_parents = {
+        current_category_id: parent_id,
+        sibling_category_id: parent_id,
+    }
+
+    body = await ProductService(SimpleNamespace()).list_similar_public(current.id)
+
+    assert {str(item["id"]) for item in body} == {
+        str(same_category.id),
+        str(sibling_category.id),
+    }

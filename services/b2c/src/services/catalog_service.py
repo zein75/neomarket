@@ -102,6 +102,35 @@ class CatalogService:
             raise
         return self._detail(product)
 
+    async def similar_products(
+        self,
+        product_id: str,
+        *,
+        limit: int = 8,
+    ) -> list[dict[str, object]]:
+        try:
+            async with B2BClient(settings.b2b_base_url) as client:
+                products = await client.get_similar_products(product_id, limit=limit)
+        except HTTPException as exc:
+            if exc.status_code == 404:
+                raise HTTPException(
+                    status_code=404,
+                    detail={
+                        "code": "PRODUCT_NOT_FOUND",
+                        "message": "Product not found",
+                    },
+                ) from exc
+            if exc.status_code == 503:
+                raise HTTPException(
+                    status_code=502,
+                    detail={
+                        "code": "B2B_UNAVAILABLE",
+                        "message": "B2B catalog is unavailable",
+                    },
+                ) from exc
+            raise
+        return [self._card(product) for product in products]
+
     async def _load_all_products(self) -> list[dict[str, Any]]:
         products: list[dict[str, Any]] = []
         limit = 100

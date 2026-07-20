@@ -47,6 +47,16 @@ async def get_facets() -> dict[str, object]:
     return await CatalogService().facets()
 
 
+@router.get("/api/v1/products/{product_id}/similar")
+@router.get("/api/v1/catalog/products/{product_id}/similar", include_in_schema=False)
+@router.get("/catalog/products/{product_id}/similar", include_in_schema=False)
+async def similar_products(
+    product_id: str,
+    limit: int = Query(8, ge=1, le=8),
+) -> list[dict[str, object]]:
+    return await CatalogService().similar_products(product_id, limit=limit)
+
+
 @router.get("/api/v1/catalog/products/{product_id}")
 @router.get("/api/v1/products/{product_id}", include_in_schema=False)
 @router.get("/catalog/products/{product_id}", include_in_schema=False)

@@ -148,6 +148,21 @@ class ProductRepository(BaseRepository[Product]):
         )
         return result.scalar_one_or_none() is not None
 
+    async def get_category_parent_id(self, category_id: UUID) -> UUID | None:
+        result = await self.session.execute(
+            select(Category.parent_id).where(Category.id == category_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def list_category_ids_by_parent(self, parent_id: UUID) -> list[UUID]:
+        result = await self.session.execute(
+            select(Category.id).where(
+                Category.parent_id == parent_id,
+                Category.is_active == True,  # noqa: E712
+            )
+        )
+        return list(result.scalars().all())
+
     async def get_seller_product(self, product_id: UUID, seller_id: UUID) -> Product | None:
         result = await self.session.execute(
             select(Product)

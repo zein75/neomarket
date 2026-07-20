@@ -47,6 +47,7 @@ class FakeB2BClient:
     get_public_products_calls = 0
     last_public_products_kwargs: dict[str, object] = {}
     get_product_calls: list[str] = []
+    get_similar_products_calls: list[tuple[str, int]] = []
 
     def __init__(self, base_url: str) -> None:
         self.base_url = base_url
@@ -158,6 +159,24 @@ class FakeB2BClient:
                 return product
         raise HTTPException(status_code=404, detail="Product not found")
 
+    async def get_similar_products(self, product_id: str, limit: int = 8):
+        self.__class__.get_similar_products_calls.append((product_id, limit))
+        if self.unavailable:
+            raise HTTPException(status_code=503, detail="B2B service unavailable")
+        current = next(
+            (product for product in self.products if product["id"] == product_id),
+            None,
+        )
+        if current is None:
+            raise HTTPException(status_code=404, detail="Product not found")
+        current_category = current.get("category_id")
+        return [
+            product
+            for product in self.products
+            if product["id"] != product_id
+            and product.get("category_id") == current_category
+        ][:limit]
+
 
 @pytest.fixture(autouse=True)
 def patch_b2b(monkeypatch: pytest.MonkeyPatch):
@@ -166,6 +185,7 @@ def patch_b2b(monkeypatch: pytest.MonkeyPatch):
     FakeB2BClient.get_public_products_calls = 0
     FakeB2BClient.last_public_products_kwargs = {}
     FakeB2BClient.get_product_calls = []
+    FakeB2BClient.get_similar_products_calls = []
     monkeypatch.setattr(catalog_service_module, "B2BClient", FakeB2BClient)
 
 
@@ -510,3 +530,69 @@ async def test_sku_without_stock_is_shown_as_unavailable() -> None:
 
     assert response["skus"][0]["in_stock"] is False
     assert response["skus"][0]["available_quantity"] == 0
+
+
+def test_similar_returns_up_to_8_from_same_category() -> None:
+    current = _product(
+        "p-current",
+        title="Current keyboard",
+        category_id="keyboards",
+        category="Keyboards",
+        price=1000,
+    )
+    same_category = [
+        _product(
+            f"p{i}",
+            title=f"Keyboard {i}",
+            category_id="keyboards",
+            category="Keyboards",
+            price=1000 + i,
+        )
+        for i in range(10)
+    ]
+    other_category = _product(
+        "p-mouse",
+        title="Mouse",
+        category_id="mice",
+        category="Mice",
+        price=900,
+    )
+    FakeB2BClient.products = [current, *same_category, other_category]
+
+    response = TestClient(app).get("/api/v1/products/p-current/similar")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 8
+    assert "p-current" not in {item["id"] for item in body}
+    assert {item["category_id"] for item in body} == {"keyboards"}
+    assert FakeB2BClient.get_similar_products_calls == [("p-current", 8)]
+
+
+def test_empty_category_returns_200_empty_list() -> None:
+    FakeB2BClient.products = [
+        _product(
+            "p-current",
+            title="Current keyboard",
+            category_id="keyboards",
+            category="Keyboards",
+            price=1000,
+        )
+    ]
+
+    response = TestClient(app).get("/api/v1/products/p-current/similar")
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_unknown_product_returns_404() -> None:
+    FakeB2BClient.products = []
+
+    response = TestClient(app).get("/api/v1/products/missing/similar")
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "code": "PRODUCT_NOT_FOUND",
+        "message": "Product not found",
+    }

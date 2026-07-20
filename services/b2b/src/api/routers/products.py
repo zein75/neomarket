@@ -19,6 +19,7 @@ from src.schemas.product import (
     ProductPaginatedResponse,
     ProductPublicPaginatedResponse,
     ProductPublicResponse,
+    ProductPublicShortResponse,
     ProductResponse,
     ProductUpdate,
 )
@@ -71,6 +72,20 @@ async def get_product(
 ) -> Any:
     svc = ProductService(db)
     return await svc.get_active(product_id)
+
+
+@router.get(
+    "/api/v1/public/products/{product_id}/similar",
+    response_model=list[ProductPublicShortResponse],
+)
+async def get_similar_public_products(
+    product_id: UUID,
+    limit: int = Query(8, ge=1, le=8),
+    _: None = Depends(verify_service_key),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    svc = ProductService(db)
+    return await svc.list_similar_public(product_id, limit=limit)
 
 
 @router.get("/api/v1/products", response_model=ProductPaginatedResponse)

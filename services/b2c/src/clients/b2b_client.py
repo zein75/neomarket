@@ -63,6 +63,12 @@ class B2BClient:
     async def get_product(self, product_id: str) -> Any:
         return await self._get(f"/api/v1/public/products/{product_id}")
 
+    async def get_similar_products(self, product_id: str, limit: int = 8) -> Any:
+        return await self._get(
+            f"/api/v1/public/products/{product_id}/similar",
+            limit=limit,
+        )
+
     async def get_public_products(
         self,
         *,
