@@ -4,7 +4,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.deps import get_current_seller, get_db, verify_service_key
+from src.api.deps import (
+    get_current_seller,
+    get_db,
+    get_seller_or_service,
+    verify_service_key,
+)
 from src.models.seller import Seller
 from src.models.product import ProductStatus
 from src.schemas.product import (
@@ -147,13 +152,18 @@ async def create_product(
     return product
 
 
-@router.get("/api/v1/products/{product_id}", response_model=ProductDetailResponse)
+@router.get(
+    "/api/v1/products/{product_id}",
+    response_model=ProductDetailResponse | ProductPublicResponse,
+)
 async def get_seller_product(
     product_id: UUID,
-    current_seller: Seller = Depends(get_current_seller),
+    current_seller: Seller | None = Depends(get_seller_or_service),
     db: AsyncSession = Depends(get_db),
 ) -> Any:
     svc = ProductService(db)
+    if current_seller is None:
+        return await svc.get_public_detail(product_id)
     return await svc.get_for_seller(product_id, current_seller.id)
 
 

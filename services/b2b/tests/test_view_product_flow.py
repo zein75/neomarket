@@ -176,7 +176,7 @@ def _fake_seller(seller_id):
 def test_get_others_product_response_matches_error_contract() -> None:
     product = _product(seller_id=uuid4())
     FakeProductRepository.product = product
-    app.dependency_overrides[products_router.get_current_seller] = _fake_seller(
+    app.dependency_overrides[products_router.get_seller_or_service] = _fake_seller(
         uuid4()
     )
     app.dependency_overrides[products_router.get_db] = _fake_db
@@ -193,7 +193,7 @@ def test_get_others_product_response_matches_error_contract() -> None:
 
 
 def test_get_nonexistent_response_matches_error_contract() -> None:
-    app.dependency_overrides[products_router.get_current_seller] = _fake_seller(
+    app.dependency_overrides[products_router.get_seller_or_service] = _fake_seller(
         uuid4()
     )
     app.dependency_overrides[products_router.get_db] = _fake_db
@@ -207,6 +207,29 @@ def test_get_nonexistent_response_matches_error_contract() -> None:
         "code": "PRODUCT_NOT_FOUND",
         "message": "Product not found",
     }
+
+
+def test_canonical_product_route_accepts_service_key_and_returns_public_shape() -> None:
+    product = _product(seller_id=uuid4())
+    FakeProductRepository.product = product
+    app.dependency_overrides[products_router.get_db] = _fake_db
+    try:
+        response = TestClient(app).get(
+            f"/api/v1/products/{product.id}",
+            headers={"X-Service-Key": "dev-service-key-change-in-production"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["seller_id"] == str(product.seller_id)
+    assert body["slug"].startswith("wireless-keyboard-")
+    assert body["skus"][0]["stock_quantity"] == 10
+    assert "cost_price" not in body["skus"][0]
+    assert "reserved_quantity" not in body["skus"][0]
+    assert "blocked" not in body
+    assert "field_reports" not in body
 
 
 def test_public_product_response_does_not_expose_seller_sku_fields() -> None:
