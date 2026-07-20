@@ -1,16 +1,30 @@
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
+from src.core.config import settings
 from src.core.security import decode_access_token
 from src.models.user import User
 from src.repositories.user_repo import UserRepository
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
+
+
+async def verify_service_key(
+    x_service_key: str | None = Header(default=None, alias="X-Service-Key"),
+) -> None:
+    if x_service_key != settings.service_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "code": "SERVICE_KEY_INVALID",
+                "message": "Invalid or missing service key",
+            },
+        )
 
 
 async def get_current_user(

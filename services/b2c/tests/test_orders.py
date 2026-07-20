@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 import pytest
 from fastapi import HTTPException
 
-from src.models.order import Order, OrderStatus
+from src.models.order import Order, OrderItem, OrderStatus
 from src.schemas.order import OrderResponse
 from src.services import order_service as order_service_module
 from src.services.order_service import OrderService
@@ -35,6 +35,17 @@ def _cart_item(
 
 
 def _order(*, user_id: UUID, status: OrderStatus) -> Order:
+    sku_id = uuid4()
+    item = OrderItem(
+        sku_id=sku_id,
+        product_id=uuid4(),
+        product_title="Phone",
+        sku_name="128 GB",
+        quantity=2,
+        unit_price=150,
+        line_total=300,
+    )
+    item.id = uuid4()
     order = Order(
         user_id=user_id,
         status=status,
@@ -43,8 +54,18 @@ def _order(*, user_id: UUID, status: OrderStatus) -> Order:
         idempotency_key=f"order-{uuid4()}",
     )
     order.id = uuid4()
-    order.items = []
+    order.items = [item]
     return order
+
+
+def _unreserve_payload(order: Order) -> dict[str, object]:
+    return {
+        "order_id": str(order.id),
+        "items": [
+            {"sku_id": str(item.sku_id), "quantity": item.quantity}
+            for item in order.items
+        ],
+    }
 
 
 class FakeSession:
@@ -335,7 +356,7 @@ async def test_cancel_paid_order_transitions_to_cancelled() -> None:
     )
 
     assert cancelled.status == OrderStatus.CANCELLED
-    assert FakeB2BClient.unreserve_calls == [{"order_id": str(order.id)}]
+    assert FakeB2BClient.unreserve_calls == [_unreserve_payload(order)]
 
 
 async def test_unreserve_failure_transitions_to_cancel_pending() -> None:
@@ -353,7 +374,7 @@ async def test_unreserve_failure_transitions_to_cancel_pending() -> None:
     )
 
     assert pending.status == OrderStatus.CANCEL_PENDING
-    assert FakeB2BClient.unreserve_calls == [{"order_id": str(order.id)}]
+    assert FakeB2BClient.unreserve_calls == [_unreserve_payload(order)]
 
 
 async def test_cancel_assembling_order_transitions_to_cancelled() -> None:
@@ -367,7 +388,7 @@ async def test_cancel_assembling_order_transitions_to_cancelled() -> None:
     )
 
     assert cancelled.status == OrderStatus.CANCELLED
-    assert FakeB2BClient.unreserve_calls == [{"order_id": str(order.id)}]
+    assert FakeB2BClient.unreserve_calls == [_unreserve_payload(order)]
 
 
 async def test_cancel_delivering_order_transitions_to_cancelled() -> None:
@@ -381,7 +402,7 @@ async def test_cancel_delivering_order_transitions_to_cancelled() -> None:
     )
 
     assert cancelled.status == OrderStatus.CANCELLED
-    assert FakeB2BClient.unreserve_calls == [{"order_id": str(order.id)}]
+    assert FakeB2BClient.unreserve_calls == [_unreserve_payload(order)]
 
 
 async def test_cancel_delivered_order_returns_409() -> None:

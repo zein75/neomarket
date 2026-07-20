@@ -32,6 +32,7 @@ class ReserveRequest(BaseModel):
 
 class UnreserveRequest(BaseModel):
     order_id: UUID
+    items: list[ReserveItem] | None = None
 
 
 class FulfillRequest(BaseModel):

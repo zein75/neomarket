@@ -4,7 +4,7 @@ from collections.abc import AsyncGenerator
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from src.api.routers import auth, cart, catalog, favorites, health, orders
+from src.api.routers import auth, b2b_events, cart, catalog, favorites, health, orders
 
 
 @asynccontextmanager
@@ -35,6 +35,7 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
 
 app.include_router(health.router)
 app.include_router(auth.router)
+app.include_router(b2b_events.router)
 app.include_router(cart.router)
 app.include_router(favorites.router)
 app.include_router(orders.router)

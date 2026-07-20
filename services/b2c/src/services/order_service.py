@@ -152,7 +152,7 @@ class OrderService:
             )
 
         try:
-            await self._unreserve(order.id)
+            await self._unreserve(order)
         except HTTPException:
             logger.exception("Failed to unreserve cancelled order %s", order.id)
             order.status = OrderStatus.CANCEL_PENDING
@@ -237,9 +237,17 @@ class OrderService:
                     )
                 raise
 
-    async def _unreserve(self, order_id: UUID) -> None:
+    async def _unreserve(self, order: Order) -> None:
         async with B2BClient(settings.b2b_base_url) as client:
-            await client.unreserve({"order_id": str(order_id)})
+            await client.unreserve(
+                {
+                    "order_id": str(order.id),
+                    "items": [
+                        {"sku_id": str(item.sku_id), "quantity": item.quantity}
+                        for item in order.items
+                    ],
+                }
+            )
 
     def _reserve_failure_detail(self, detail: object) -> object:
         if isinstance(detail, dict) and "failed_items" in detail:

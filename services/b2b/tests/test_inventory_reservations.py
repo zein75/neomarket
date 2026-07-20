@@ -261,13 +261,17 @@ def test_reserve_response_includes_reserved_at() -> None:
 
 def test_unreserve_response_includes_processed_at() -> None:
     order_id = uuid4()
+    sku_id = uuid4()
 
     app.dependency_overrides[reservations_router.get_db] = _fake_db
     try:
         response = TestClient(app).post(
             "/api/v1/inventory/unreserve",
             headers={"X-Service-Key": "dev-service-key-change-in-production"},
-            json={"order_id": str(order_id)},
+            json={
+                "order_id": str(order_id),
+                "items": [{"sku_id": str(sku_id), "quantity": 1}],
+            },
         )
     finally:
         app.dependency_overrides.clear()
