@@ -16,17 +16,30 @@ class SKUImageResponse(BaseModel):
     ordering: int
 
 
+class SKUCharacteristic(BaseModel):
+    name: str
+    value: str
+
+
 class SKUCreate(BaseModel):
     product_id: UUID
     name: str
     price: int
+    discount: int = Field(default=0, ge=0)
+    cost_price: int | None = None
+    article: str | None = None
     stock: int = 0
     images: list[SKUImageCreate] = Field(min_length=1)
+    characteristics: list[SKUCharacteristic] = Field(default_factory=list)
 
 
 class SKUUpdate(BaseModel):
     name: str | None = None
     price: int | None = None
+    discount: int | None = Field(default=None, ge=0)
+    cost_price: int | None = None
+    article: str | None = None
+    characteristics: list[SKUCharacteristic] | None = None
     stock: int | None = None
     images: list[SKUImageCreate] | None = None
     is_active: bool | None = None
@@ -39,13 +52,13 @@ class SKUResponse(BaseModel):
     product_id: UUID
     name: str
     price: int
-    discount: int = 0
-    article: str | None = None
-    characteristics: dict[str, Any] = Field(default_factory=dict)
-    cost_price: int | None = None
+    discount: int
+    article: str | None
+    characteristics: list[SKUCharacteristic]
+    cost_price: int | None
     stock_quantity: int
-    active_quantity: int | None = None
-    reserved_quantity: int = 0
+    active_quantity: int
+    reserved_quantity: int
     images: list[SKUImageResponse]
     is_active: bool
     created_at: datetime
@@ -76,8 +89,11 @@ class SKUResponse(BaseModel):
 
         data.setdefault("discount", 0)
         data.setdefault("article", None)
-        data.setdefault("characteristics", {})
+        data["characteristics"] = cls._normalize_characteristics(
+            data.get("characteristics", [])
+        )
         data.setdefault("cost_price", None)
+        data.setdefault("reserved_quantity", 0)
         now = datetime.now(timezone.utc)
         if data.get("created_at") is None:
             data["created_at"] = now
@@ -85,6 +101,11 @@ class SKUResponse(BaseModel):
             data["updated_at"] = now
         if "stock_quantity" not in data and "stock" in data:
             data["stock_quantity"] = data["stock"]
+        if data.get("active_quantity") is None:
+            data["active_quantity"] = max(
+                data["stock_quantity"] - data.get("reserved_quantity", 0),
+                0,
+            )
         data["images"] = cls._normalize_images(data.get("images", []), data.get("id"))
         return data
 
@@ -113,3 +134,18 @@ class SKUResponse(BaseModel):
                 }
             )
         return normalized
+
+    @classmethod
+    def _normalize_characteristics(cls, characteristics: Any) -> list[dict[str, str]]:
+        if isinstance(characteristics, dict):
+            return [
+                {"name": str(name), "value": str(value)}
+                for name, value in characteristics.items()
+            ]
+        return [
+            {
+                "name": str(item["name"] if isinstance(item, dict) else item.name),
+                "value": str(item["value"] if isinstance(item, dict) else item.value),
+            }
+            for item in characteristics
+        ]

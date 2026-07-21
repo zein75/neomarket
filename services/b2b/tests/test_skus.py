@@ -358,7 +358,7 @@ def test_update_sku_response_matches_contract(monkeypatch: pytest.MonkeyPatch) -
     assert "stock" not in body
     assert body["discount"] == 0
     assert body["article"] is None
-    assert body["characteristics"] == {}
+    assert body["characteristics"] == []
     assert body["reserved_quantity"] == 7
     assert body["images"][0]["url"] == "https://cdn.neomarket.test/skus/keyboard-black.jpg"
     assert body["images"][0]["ordering"] == 0
