@@ -3,7 +3,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models.favorite import Favorite
+from src.models.favorite import Favorite, ProductSubscription
 
 from .base import BaseRepository
 
@@ -27,6 +27,24 @@ class FavoriteRepository(BaseRepository[Favorite]):
             select(Favorite).where(
                 Favorite.user_id == user_id,
                 Favorite.product_id == product_id,
+            )
+        )
+        return result.scalar_one_or_none()
+
+
+class ProductSubscriptionRepository(BaseRepository[ProductSubscription]):
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(session, ProductSubscription)
+
+    async def get_by_user_and_product(
+        self,
+        user_id: UUID,
+        product_id: UUID,
+    ) -> ProductSubscription | None:
+        result = await self.session.execute(
+            select(ProductSubscription).where(
+                ProductSubscription.user_id == user_id,
+                ProductSubscription.product_id == product_id,
             )
         )
         return result.scalar_one_or_none()

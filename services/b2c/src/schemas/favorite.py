@@ -15,3 +15,16 @@ class FavoriteResponse(BaseModel):
     product_id: UUID
     added_at: datetime
     product: dict[str, object] | None = None
+
+
+class ProductSubscriptionRequest(BaseModel):
+    notify_on: list[str]
+
+
+class ProductSubscriptionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    product_id: UUID
+    notify_on: list[str]
+    created_at: datetime

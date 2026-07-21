@@ -5,7 +5,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_current_user, get_db
 from src.models.user import User
-from src.schemas.favorite import FavoriteAdd, FavoriteResponse
+from src.schemas.favorite import (
+    FavoriteAdd,
+    FavoriteResponse,
+    ProductSubscriptionRequest,
+    ProductSubscriptionResponse,
+)
 from src.services.favorite_service import FavoriteService
 
 router = APIRouter(tags=["favorites"])
@@ -52,4 +57,46 @@ async def remove_favorite(
 ) -> None:
     svc = FavoriteService(db)
     await svc.remove_favorite(current_user.id, product_id)
+    await db.commit()
+
+
+@router.post(
+    "/api/v1/favorites/{product_id}/subscribe",
+    response_model=ProductSubscriptionResponse,
+    status_code=201,
+)
+@router.post(
+    "/favorites/{product_id}/subscribe",
+    response_model=ProductSubscriptionResponse,
+    status_code=201,
+    include_in_schema=False,
+)
+async def subscribe_to_product(
+    product_id: UUID,
+    data: ProductSubscriptionRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ProductSubscriptionResponse:
+    subscription = await FavoriteService(db).subscribe(
+        current_user.id,
+        product_id,
+        data,
+    )
+    await db.commit()
+    await db.refresh(subscription)
+    return subscription
+
+
+@router.delete("/api/v1/favorites/{product_id}/subscribe", status_code=204)
+@router.delete(
+    "/favorites/{product_id}/subscribe",
+    status_code=204,
+    include_in_schema=False,
+)
+async def unsubscribe_from_product(
+    product_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    await FavoriteService(db).unsubscribe(current_user.id, product_id)
     await db.commit()

@@ -5,10 +5,8 @@ from src.services.catalog_service import CatalogService
 router = APIRouter(tags=["catalog"])
 
 
-@router.get("/api/v1/catalog/products")
-# Hidden aliases are kept for legacy storefront clients while the canonical path
-# remains /api/v1/catalog/products.
-@router.get("/api/v1/products", include_in_schema=False)
+@router.get("/api/v1/products")
+@router.get("/api/v1/catalog/products", include_in_schema=False)
 @router.get("/catalog/products", include_in_schema=False)
 async def list_products(
     limit: int = Query(20, ge=1, le=100),
