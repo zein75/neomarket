@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 
 from src.api.routers import (
     auth,
+    categories,
     health,
     invoices,
     moderation_events,
@@ -59,6 +60,7 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
 
 app.include_router(health.router)
 app.include_router(auth.router)
+app.include_router(categories.router)
 app.include_router(products.router)
 app.include_router(skus.router)
 app.include_router(invoices.router)

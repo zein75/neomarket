@@ -1,5 +1,13 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Query
 
+from src.schemas.catalog import (
+    BreadcrumbsResponse,
+    CategoryDetailResponse,
+    CategoryTreeResponse,
+    ProductShortListResponse,
+)
 from src.services.catalog_service import CatalogService
 
 router = APIRouter(tags=["catalog"])
@@ -38,21 +46,56 @@ async def list_products(
     )
 
 
-# Non-spec extension used by the storefront filter UI. The response contract
-# should be added to the shared OpenAPI spec before exposing it to new clients.
 @router.get("/api/v1/catalog/facets")
 async def get_facets() -> dict[str, object]:
     return await CatalogService().facets()
 
 
-@router.get("/api/v1/products/{product_id}/similar")
+@router.get("/api/v1/categories", response_model=CategoryTreeResponse)
+async def list_categories() -> CategoryTreeResponse:
+    return await CatalogService().category_tree()
+
+
+@router.get("/api/v1/categories/{category_id}", response_model=CategoryDetailResponse)
+async def get_category(
+    category_id: UUID,
+    include_product_count: bool = Query(False),
+) -> CategoryDetailResponse:
+    return await CatalogService().category_detail(
+        str(category_id),
+        include_product_count=include_product_count,
+    )
+
+
+@router.get("/api/v1/breadcrumbs", response_model=BreadcrumbsResponse)
+async def get_breadcrumbs(
+    category_id: UUID | None = Query(None),
+    product_id: UUID | None = Query(None),
+) -> BreadcrumbsResponse:
+    return await CatalogService().breadcrumbs(
+        category_id=str(category_id) if category_id else None,
+        product_id=str(product_id) if product_id else None,
+    )
+
+
+@router.get(
+    "/api/v1/products/{product_id}/similar",
+    response_model=ProductShortListResponse,
+)
 @router.get("/api/v1/catalog/products/{product_id}/similar", include_in_schema=False)
 @router.get("/catalog/products/{product_id}/similar", include_in_schema=False)
 async def similar_products(
-    product_id: str,
-    limit: int = Query(8, ge=1, le=8),
-) -> list[dict[str, object]]:
-    return await CatalogService().similar_products(product_id, limit=limit)
+    product_id: UUID,
+    category: UUID = Query(...),
+    limit: int = Query(8, ge=1, le=20),
+    offset: int = Query(0, ge=0),
+) -> ProductShortListResponse:
+    return await CatalogService().similar_products(
+        str(product_id),
+        category_id=str(category),
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.get("/api/v1/catalog/products/{product_id}")

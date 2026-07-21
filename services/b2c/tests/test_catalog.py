@@ -41,13 +41,32 @@ def _product(
     }
 
 
+def _category(
+    category_id: str,
+    *,
+    name: str,
+    slug: str,
+    parent_id: str | None = None,
+) -> dict[str, object]:
+    return {
+        "id": category_id,
+        "name": name,
+        "slug": slug,
+        "parent_id": parent_id,
+        "is_active": True,
+        "created_at": "2026-04-16T10:30:00Z",
+        "updated_at": "2026-04-16T10:30:00Z",
+    }
+
+
 class FakeB2BClient:
     products: list[dict[str, object]] = []
+    categories: list[dict[str, object]] = []
     unavailable = False
     get_public_products_calls = 0
     last_public_products_kwargs: dict[str, object] = {}
     get_product_calls: list[str] = []
-    get_similar_products_calls: list[tuple[str, int]] = []
+    get_similar_products_calls: list[tuple[str, str, int, int]] = []
 
     def __init__(self, base_url: str) -> None:
         self.base_url = base_url
@@ -159,8 +178,17 @@ class FakeB2BClient:
                 return product
         raise HTTPException(status_code=404, detail="Product not found")
 
-    async def get_similar_products(self, product_id: str, limit: int = 8):
-        self.__class__.get_similar_products_calls.append((product_id, limit))
+    async def get_similar_products(
+        self,
+        product_id: str,
+        *,
+        category_id: str,
+        limit: int = 8,
+        offset: int = 0,
+    ):
+        self.__class__.get_similar_products_calls.append(
+            (product_id, category_id, limit, offset)
+        )
         if self.unavailable:
             raise HTTPException(status_code=503, detail="B2B service unavailable")
         current = next(
@@ -170,17 +198,76 @@ class FakeB2BClient:
         if current is None:
             raise HTTPException(status_code=404, detail="Product not found")
         current_category = current.get("category_id")
-        return [
+        products = [
             product
             for product in self.products
             if product["id"] != product_id
+            and product.get("category_id") == category_id
             and product.get("category_id") == current_category
-        ][:limit]
+        ]
+        return {
+            "items": products[offset : offset + limit],
+            "total_count": len(products),
+            "limit": limit,
+            "offset": offset,
+        }
+
+    async def get_categories(self):
+        if self.unavailable:
+            raise HTTPException(status_code=503, detail="B2B service unavailable")
+        return {"items": list(self.categories)}
+
+    async def get_category(
+        self,
+        category_id: str,
+        *,
+        include_product_count: bool = False,
+    ):
+        if self.unavailable:
+            raise HTTPException(status_code=503, detail="B2B service unavailable")
+        category = next(
+            (category for category in self.categories if category["id"] == category_id),
+            None,
+        )
+        if category is None:
+            raise HTTPException(status_code=404, detail="Category not found")
+        parent = next(
+            (
+                item
+                for item in self.categories
+                if item["id"] == category.get("parent_id")
+            ),
+            None,
+        )
+        product_count = None
+        if include_product_count:
+            product_count = sum(
+                1 for product in self.products if product.get("category_id") == category_id
+            )
+        return {
+            "id": category["id"],
+            "name": category["name"],
+            "slug": category["slug"],
+            "description": category.get("description"),
+            "parent": (
+                {"id": parent["id"], "name": parent["name"], "slug": parent["slug"]}
+                if parent
+                else None
+            ),
+            "product_count": product_count,
+            "seo": category.get("seo") or {},
+            "meta_tags": category.get("meta_tags") or {},
+            "image_url": category.get("image_url"),
+            "is_active": category.get("is_active", True),
+            "created_at": category.get("created_at", "2026-04-16T10:30:00Z"),
+            "updated_at": category.get("updated_at", "2026-04-16T10:30:00Z"),
+        }
 
 
 @pytest.fixture(autouse=True)
 def patch_b2b(monkeypatch: pytest.MonkeyPatch):
     FakeB2BClient.products = []
+    FakeB2BClient.categories = []
     FakeB2BClient.unavailable = False
     FakeB2BClient.get_public_products_calls = 0
     FakeB2BClient.last_public_products_kwargs = {}
@@ -364,6 +451,212 @@ async def test_b2b_unavailable_returns_502() -> None:
     assert exc_info.value.status_code == 502
 
 
+def test_category_tree_returns_nested_structure() -> None:
+    root_id = "10000000-0000-0000-0000-000000000001"
+    child_id = "10000000-0000-0000-0000-000000000002"
+    leaf_id = "10000000-0000-0000-0000-000000000003"
+    FakeB2BClient.categories = [
+        _category(root_id, name="Electronics", slug="electronics"),
+        _category(child_id, name="Phones", slug="phones", parent_id=root_id),
+        _category(leaf_id, name="Android", slug="android", parent_id=child_id),
+    ]
+
+    response = TestClient(app).get("/api/v1/categories")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "items": [
+            {
+                "id": root_id,
+                "name": "Electronics",
+                "parent_id": None,
+                "children": [
+                    {
+                        "id": child_id,
+                        "name": "Phones",
+                        "parent_id": root_id,
+                        "children": [
+                            {
+                                "id": leaf_id,
+                                "name": "Android",
+                                "parent_id": child_id,
+                                "children": [],
+                            }
+                        ],
+                    }
+                ],
+            }
+        ]
+    }
+
+
+def test_breadcrumbs_return_path_from_root() -> None:
+    root_id = "10000000-0000-0000-0000-000000000011"
+    child_id = "10000000-0000-0000-0000-000000000012"
+    FakeB2BClient.categories = [
+        _category(root_id, name="Electronics", slug="electronics"),
+        _category(child_id, name="Phones", slug="phones", parent_id=root_id),
+    ]
+
+    response = TestClient(app).get(
+        "/api/v1/breadcrumbs",
+        params={"category_id": child_id},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "data": [
+            {
+                "id": root_id,
+                "slug": "electronics",
+                "name": "Electronics",
+                "url": "/catalog/electronics",
+                "level": 0,
+                "is_current": False,
+            },
+            {
+                "id": child_id,
+                "slug": "phones",
+                "name": "Phones",
+                "url": "/catalog/electronics/phones",
+                "level": 1,
+                "is_current": True,
+            },
+        ],
+        "meta": {
+            "resolved_via": "category_id",
+            "category_id": child_id,
+        },
+    }
+
+
+def test_category_detail_returns_metadata() -> None:
+    root_id = "10000000-0000-0000-0000-000000000013"
+    child_id = "10000000-0000-0000-0000-000000000014"
+    FakeB2BClient.categories = [
+        _category(root_id, name="Electronics", slug="electronics"),
+        _category(child_id, name="Phones", slug="phones", parent_id=root_id),
+    ]
+    FakeB2BClient.products = [
+        _product(
+            "00000000-0000-0000-0000-000000000014",
+            title="Phone",
+            category_id=child_id,
+            category="Phones",
+            price=1000,
+        )
+    ]
+
+    response = TestClient(app).get(
+        f"/api/v1/categories/{child_id}",
+        params={"include_product_count": True},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == child_id
+    assert body["parent"] == {
+        "id": root_id,
+        "name": "Electronics",
+        "slug": "electronics",
+    }
+    assert body["product_count"] == 1
+
+
+def test_breadcrumbs_resolve_product_category() -> None:
+    root_id = "10000000-0000-0000-0000-000000000015"
+    child_id = "10000000-0000-0000-0000-000000000016"
+    product_id = "00000000-0000-0000-0000-000000000016"
+    FakeB2BClient.categories = [
+        _category(root_id, name="Electronics", slug="electronics"),
+        _category(child_id, name="Phones", slug="phones", parent_id=root_id),
+    ]
+    FakeB2BClient.products = [
+        _product(
+            product_id,
+            title="Phone",
+            category_id=child_id,
+            category="Phones",
+            price=1000,
+        )
+    ]
+
+    response = TestClient(app).get(
+        "/api/v1/breadcrumbs",
+        params={"product_id": product_id},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["meta"] == {
+        "resolved_via": "product_id",
+        "category_id": child_id,
+        "product_id": product_id,
+    }
+    assert [item["slug"] for item in response.json()["data"]] == [
+        "electronics",
+        "phones",
+    ]
+
+
+def test_unknown_category_returns_404() -> None:
+    category_id = "10000000-0000-0000-0000-000000000404"
+
+    response = TestClient(app).get(f"/api/v1/categories/{category_id}")
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "code": "NOT_FOUND",
+        "message": "Category not found",
+    }
+
+
+def test_orphan_node_returns_422() -> None:
+    child_id = "10000000-0000-0000-0000-000000000021"
+    missing_parent_id = "10000000-0000-0000-0000-000000000022"
+    FakeB2BClient.categories = [
+        _category(
+            child_id,
+            name="Phones",
+            slug="phones",
+            parent_id=missing_parent_id,
+        )
+    ]
+
+    response = TestClient(app).get("/api/v1/categories")
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "error": "orphan_node",
+        "message": "category hierarchy is broken",
+    }
+
+
+def test_ambiguous_params_returns_400() -> None:
+    category_id = "10000000-0000-0000-0000-000000000031"
+    product_id = "00000000-0000-0000-0000-000000000031"
+
+    response = TestClient(app).get(
+        "/api/v1/breadcrumbs",
+        params={"category_id": category_id, "product_id": product_id},
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "error": "ambiguous_param",
+        "message": "only one of category_id or product_id must be provided",
+    }
+
+
+def test_missing_param_returns_400() -> None:
+    response = TestClient(app).get("/api/v1/breadcrumbs")
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "error": "missing_param",
+        "message": "category_id or product_id must be provided",
+    }
+
+
 @pytest.mark.asyncio
 async def test_b2b_public_catalog_uses_service_key(
     monkeypatch: pytest.MonkeyPatch,
@@ -533,66 +826,110 @@ async def test_sku_without_stock_is_shown_as_unavailable() -> None:
 
 
 def test_similar_returns_up_to_8_from_same_category() -> None:
+    current_id = "00000000-0000-0000-0000-000000000001"
+    category_id = "10000000-0000-0000-0000-000000000001"
     current = _product(
-        "p-current",
+        current_id,
         title="Current keyboard",
-        category_id="keyboards",
+        category_id=category_id,
         category="Keyboards",
         price=1000,
     )
     same_category = [
         _product(
-            f"p{i}",
+            f"00000000-0000-0000-0000-0000000001{i:02d}",
             title=f"Keyboard {i}",
-            category_id="keyboards",
+            category_id=category_id,
             category="Keyboards",
             price=1000 + i,
         )
         for i in range(10)
     ]
     other_category = _product(
-        "p-mouse",
+        "00000000-0000-0000-0000-000000000201",
         title="Mouse",
-        category_id="mice",
+        category_id="10000000-0000-0000-0000-000000000002",
         category="Mice",
         price=900,
     )
     FakeB2BClient.products = [current, *same_category, other_category]
 
-    response = TestClient(app).get("/api/v1/products/p-current/similar")
+    response = TestClient(app).get(
+        f"/api/v1/products/{current_id}/similar",
+        params={"category": category_id},
+    )
 
     assert response.status_code == 200
     body = response.json()
-    assert len(body) == 8
-    assert "p-current" not in {item["id"] for item in body}
-    assert {item["category_id"] for item in body} == {"keyboards"}
-    assert FakeB2BClient.get_similar_products_calls == [("p-current", 8)]
+    assert len(body["items"]) == 8
+    assert body["total_count"] == 10
+    assert body["limit"] == 8
+    assert body["offset"] == 0
+    assert current_id not in {item["id"] for item in body["items"]}
+    assert {item["title"] for item in body["items"]} == {
+        f"Keyboard {i}" for i in range(8)
+    }
+    assert FakeB2BClient.get_similar_products_calls == [
+        (current_id, category_id, 8, 0)
+    ]
 
 
 def test_empty_category_returns_200_empty_list() -> None:
+    current_id = "00000000-0000-0000-0000-000000000301"
+    category_id = "10000000-0000-0000-0000-000000000003"
     FakeB2BClient.products = [
         _product(
-            "p-current",
+            current_id,
             title="Current keyboard",
-            category_id="keyboards",
+            category_id=category_id,
             category="Keyboards",
             price=1000,
         )
     ]
 
-    response = TestClient(app).get("/api/v1/products/p-current/similar")
+    response = TestClient(app).get(
+        f"/api/v1/products/{current_id}/similar",
+        params={"category": category_id},
+    )
 
     assert response.status_code == 200
-    assert response.json() == []
+    assert response.json() == {
+        "items": [],
+        "total_count": 0,
+        "limit": 8,
+        "offset": 0,
+    }
 
 
 def test_unknown_product_returns_404() -> None:
     FakeB2BClient.products = []
+    missing_id = "00000000-0000-0000-0000-000000000404"
+    category_id = "10000000-0000-0000-0000-000000000004"
 
-    response = TestClient(app).get("/api/v1/products/missing/similar")
+    response = TestClient(app).get(
+        f"/api/v1/products/{missing_id}/similar",
+        params={"category": category_id},
+    )
 
     assert response.status_code == 404
     assert response.json() == {
-        "code": "PRODUCT_NOT_FOUND",
+        "code": "NOT_FOUND",
         "message": "Product not found",
+    }
+
+
+def test_similar_b2b_unavailable_returns_503() -> None:
+    FakeB2BClient.unavailable = True
+    product_id = "00000000-0000-0000-0000-000000000503"
+    category_id = "10000000-0000-0000-0000-000000000005"
+
+    response = TestClient(app).get(
+        f"/api/v1/products/{product_id}/similar",
+        params={"category": category_id},
+    )
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "code": "B2B_UNAVAILABLE",
+        "message": "B2B catalog is unavailable",
     }

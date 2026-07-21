@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from random import sample
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -121,28 +122,40 @@ class ProductService:
         self,
         product_id: UUID,
         *,
+        category_id: UUID,
         limit: int = 8,
-    ) -> list[dict[str, object]]:
+        offset: int = 0,
+    ) -> ProductPublicPaginatedResponse:
+        if not await self.repo.category_exists(category_id):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "code": "INVALID_REQUEST",
+                    "message": "Nonexistent category id",
+                },
+            )
         current = await self.repo.get_with_skus(product_id)
         if not current or not self._is_publicly_visible(current):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "code": "PRODUCT_NOT_FOUND",
+                    "code": "NOT_FOUND",
                     "message": "Product not found",
                 },
             )
 
         products = await self.repo.list_public_catalog()
-        candidates = [
+        same_category = [
             product
             for product in products
             if product.id != product_id
             and self._is_publicly_visible(product)
-            and product.category_id == current.category_id
+            and product.category_id == category_id
         ]
-        if len(candidates) < limit and current.category_id is not None:
-            parent_id = await self.repo.get_category_parent_id(current.category_id)
+        same_category = sample(same_category, k=len(same_category))
+        candidates = same_category
+        if len(candidates) < offset + limit:
+            parent_id = await self.repo.get_category_parent_id(category_id)
             if parent_id is not None:
                 sibling_category_ids = set(
                     await self.repo.list_category_ids_by_parent(parent_id)
@@ -151,16 +164,19 @@ class ProductService:
                     product
                     for product in products
                     if product.id != product_id
-                    and product.category_id != current.category_id
+                    and product.category_id != category_id
                     and product.category_id in sibling_category_ids
                     and self._is_publicly_visible(product)
                 ]
+                fallback = sample(fallback, k=len(fallback))
                 candidates = [*candidates, *fallback]
-        sorted_candidates = self._sort_public_catalog(candidates, "new")
-        return [
-            self._public_product_short(product)
-            for product in sorted_candidates[:limit]
-        ]
+        page = candidates[offset : offset + limit]
+        return ProductPublicPaginatedResponse(
+            items=[self._public_product_short(product) for product in page],
+            total_count=len(candidates),
+            limit=limit,
+            offset=offset,
+        )
 
     async def list_by_seller(self, seller_id: UUID) -> list[Product]:
         return await self.repo.list_by_seller(seller_id)

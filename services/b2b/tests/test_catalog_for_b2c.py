@@ -2,12 +2,16 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
+from src.api.routers import categories as categories_router
 from src.api.routers import products as products_router
 from src.main import app
 from src.models.product import ProductStatus
+from src.services import category_service as category_service_module
 from src.services import product_service as product_service_module
+from src.services.category_service import CategoryService
 from src.services.product_service import ProductService
 
 
@@ -61,6 +65,16 @@ def _product(
     )
 
 
+def _category(*, category_id=None, name="Electronics", slug="electronics", parent_id=None):
+    return SimpleNamespace(
+        id=category_id or uuid4(),
+        name=name,
+        slug=slug,
+        parent_id=parent_id,
+        is_active=True,
+    )
+
+
 class FakeProductRepository:
     products: list[SimpleNamespace] = []
     category_parents: dict[object, object | None] = {}
@@ -86,14 +100,89 @@ class FakeProductRepository:
             if current_parent_id == parent_id
         ]
 
+    async def category_exists(self, category_id):
+        if any(product.category_id == category_id for product in self.products):
+            return True
+        if category_id in self.category_parents:
+            return True
+        return category_id in self.category_parents.values()
+
+
+class FakeCategoryRepository:
+    categories: list[SimpleNamespace] = []
+    product_counts: dict[object, int] = {}
+
+    def __init__(self, session: object) -> None:
+        self.session = session
+
+    async def list_active(self):
+        return list(self.categories)
+
+    async def get_active(self, category_id):
+        return next(
+            (category for category in self.categories if category.id == category_id),
+            None,
+        )
+
+    async def count_public_products(self, category_id):
+        return self.product_counts.get(category_id, 0)
+
 
 @pytest.fixture(autouse=True)
 def patch_repo(monkeypatch: pytest.MonkeyPatch):
     FakeProductRepository.products = []
     FakeProductRepository.category_parents = {}
+    FakeCategoryRepository.categories = []
+    FakeCategoryRepository.product_counts = {}
     monkeypatch.setattr(
         product_service_module, "ProductRepository", FakeProductRepository
     )
+    monkeypatch.setattr(
+        category_service_module, "CategoryRepository", FakeCategoryRepository
+    )
+
+
+@pytest.mark.asyncio
+async def test_public_categories_list_returns_flat_categories() -> None:
+    root = _category(name="Electronics", slug="electronics")
+    child = _category(name="Phones", slug="phones", parent_id=root.id)
+    FakeCategoryRepository.categories = [root, child]
+
+    body = await CategoryService(SimpleNamespace()).list_active()
+
+    assert [item.id for item in body.items] == [root.id, child.id]
+    assert body.items[1].parent_id == root.id
+
+
+@pytest.mark.asyncio
+async def test_public_category_detail_returns_parent_and_product_count() -> None:
+    root = _category(name="Electronics", slug="electronics")
+    child = _category(name="Phones", slug="phones", parent_id=root.id)
+    FakeCategoryRepository.categories = [root, child]
+    FakeCategoryRepository.product_counts = {child.id: 7}
+
+    body = await CategoryService(SimpleNamespace()).get_detail(
+        child.id,
+        include_product_count=True,
+    )
+
+    assert body.id == child.id
+    assert body.parent is not None
+    assert body.parent.id == root.id
+    assert body.product_count == 7
+
+
+def test_public_categories_route_requires_service_key() -> None:
+    async def fake_db():
+        yield SimpleNamespace()
+
+    app.dependency_overrides[categories_router.get_db] = fake_db
+    try:
+        response = TestClient(app).get("/api/v1/public/categories")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 401
 
 
 @pytest.mark.asyncio
@@ -353,11 +442,15 @@ async def test_public_similar_returns_same_category_without_current() -> None:
     other_category = _product(title="Mouse")
     FakeProductRepository.products = [current, *same_category, other_category]
 
-    body = await ProductService(SimpleNamespace()).list_similar_public(current.id)
+    body = await ProductService(SimpleNamespace()).list_similar_public(
+        current.id,
+        category_id=category_id,
+    )
 
-    assert len(body) == 8
-    assert str(current.id) not in {str(item["id"]) for item in body}
-    assert {str(item["category_id"]) for item in body} == {str(category_id)}
+    assert len(body.items) == 8
+    assert body.total_count == 10
+    assert str(current.id) not in {str(item.id) for item in body.items}
+    assert {str(item.category_id) for item in body.items} == {str(category_id)}
 
 
 @pytest.mark.asyncio
@@ -380,9 +473,30 @@ async def test_public_similar_falls_back_to_parent_category() -> None:
         sibling_category_id: parent_id,
     }
 
-    body = await ProductService(SimpleNamespace()).list_similar_public(current.id)
+    body = await ProductService(SimpleNamespace()).list_similar_public(
+        current.id,
+        category_id=current_category_id,
+    )
 
-    assert {str(item["id"]) for item in body} == {
+    assert [str(item.id) for item in body.items] == [
         str(same_category.id),
         str(sibling_category.id),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_public_similar_unknown_category_returns_400() -> None:
+    current = _product(title="Current keyboard")
+    FakeProductRepository.products = [current]
+
+    with pytest.raises(HTTPException) as exc_info:
+        await ProductService(SimpleNamespace()).list_similar_public(
+            current.id,
+            category_id=uuid4(),
+        )
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == {
+        "code": "INVALID_REQUEST",
+        "message": "Nonexistent category id",
     }

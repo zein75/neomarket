@@ -19,7 +19,6 @@ from src.schemas.product import (
     ProductPaginatedResponse,
     ProductPublicPaginatedResponse,
     ProductPublicResponse,
-    ProductPublicShortResponse,
     ProductResponse,
     ProductUpdate,
 )
@@ -33,8 +32,6 @@ def _parse_ids(ids: str | None) -> list[UUID] | None:
         return None
     return [UUID(raw_id.strip()) for raw_id in ids.split(",") if raw_id.strip()]
 
-
-# --- Public catalog (called by B2C) ---
 
 @router.get("/products", response_model=ProductPublicPaginatedResponse)
 async def list_products(
@@ -76,16 +73,23 @@ async def get_product(
 
 @router.get(
     "/api/v1/public/products/{product_id}/similar",
-    response_model=list[ProductPublicShortResponse],
+    response_model=ProductPublicPaginatedResponse,
 )
 async def get_similar_public_products(
     product_id: UUID,
-    limit: int = Query(8, ge=1, le=8),
+    category: UUID = Query(...),
+    limit: int = Query(8, ge=1, le=20),
+    offset: int = Query(0, ge=0),
     _: None = Depends(verify_service_key),
     db: AsyncSession = Depends(get_db),
 ) -> Any:
     svc = ProductService(db)
-    return await svc.list_similar_public(product_id, limit=limit)
+    return await svc.list_similar_public(
+        product_id,
+        category_id=category,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.get("/api/v1/products", response_model=ProductPaginatedResponse)

@@ -63,10 +63,19 @@ class B2BClient:
     async def get_product(self, product_id: str) -> Any:
         return await self._get(f"/api/v1/public/products/{product_id}")
 
-    async def get_similar_products(self, product_id: str, limit: int = 8) -> Any:
+    async def get_similar_products(
+        self,
+        product_id: str,
+        *,
+        category_id: str,
+        limit: int = 8,
+        offset: int = 0,
+    ) -> Any:
         return await self._get(
             f"/api/v1/public/products/{product_id}/similar",
+            category=category_id,
             limit=limit,
+            offset=offset,
         )
 
     async def get_public_products(
@@ -106,6 +115,20 @@ class B2BClient:
             raise HTTPException(status_code=e.response.status_code, detail=str(e))
         except httpx.RequestError:
             raise HTTPException(status_code=503, detail="B2B service unavailable")
+
+    async def get_categories(self) -> Any:
+        return await self._get("/api/v1/public/categories")
+
+    async def get_category(
+        self,
+        category_id: str,
+        *,
+        include_product_count: bool = False,
+    ) -> Any:
+        return await self._get(
+            f"/api/v1/public/categories/{category_id}",
+            include_product_count=include_product_count,
+        )
 
     async def get_products_batch(self, product_ids: list[str]) -> Any:
         try:
