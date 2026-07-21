@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -78,6 +78,21 @@ class CartRepository(BaseRepository[Cart]):
         for item in list(cart.items):
             await self.session.delete(item)
         await self.session.flush()
+
+    async def mark_skus_unavailable(
+        self,
+        sku_ids: list[UUID],
+        unavailable_reason: str,
+    ) -> int:
+        if not sku_ids:
+            return 0
+        result = await self.session.execute(
+            update(CartItem)
+            .where(CartItem.sku_id.in_(sku_ids))
+            .values(unavailable_reason=unavailable_reason)
+        )
+        await self.session.flush()
+        return int(result.rowcount or 0)
 
     async def remove_cart(self, cart: Cart) -> None:
         await self.session.delete(cart)

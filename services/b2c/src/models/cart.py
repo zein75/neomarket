@@ -47,5 +47,6 @@ class CartItem(Base, TimestampMixin):
     product_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
     unit_price: Mapped[int] = mapped_column(Integer, nullable=False)
+    unavailable_reason: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     cart: Mapped["Cart"] = relationship("Cart", back_populates="items")

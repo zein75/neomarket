@@ -209,6 +209,9 @@ class CartService:
         product: dict[str, object] | None,
         sku: dict[str, object] | None,
     ) -> str | None:
+        stored_reason = getattr(item, "unavailable_reason", None)
+        if stored_reason:
+            return stored_reason
         if not product or not sku:
             return "SKU_NOT_FOUND"
         if product.get("deleted") is True:
