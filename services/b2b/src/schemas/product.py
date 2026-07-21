@@ -63,8 +63,8 @@ class ProductResponse(BaseModel):
     moderator_comment: str | None
     created_at: datetime
     updated_at: datetime
-    deleted: bool = False
-    skus: list[SKUResponse] = []
+    deleted: bool
+    skus: list[SKUResponse]
 
     @model_validator(mode="before")
     @classmethod
@@ -99,6 +99,8 @@ class ProductResponse(BaseModel):
             data["slug"] = cls._slug(data["title"], data["id"])
         data.setdefault("blocking_reason_id", cls._blocking_reason_id(data))
         data.setdefault("moderator_comment", cls._moderator_comment(data))
+        data.setdefault("deleted", False)
+        data.setdefault("skus", [])
         data["images"] = cls._normalize_images(data.get("images", []), data.get("id"))
         data["characteristics"] = cls._normalize_characteristics(
             data.get("characteristics", [])
@@ -173,23 +175,6 @@ class ProductResponse(BaseModel):
             if isinstance(report, dict) and report.get("comment") is not None:
                 return str(report["comment"])
         return None
-
-
-class ProductCreateResponse(ProductResponse):
-    blocked: bool = False
-
-    @model_validator(mode="before")
-    @classmethod
-    def from_product_model(cls, value: Any) -> Any:
-        data = super().from_product_model(value)
-        status_value = data.get("status")
-        data["blocked"] = status_value in {
-            ProductStatus.BLOCKED,
-            ProductStatus.HARD_BLOCKED,
-            ProductStatus.BLOCKED.value,
-            ProductStatus.HARD_BLOCKED.value,
-        }
-        return data
 
 
 class SKUPublicResponse(BaseModel):

@@ -14,7 +14,6 @@ from src.models.seller import Seller
 from src.models.product import ProductStatus
 from src.schemas.product import (
     ProductCreate,
-    ProductCreateResponse,
     ProductDetailResponse,
     ProductPublicBatchRequest,
     ProductPaginatedResponse,
@@ -174,7 +173,7 @@ async def get_public_product(
     return await svc.get_public_detail(product_id)
 
 
-@router.post("/api/v1/products", response_model=ProductCreateResponse, status_code=201)
+@router.post("/api/v1/products", response_model=ProductResponse, status_code=201)
 async def create_product(
     data: ProductCreate,
     current_seller: Seller = Depends(get_current_seller),

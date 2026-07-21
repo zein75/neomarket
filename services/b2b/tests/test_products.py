@@ -97,7 +97,7 @@ def test_create_product_returns_201_with_created_status() -> None:
     assert body["blocking_reason_id"] is None
     assert body["moderator_comment"] is None
     assert body["deleted"] is False
-    assert body["blocked"] is False
+    assert "blocked" not in body
     assert "created_at" in body
     assert "updated_at" in body
     assert "category" not in body
