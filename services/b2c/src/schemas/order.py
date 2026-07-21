@@ -54,10 +54,10 @@ class OrderResponse(BaseModel):
     status: OrderStatus
     subtotal: int
     total: int
-    address: dict[str, Any] = Field(default_factory=dict)
+    address: dict[str, Any]
     created_at: datetime
     currency: str
-    items: list[OrderItemResponse] = []
+    items: list[OrderItemResponse]
 
     @model_validator(mode="before")
     @classmethod
