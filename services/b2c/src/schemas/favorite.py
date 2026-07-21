@@ -4,10 +4,6 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 
-class FavoriteAdd(BaseModel):
-    product_id: UUID
-
-
 class FavoriteResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -15,6 +11,17 @@ class FavoriteResponse(BaseModel):
     product_id: UUID
     added_at: datetime
     product: dict[str, object] | None = None
+
+
+class FavoriteAdd(BaseModel):
+    product_id: UUID
+
+
+class FavoriteListResponse(BaseModel):
+    items: list[FavoriteResponse]
+    total_count: int
+    limit: int
+    offset: int
 
 
 class ProductSubscriptionRequest(BaseModel):

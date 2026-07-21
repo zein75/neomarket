@@ -1,12 +1,13 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_current_user, get_db
 from src.models.user import User
 from src.schemas.favorite import (
     FavoriteAdd,
+    FavoriteListResponse,
     FavoriteResponse,
     ProductSubscriptionRequest,
     ProductSubscriptionResponse,
@@ -16,30 +17,62 @@ from src.services.favorite_service import FavoriteService
 router = APIRouter(tags=["favorites"])
 
 
-@router.get("/api/v1/favorites", response_model=list[FavoriteResponse])
-@router.get("/favorites", response_model=list[FavoriteResponse], include_in_schema=False)
+@router.get("/api/v1/favorites", response_model=FavoriteListResponse)
+@router.get("/favorites", response_model=FavoriteListResponse, include_in_schema=False)
 async def list_favorites(
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> list[FavoriteResponse]:
-    return await FavoriteService(db).list_favorites(current_user.id)
+) -> FavoriteListResponse:
+    return await FavoriteService(db).list_favorites(
+        current_user.id,
+        limit=limit,
+        offset=offset,
+    )
 
 
-@router.post("/api/v1/favorites", response_model=FavoriteResponse, status_code=201)
+@router.post(
+    "/api/v1/favorites/{product_id}",
+    response_model=FavoriteResponse,
+    status_code=201,
+)
+@router.post(
+    "/favorites/{product_id}",
+    response_model=FavoriteResponse,
+    status_code=201,
+    include_in_schema=False,
+)
+async def add_favorite(
+    product_id: UUID,
+    response: Response,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> FavoriteResponse:
+    svc = FavoriteService(db)
+    fav, created = await svc.add_favorite(current_user.id, product_id)
+    await db.commit()
+    if created:
+        await db.refresh(fav)
+    else:
+        response.status_code = 200
+    return fav
+
+
 @router.post(
     "/favorites",
     response_model=FavoriteResponse,
     status_code=201,
     include_in_schema=False,
 )
-async def add_favorite(
+async def add_favorite_legacy(
     data: FavoriteAdd,
     response: Response,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> FavoriteResponse:
     svc = FavoriteService(db)
-    fav, created = await svc.add_favorite(current_user.id, data)
+    fav, created = await svc.add_favorite(current_user.id, data.product_id)
     await db.commit()
     if created:
         await db.refresh(fav)

@@ -12,13 +12,27 @@ class FavoriteRepository(BaseRepository[Favorite]):
     def __init__(self, session: AsyncSession) -> None:
         super().__init__(session, Favorite)
 
-    async def list_by_user(self, user_id: UUID) -> list[Favorite]:
+    async def list_by_user(
+        self,
+        user_id: UUID,
+        *,
+        limit: int,
+        offset: int,
+    ) -> list[Favorite]:
         result = await self.session.execute(
             select(Favorite)
             .where(Favorite.user_id == user_id)
             .order_by(Favorite.added_at.desc())
+            .offset(offset)
+            .limit(limit)
         )
         return list(result.scalars().all())
+
+    async def count_by_user(self, user_id: UUID) -> int:
+        result = await self.session.execute(
+            select(Favorite.id).where(Favorite.user_id == user_id)
+        )
+        return len(result.scalars().all())
 
     async def get_by_user_and_product(
         self, user_id: UUID, product_id: UUID

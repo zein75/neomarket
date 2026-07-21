@@ -25,12 +25,28 @@ class FakeFavoriteRepository:
     def __init__(self, session: object) -> None:
         self.session = session
 
-    async def list_by_user(self, user_id: UUID) -> list[SimpleNamespace]:
-        return [
+    async def list_by_user(
+        self,
+        user_id: UUID,
+        *,
+        limit: int,
+        offset: int,
+    ) -> list[SimpleNamespace]:
+        items = [
             favorite
             for favorite in self.favorites
             if favorite.user_id == user_id
         ]
+        return items[offset : offset + limit]
+
+    async def count_by_user(self, user_id: UUID) -> int:
+        return len(
+            [
+                favorite
+                for favorite in self.favorites
+                if favorite.user_id == user_id
+            ]
+        )
 
     async def get_by_user_and_product(
         self,
@@ -175,32 +191,35 @@ def _product(product_id: UUID, title: str = "Keyboard") -> dict[str, object]:
 
 def test_add_to_favorites_returns_201(patch_dependencies: SimpleNamespace) -> None:
     product_id = uuid4()
+    FakeB2BClient.visible_products = {str(product_id): _product(product_id)}
 
     response = TestClient(app).post(
-        "/api/v1/favorites",
-        json={"product_id": str(product_id)},
+        f"/api/v1/favorites/{product_id}",
     )
 
     assert response.status_code == 201
     assert response.json()["product_id"] == str(product_id)
     assert len(FakeFavoriteRepository.favorites) == 1
     assert FakeFavoriteRepository.favorites[0].user_id == patch_dependencies.id
+    assert FakeB2BClient.product_calls == [str(product_id)]
 
 
 def test_repeat_add_returns_200_not_duplicate(
     patch_dependencies: SimpleNamespace,
 ) -> None:
     product_id = uuid4()
+    FakeB2BClient.visible_products = {str(product_id): _product(product_id)}
     client = TestClient(app)
 
-    first = client.post("/api/v1/favorites", json={"product_id": str(product_id)})
-    second = client.post("/api/v1/favorites", json={"product_id": str(product_id)})
+    first = client.post(f"/api/v1/favorites/{product_id}")
+    second = client.post(f"/api/v1/favorites/{product_id}")
 
     assert first.status_code == 201
     assert second.status_code == 200
     assert second.json()["product_id"] == str(product_id)
     assert len(FakeFavoriteRepository.favorites) == 1
     assert FakeFavoriteRepository.favorites[0].user_id == patch_dependencies.id
+    assert FakeB2BClient.product_calls == [str(product_id)]
 
 
 def test_get_favorites_enriched_from_b2b(
@@ -221,7 +240,10 @@ def test_get_favorites_enriched_from_b2b(
     response = TestClient(app).get("/api/v1/favorites")
 
     assert response.status_code == 200
-    assert response.json()[0]["product"] == product
+    assert response.json()["items"][0]["product"] == product
+    assert response.json()["total_count"] == 1
+    assert response.json()["limit"] == 20
+    assert response.json()["offset"] == 0
     assert FakeB2BClient.batch_calls == [[str(product_id)]]
 
 
@@ -251,7 +273,10 @@ def test_blocked_product_excluded_from_list(
     response = TestClient(app).get("/api/v1/favorites")
 
     assert response.status_code == 200
-    assert [item["product_id"] for item in response.json()] == [str(visible_product_id)]
+    assert [item["product_id"] for item in response.json()["items"]] == [
+        str(visible_product_id)
+    ]
+    assert response.json()["total_count"] == 2
 
 
 def test_user_id_from_query_is_ignored(
@@ -285,7 +310,22 @@ def test_user_id_from_query_is_ignored(
     )
 
     assert response.status_code == 200
-    assert [item["product_id"] for item in response.json()] == [str(own_product_id)]
+    assert [item["product_id"] for item in response.json()["items"]] == [
+        str(own_product_id)
+    ]
+
+
+def test_add_unknown_product_returns_404() -> None:
+    product_id = uuid4()
+
+    response = TestClient(app).post(f"/api/v1/favorites/{product_id}")
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "code": "PRODUCT_NOT_FOUND",
+        "message": "Product not found",
+    }
+    assert FakeFavoriteRepository.favorites == []
 
 
 def test_delete_missing_favorite_returns_204() -> None:
