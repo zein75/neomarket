@@ -34,6 +34,14 @@ app = FastAPI(
 async def validation_exception_handler(
     request: Request, exc: RequestValidationError
 ) -> JSONResponse:
+    if _missing_service_key_error(exc.errors()):
+        return JSONResponse(
+            status_code=401,
+            content={
+                "code": "SERVICE_KEY_INVALID",
+                "message": "Invalid or missing service key",
+            },
+        )
     if request.method == "POST" and request.url.path == "/api/v1/products":
         return JSONResponse(
             status_code=400,
@@ -47,6 +55,14 @@ async def validation_exception_handler(
             "errors": exc.errors(),
         },
     )
+
+
+def _missing_service_key_error(errors: list[dict[str, object]]) -> bool:
+    for error in errors:
+        location = [str(part).lower() for part in error.get("loc") or []]
+        if location == ["header", "x-service-key"]:
+            return True
+    return False
 
 
 def _create_product_validation_error(errors: list[dict[str, object]]) -> dict[str, str]:

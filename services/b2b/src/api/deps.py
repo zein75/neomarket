@@ -14,7 +14,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
 
 async def verify_service_key(
-    x_service_key: str | None = Header(default=None, alias="X-Service-Key"),
+    x_service_key: str = Header(alias="X-Service-Key"),
 ) -> None:
     if x_service_key != settings.service_key:
         raise HTTPException(
