@@ -185,6 +185,54 @@ class OrderService:
         await self.order_repo.session.flush()
         return order
 
+    async def mark_delivered(self, order_id: UUID) -> Order:
+        order = await self.order_repo.get_with_items(order_id)
+        if not order:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"code": "ORDER_NOT_FOUND", "message": "Order not found"},
+            )
+        if order.status in {OrderStatus.CANCELLED, OrderStatus.CANCEL_PENDING}:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "DELIVERY_NOT_ALLOWED",
+                    "message": "Cancelled order cannot be delivered",
+                    "current_status": order.status.value,
+                },
+            )
+
+        order.status = OrderStatus.DELIVERED
+        await self.order_repo.session.flush()
+        fulfilled = await self._try_fulfill(order)
+        if not fulfilled:
+            await self.order_repo.queue_fulfillment_retry(
+                order,
+                "B2B fulfill failed",
+            )
+        return order
+
+    async def retry_pending_fulfillments(self, limit: int = 100) -> int:
+        retried = 0
+        pending_fulfillments = await self.order_repo.list_pending_fulfillments(
+            limit=limit
+        )
+        for pending in pending_fulfillments:
+            order = pending.order
+            if order.status != OrderStatus.DELIVERED:
+                await self.order_repo.delete_pending_fulfillment(pending)
+                continue
+            fulfilled = await self._try_fulfill(order)
+            if fulfilled:
+                await self.order_repo.delete_pending_fulfillment(pending)
+                retried += 1
+            else:
+                await self.order_repo.queue_fulfillment_retry(
+                    order,
+                    "B2B fulfill retry failed",
+                )
+        return retried
+
     async def _build_item_snapshots(
         self,
         cart_items: list[object],
@@ -262,6 +310,22 @@ class OrderService:
     async def _unreserve(self, order: Order) -> None:
         async with B2BClient(settings.b2b_base_url) as client:
             await client.unreserve({"order_id": str(order.id)})
+
+    async def _try_fulfill(self, order: Order) -> bool:
+        payload = {
+            "order_id": str(order.id),
+            "items": [
+                {"sku_id": str(item.sku_id), "quantity": item.quantity}
+                for item in order.items
+            ],
+        }
+        async with B2BClient(settings.b2b_base_url) as client:
+            try:
+                await client.fulfill(payload)
+                return True
+            except HTTPException:
+                logger.exception("Failed to fulfill delivered order %s", order.id)
+                return False
 
     def _reserve_failure_detail(self, detail: object) -> object:
         if isinstance(detail, dict) and "failed_items" in detail:

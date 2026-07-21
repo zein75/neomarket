@@ -129,3 +129,6 @@ class B2BClient:
 
     async def unreserve(self, payload: dict[str, Any]) -> Any:
         return await self._post_service("/api/v1/inventory/unreserve", payload)
+
+    async def fulfill(self, payload: dict[str, Any]) -> Any:
+        return await self._post_service("/api/v1/inventory/fulfill", payload)

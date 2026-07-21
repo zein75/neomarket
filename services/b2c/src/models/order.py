@@ -74,3 +74,17 @@ class OrderItem(Base, TimestampMixin):
     line_total: Mapped[int] = mapped_column(Integer, nullable=False)
 
     order: Mapped["Order"] = relationship("Order", back_populates="items")
+
+
+class PendingFulfillment(Base, TimestampMixin):
+    __tablename__ = "pending_fulfillments"
+
+    order_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("orders.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    last_error: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    order: Mapped["Order"] = relationship("Order")

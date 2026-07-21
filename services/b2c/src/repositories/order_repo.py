@@ -4,7 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.models.order import Order, OrderStatus
+from src.models.order import Order, OrderStatus, PendingFulfillment
 
 from .base import BaseRepository
 
@@ -76,3 +76,47 @@ class OrderRepository(BaseRepository[Order]):
             .offset(offset)
         )
         return list(result.scalars().all()), total_count
+
+    async def get_pending_fulfillment(
+        self,
+        order_id: UUID,
+    ) -> PendingFulfillment | None:
+        result = await self.session.execute(
+            select(PendingFulfillment).where(PendingFulfillment.order_id == order_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def queue_fulfillment_retry(
+        self,
+        order: Order,
+        error: str,
+    ) -> PendingFulfillment:
+        pending = await self.get_pending_fulfillment(order.id)
+        if pending is None:
+            pending = PendingFulfillment(order_id=order.id, attempts=1, last_error=error)
+            self.session.add(pending)
+        else:
+            pending.attempts += 1
+            pending.last_error = error
+        await self.session.flush()
+        return pending
+
+    async def list_pending_fulfillments(
+        self,
+        *,
+        limit: int = 100,
+    ) -> list[PendingFulfillment]:
+        result = await self.session.execute(
+            select(PendingFulfillment)
+            .options(selectinload(PendingFulfillment.order).selectinload(Order.items))
+            .order_by(PendingFulfillment.updated_at.asc())
+            .limit(limit)
+        )
+        return list(result.scalars().all())
+
+    async def delete_pending_fulfillment(
+        self,
+        pending: PendingFulfillment,
+    ) -> None:
+        await self.session.delete(pending)
+        await self.session.flush()

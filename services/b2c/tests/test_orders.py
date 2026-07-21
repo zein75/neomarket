@@ -88,6 +88,9 @@ class FakeSession:
     async def flush(self) -> None:
         self.flushed = True
 
+    async def delete(self, obj) -> None:
+        return None
+
 
 class FakeCartRepository:
     cart: SimpleNamespace | None = None
@@ -108,6 +111,7 @@ class FakeCartRepository:
 class FakeOrderRepository:
     orders_by_key: dict[str, Order] = {}
     orders_by_id: dict[UUID, Order] = {}
+    pending_fulfillments: dict[UUID, SimpleNamespace] = {}
     created_orders: list[Order] = []
 
     def __init__(self, session) -> None:
@@ -156,13 +160,39 @@ class FakeOrderRepository:
         self.orders_by_id[order.id] = order
         return order
 
+    async def get_pending_fulfillment(self, order_id: UUID):
+        return self.pending_fulfillments.get(order_id)
+
+    async def queue_fulfillment_retry(self, order: Order, error: str):
+        pending = self.pending_fulfillments.get(order.id)
+        if pending is None:
+            pending = SimpleNamespace(
+                order_id=order.id,
+                order=order,
+                attempts=1,
+                last_error=error,
+            )
+            self.pending_fulfillments[order.id] = pending
+        else:
+            pending.attempts += 1
+            pending.last_error = error
+        return pending
+
+    async def list_pending_fulfillments(self, *, limit: int = 100):
+        return list(self.pending_fulfillments.values())[:limit]
+
+    async def delete_pending_fulfillment(self, pending) -> None:
+        self.pending_fulfillments.pop(pending.order_id, None)
+
 
 class FakeB2BClient:
     products: list[dict[str, object]] = []
     reserve_calls: list[dict[str, object]] = []
     unreserve_calls: list[dict[str, object]] = []
+    fulfill_calls: list[dict[str, object]] = []
     reserve_error: HTTPException | None = None
     unreserve_error: HTTPException | None = None
+    fulfill_error: HTTPException | None = None
 
     def __init__(self, base_url: str) -> None:
         self.base_url = base_url
@@ -192,6 +222,12 @@ class FakeB2BClient:
             raise self.unreserve_error
         return {"status": "UNRESERVED", "order_id": payload["order_id"]}
 
+    async def fulfill(self, payload: dict[str, object]):
+        self.fulfill_calls.append(payload)
+        if self.fulfill_error:
+            raise self.fulfill_error
+        return {"status": "FULFILLED", "order_id": payload["order_id"]}
+
 
 @pytest.fixture(autouse=True)
 def patch_dependencies(monkeypatch):
@@ -199,12 +235,15 @@ def patch_dependencies(monkeypatch):
     FakeCartRepository.removed_items = []
     FakeOrderRepository.orders_by_key = {}
     FakeOrderRepository.orders_by_id = {}
+    FakeOrderRepository.pending_fulfillments = {}
     FakeOrderRepository.created_orders = []
     FakeB2BClient.products = []
     FakeB2BClient.reserve_calls = []
     FakeB2BClient.unreserve_calls = []
+    FakeB2BClient.fulfill_calls = []
     FakeB2BClient.reserve_error = None
     FakeB2BClient.unreserve_error = None
+    FakeB2BClient.fulfill_error = None
     monkeypatch.setattr(order_service_module, "CartRepository", FakeCartRepository)
     monkeypatch.setattr(order_service_module, "OrderRepository", FakeOrderRepository)
     monkeypatch.setattr(order_service_module, "B2BClient", FakeB2BClient, raising=False)
@@ -454,6 +493,83 @@ async def test_other_user_order_returns_404_not_403() -> None:
 
     assert exc.value.status_code == 404
     assert exc.value.detail["code"] == "ORDER_NOT_FOUND"
+
+
+async def test_delivered_status_triggers_fulfill_to_b2b() -> None:
+    user_id = uuid4()
+    order = _order(user_id=user_id, status=OrderStatus.DELIVERING)
+    FakeOrderRepository.orders_by_id[order.id] = order
+
+    delivered = await OrderService(FakeSession()).mark_delivered(order.id)
+
+    assert delivered.status == OrderStatus.DELIVERED
+    assert FakeB2BClient.fulfill_calls == [
+        {
+            "order_id": str(order.id),
+            "items": [
+                {
+                    "sku_id": str(order.items[0].sku_id),
+                    "quantity": order.items[0].quantity,
+                }
+            ],
+        }
+    ]
+    assert FakeOrderRepository.pending_fulfillments == {}
+
+
+async def test_fulfill_failure_retried_asynchronously() -> None:
+    user_id = uuid4()
+    order = _order(user_id=user_id, status=OrderStatus.DELIVERING)
+    FakeOrderRepository.orders_by_id[order.id] = order
+    FakeB2BClient.fulfill_error = HTTPException(
+        status_code=503,
+        detail="B2B service unavailable",
+    )
+
+    delivered = await OrderService(FakeSession()).mark_delivered(order.id)
+
+    assert delivered.status == OrderStatus.DELIVERED
+    assert order.id in FakeOrderRepository.pending_fulfillments
+    assert FakeOrderRepository.pending_fulfillments[order.id].attempts == 1
+
+    FakeB2BClient.fulfill_error = None
+    retried = await OrderService(FakeSession()).retry_pending_fulfillments()
+
+    assert retried == 1
+    assert FakeOrderRepository.pending_fulfillments == {}
+    assert len(FakeB2BClient.fulfill_calls) == 2
+
+
+async def test_repeated_fulfill_idempotent() -> None:
+    user_id = uuid4()
+    order = _order(user_id=user_id, status=OrderStatus.DELIVERED)
+    FakeOrderRepository.orders_by_id[order.id] = order
+
+    first = await OrderService(FakeSession()).mark_delivered(order.id)
+    second = await OrderService(FakeSession()).mark_delivered(order.id)
+
+    assert first.status == OrderStatus.DELIVERED
+    assert second.status == OrderStatus.DELIVERED
+    assert FakeB2BClient.fulfill_calls == [
+        {
+            "order_id": str(order.id),
+            "items": [
+                {
+                    "sku_id": str(order.items[0].sku_id),
+                    "quantity": order.items[0].quantity,
+                }
+            ],
+        },
+        {
+            "order_id": str(order.id),
+            "items": [
+                {
+                    "sku_id": str(order.items[0].sku_id),
+                    "quantity": order.items[0].quantity,
+                }
+            ],
+        },
+    ]
 
 
 async def test_cancel_paid_order_transitions_to_cancelled() -> None:
