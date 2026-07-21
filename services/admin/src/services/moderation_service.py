@@ -14,6 +14,9 @@ class ModerationService:
     def __init__(self, session: AsyncSession) -> None:
         self.repo = ModerationRepository(session)
 
+    async def list_blocking_reasons(self, *, hard_block: bool | None = None):
+        return await self.repo.list_all_blocking_reasons(hard_block=hard_block)
+
     async def approve_product(self, card_id: UUID, moderator_id: UUID):
         card = await self._get_mutable_card(card_id, moderator_id)
         if card.status != ModerationStatus.IN_REVIEW:
@@ -38,34 +41,6 @@ class ModerationService:
         await B2BClient().send_moderation_decision(self._moderated_event(card))
         await self.repo.session.flush()
         return card
-
-    async def decline_product(
-        self,
-        card_id: UUID,
-        moderator_id: UUID,
-        *,
-        hard_block: bool,
-        reason: dict[str, object],
-        field_reports: list[dict[str, object]] | None = None,
-    ):
-        card = await self._get_mutable_card(card_id, moderator_id)
-        if card.status != ModerationStatus.IN_REVIEW:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail={
-                    "code": "DECLINE_NOT_ALLOWED",
-                    "message": "Ticket cannot be declined in current status",
-                    "current_status": self._status_value(card.status),
-                },
-            )
-
-        blocking_reason_id = self._reason_id(reason)
-        return await self._block_card(
-            card,
-            hard_block=hard_block,
-            blocking_reason_id=blocking_reason_id,
-            field_reports=field_reports or [],
-        )
 
     async def block_product(
         self,
@@ -212,12 +187,6 @@ class ModerationService:
             else None,
             "field_reports": field_reports,
         }
-
-    def _reason_id(self, reason: dict[str, object]) -> UUID | None:
-        raw_reason_id = reason.get("id") or reason.get("blocking_reason_id")
-        if raw_reason_id is None:
-            return None
-        return UUID(str(raw_reason_id))
 
     def _has_skus(self, card: object) -> bool:
         if hasattr(card, "sku_ids"):

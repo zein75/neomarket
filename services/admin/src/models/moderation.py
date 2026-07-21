@@ -28,6 +28,7 @@ class BlockingReason(Base, TimestampMixin):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     hard_block: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
 
 class ModerationCard(Base, TimestampMixin):
@@ -38,8 +39,8 @@ class ModerationCard(Base, TimestampMixin):
     )
     product_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     seller_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
-    kind: Mapped[str] = mapped_column(String(32), default="PRODUCT", nullable=False)
-    queue_priority: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    kind: Mapped[str] = mapped_column(String(32), default="CREATE", nullable=False)
+    queue_priority: Mapped[int] = mapped_column(Integer, default=3, nullable=False)
     moderator_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), nullable=True
     )

@@ -62,8 +62,9 @@ class FakeProductService:
             images=data.images,
             characteristics=data.characteristics,
             status=ProductStatus.CREATED,
-            category=data.category,
             is_active=False,
+            deleted=False,
+            blocked=False,
             skus=[],
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
@@ -95,6 +96,8 @@ def test_create_product_returns_201_with_created_status() -> None:
     assert body["characteristics"] == [{"name": "layout", "value": "US"}]
     assert body["blocking_reason_id"] is None
     assert body["moderator_comment"] is None
+    assert body["deleted"] is False
+    assert body["blocked"] is False
     assert "created_at" in body
     assert "updated_at" in body
     assert "category" not in body
@@ -121,8 +124,10 @@ def test_missing_images_returns_400() -> None:
     response = TestClient(app).post("/api/v1/products", json=payload)
 
     assert response.status_code == 400
-    assert response.json()["code"] == "VALIDATION_ERROR"
-    assert "images" in str(response.json()["errors"])
+    assert response.json() == {
+        "code": "INVALID_REQUEST",
+        "message": "At least one image is required",
+    }
 
 
 def test_missing_category_returns_400() -> None:
@@ -132,8 +137,10 @@ def test_missing_category_returns_400() -> None:
     response = TestClient(app).post("/api/v1/products", json=payload)
 
     assert response.status_code == 400
-    assert response.json()["code"] == "VALIDATION_ERROR"
-    assert "category_id" in str(response.json()["errors"])
+    assert response.json() == {
+        "code": "INVALID_REQUEST",
+        "message": "category_id is required",
+    }
 
 
 def test_invalid_category_id_returns_400() -> None:
@@ -142,8 +149,28 @@ def test_invalid_category_id_returns_400() -> None:
     )
 
     assert response.status_code == 400
-    assert response.json()["code"] == "VALIDATION_ERROR"
-    assert "category_id" in str(response.json()["errors"])
+    assert response.json() == {
+        "code": "INVALID_REQUEST",
+        "message": "category_id must be a valid UUID",
+    }
+
+
+def test_invalid_title_returns_400() -> None:
+    client = TestClient(app)
+
+    empty_response = client.post("/api/v1/products", json=_payload(title=""))
+    long_response = client.post("/api/v1/products", json=_payload(title="x" * 256))
+
+    assert empty_response.status_code == 400
+    assert empty_response.json() == {
+        "code": "INVALID_REQUEST",
+        "message": "title is required",
+    }
+    assert long_response.status_code == 400
+    assert long_response.json() == {
+        "code": "INVALID_REQUEST",
+        "message": "title must be 1-255 characters",
+    }
 
 
 def test_missing_description_returns_400() -> None:
@@ -153,8 +180,10 @@ def test_missing_description_returns_400() -> None:
     response = TestClient(app).post("/api/v1/products", json=payload)
 
     assert response.status_code == 400
-    assert response.json()["code"] == "VALIDATION_ERROR"
-    assert "description" in str(response.json()["errors"])
+    assert response.json() == {
+        "code": "INVALID_REQUEST",
+        "message": "description is required",
+    }
 
 
 def test_legacy_seller_products_endpoint_not_available() -> None:

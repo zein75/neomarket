@@ -458,7 +458,6 @@ class ProductService:
                 characteristic.name: characteristic.value
                 for characteristic in data.characteristics
             },
-            category=data.category,
         )
         return await self.repo.get_with_skus(product.id)
 
@@ -524,7 +523,7 @@ class ProductService:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "code": "CATEGORY_NOT_FOUND",
+                    "code": "INVALID_REQUEST",
                     "message": "Category not found",
                 },
             )

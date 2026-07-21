@@ -52,7 +52,7 @@ async def test_create_product_unknown_category_returns_400() -> None:
 
     assert exc_info.value.status_code == 400
     assert exc_info.value.detail == {
-        "code": "CATEGORY_NOT_FOUND",
+        "code": "INVALID_REQUEST",
         "message": "Category not found",
     }
     assert service.repo.create_called is False

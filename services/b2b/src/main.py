@@ -34,6 +34,11 @@ app = FastAPI(
 async def validation_exception_handler(
     request: Request, exc: RequestValidationError
 ) -> JSONResponse:
+    if request.method == "POST" and request.url.path == "/api/v1/products":
+        return JSONResponse(
+            status_code=400,
+            content=_create_product_validation_error(exc.errors()),
+        )
     return JSONResponse(
         status_code=400,
         content={
@@ -42,6 +47,38 @@ async def validation_exception_handler(
             "errors": exc.errors(),
         },
     )
+
+
+def _create_product_validation_error(errors: list[dict[str, object]]) -> dict[str, str]:
+    for error in errors:
+        location = list(error.get("loc") or [])
+        field = location[-1] if location else None
+        error_type = str(error.get("type", ""))
+        if field == "images":
+            return {
+                "code": "INVALID_REQUEST",
+                "message": "At least one image is required",
+            }
+        if field == "category_id":
+            if "uuid" in error_type or "parsing" in error_type:
+                return {
+                    "code": "INVALID_REQUEST",
+                    "message": "category_id must be a valid UUID",
+                }
+            return {
+                "code": "INVALID_REQUEST",
+                "message": "category_id is required",
+            }
+        if field == "title":
+            if "missing" in error_type or "too_short" in error_type:
+                return {"code": "INVALID_REQUEST", "message": "title is required"}
+            return {
+                "code": "INVALID_REQUEST",
+                "message": "title must be 1-255 characters",
+            }
+        if field == "description":
+            return {"code": "INVALID_REQUEST", "message": "description is required"}
+    return {"code": "INVALID_REQUEST", "message": "Invalid request"}
 
 
 @app.exception_handler(HTTPException)

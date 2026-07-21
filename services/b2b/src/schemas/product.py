@@ -30,12 +30,11 @@ class CharacteristicResponse(Characteristic):
 
 
 class ProductCreate(BaseModel):
-    title: str
-    description: str
+    title: str = Field(min_length=1, max_length=255)
+    description: str = Field(min_length=1, max_length=5000)
     category_id: UUID
     images: list[ProductImageCreate] = Field(min_length=1)
     characteristics: list[Characteristic] = Field(default_factory=list)
-    category: str | None = None
 
 
 class ProductUpdate(BaseModel):
@@ -60,8 +59,8 @@ class ProductResponse(BaseModel):
     images: list[ProductImageResponse]
     characteristics: list[CharacteristicResponse]
     status: ProductStatus
-    blocking_reason_id: UUID | None = None
-    moderator_comment: str | None = None
+    blocking_reason_id: UUID | None
+    moderator_comment: str | None
     created_at: datetime
     updated_at: datetime
     deleted: bool = False
@@ -174,6 +173,23 @@ class ProductResponse(BaseModel):
             if isinstance(report, dict) and report.get("comment") is not None:
                 return str(report["comment"])
         return None
+
+
+class ProductCreateResponse(ProductResponse):
+    blocked: bool = False
+
+    @model_validator(mode="before")
+    @classmethod
+    def from_product_model(cls, value: Any) -> Any:
+        data = super().from_product_model(value)
+        status_value = data.get("status")
+        data["blocked"] = status_value in {
+            ProductStatus.BLOCKED,
+            ProductStatus.HARD_BLOCKED,
+            ProductStatus.BLOCKED.value,
+            ProductStatus.HARD_BLOCKED.value,
+        }
+        return data
 
 
 class SKUPublicResponse(BaseModel):

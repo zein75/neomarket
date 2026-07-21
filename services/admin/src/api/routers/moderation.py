@@ -8,7 +8,7 @@ from src.api.deps import get_current_moderator, verify_service_key
 from src.core.database import get_db
 from src.schemas.moderation import (
     BlockDecisionRequest,
-    DeclineRequest,
+    BlockingReasonResponse,
     ModerationCardResponse,
 )
 from src.services.moderation_service import ModerationService
@@ -71,31 +71,15 @@ async def block_ticket(
     return card
 
 
-@router.post(
-    "/api/v1/moderation/{card_id}/decline",
-    response_model=ModerationCardResponse,
-    include_in_schema=False,
+@router.get(
+    "/api/v1/blocking-reasons",
+    response_model=list[BlockingReasonResponse],
 )
-@router.post(
-    "/api/v1/products/{card_id}/decline",
-    response_model=ModerationCardResponse,
-    include_in_schema=False,
-)
-async def decline_product(
-    card_id: UUID,
-    data: DeclineRequest,
-    current_moderator: SimpleNamespace = Depends(get_current_moderator),
+async def list_blocking_reasons(
+    hard_block: bool | None = None,
     db: AsyncSession = Depends(get_db),
-) -> ModerationCardResponse:
-    card = await ModerationService(db).decline_product(
-        card_id,
-        current_moderator.id,
-        hard_block=data.hard_block,
-        reason=data.reason,
-        field_reports=data.field_reports,
-    )
-    await db.commit()
-    return card
+) -> list[BlockingReasonResponse]:
+    return await ModerationService(db).list_blocking_reasons(hard_block=hard_block)
 
 
 @router.post("/api/v1/b2b/events")
