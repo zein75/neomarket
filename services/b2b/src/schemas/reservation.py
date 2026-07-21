@@ -26,7 +26,7 @@ class ReserveItem(BaseModel):
 
 class ReserveRequest(BaseModel):
     order_id: UUID
-    idempotency_key: str
+    idempotency_key: UUID
     items: list[ReserveItem] = Field(min_length=1)
 
 

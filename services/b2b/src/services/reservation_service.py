@@ -43,8 +43,9 @@ class ReservationService:
         )
 
     async def reserve(self, data: ReserveRequest) -> dict[str, object]:
+        idempotency_key = str(data.idempotency_key)
         existing = await self.reservation_repo.get_by_idempotency_key(
-            data.idempotency_key
+            idempotency_key
         )
         if existing:
             return {
@@ -103,7 +104,7 @@ class ReservationService:
         await self.sku_repo.session.flush()
         reservations = await self.reservation_repo.create_batch(
             order_id=data.order_id,
-            idempotency_key=data.idempotency_key,
+            idempotency_key=idempotency_key,
             items=data.items,
         )
         for sku in out_of_stock_skus:
