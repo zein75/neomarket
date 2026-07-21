@@ -16,7 +16,8 @@ class ModerationEventService:
         self.processed_event_repo = ProcessedEventRepository(session)
 
     async def apply(self, event: ModerationDecisionEvent) -> dict[str, str]:
-        if await self.processed_event_repo.exists(event.idempotency_key):
+        idempotency_key = str(event.idempotency_key)
+        if await self.processed_event_repo.exists(idempotency_key):
             return {"status": "DUPLICATE"}
         product = await self.product_repo.get_with_skus(event.product_id)
         if not product:
@@ -28,7 +29,7 @@ class ModerationEventService:
                 },
             )
 
-        decision = event.event_type.upper()
+        decision = event.event_type.value
         if decision not in {
             ProductStatus.MODERATED.value,
             ProductStatus.BLOCKED.value,
@@ -42,7 +43,7 @@ class ModerationEventService:
             )
 
         try:
-            await self.processed_event_repo.mark_processed(event.idempotency_key)
+            await self.processed_event_repo.mark_processed(idempotency_key)
         except IntegrityError:
             rollback = getattr(self.processed_event_repo.session, "rollback", None)
             if rollback:
