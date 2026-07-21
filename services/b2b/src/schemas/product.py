@@ -282,8 +282,8 @@ class FieldReportResponse(BaseModel):
 
 class ProductDetailResponse(ProductResponse):
     blocked: bool
-    blocking_reason: BlockingReasonResponse | None = None
-    field_reports: list[FieldReportResponse] = []
+    blocking_reason: BlockingReasonResponse | None
+    field_reports: list[FieldReportResponse]
 
 
 class ProductListItem(BaseModel):
