@@ -6,6 +6,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 from fastapi.testclient import TestClient
 
+from src.api.deps import get_db
 from src.models.order import OrderStatus
 from src.main import app
 from src.schemas.b2b_event import ProductEventRequest
@@ -44,11 +45,13 @@ class FakeSession:
     processed_keys: set[object] = set()
     added = []
     rolled_back = False
+    committed = False
     fail_on_duplicate = False
 
     def __init__(self) -> None:
         self.added = []
         self.rolled_back = False
+        self.committed = False
 
     def add(self, obj) -> None:
         self.added.append(obj)
@@ -64,6 +67,9 @@ class FakeSession:
 
     async def rollback(self) -> None:
         self.rolled_back = True
+
+    async def commit(self) -> None:
+        self.committed = True
 
 
 class FakeCartRepository:
@@ -86,6 +92,14 @@ def patch_dependencies(monkeypatch):
         "CartRepository",
         FakeCartRepository,
     )
+    session = FakeSession()
+
+    async def fake_db():
+        yield session
+
+    app.dependency_overrides[get_db] = fake_db
+    yield
+    app.dependency_overrides.clear()
 
 
 def test_receive_sku_out_of_stock_event_returns_204() -> None:
@@ -117,6 +131,41 @@ async def test_product_blocked_marks_cart_items_unavailable() -> None:
 
     assert processed is True
     assert FakeCartRepository.updates == [(sku_ids, "PRODUCT_BLOCKED")]
+
+
+def test_product_blocked_endpoint_accepts_event() -> None:
+    sku_ids = [uuid4(), uuid4()]
+    event = _product_event(sku_ids=sku_ids).model_dump(mode="json")
+
+    response = TestClient(app).post(
+        "/api/v1/events/product",
+        headers={"X-Service-Key": "dev-service-key-change-in-production"},
+        json=event,
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"accepted": True}
+    assert FakeCartRepository.updates == [(sku_ids, "PRODUCT_BLOCKED")]
+
+
+async def test_product_deleted_marks_cart_items_unavailable() -> None:
+    sku_ids = [uuid4()]
+    event = _product_event(event="PRODUCT_DELETED", sku_ids=sku_ids, reason=None)
+
+    processed = await B2BEventService(FakeSession()).handle_product_event(event)
+
+    assert processed is True
+    assert FakeCartRepository.updates == [(sku_ids, "PRODUCT_DELETED")]
+
+
+async def test_sku_out_of_stock_marks_cart_items_out_of_stock() -> None:
+    sku_ids = [uuid4()]
+    event = _product_event(event="SKU_OUT_OF_STOCK", sku_ids=sku_ids, reason=None)
+
+    processed = await B2BEventService(FakeSession()).handle_product_event(event)
+
+    assert processed is True
+    assert FakeCartRepository.updates == [(sku_ids, "OUT_OF_STOCK")]
 
 
 async def test_orders_not_affected_by_product_blocked() -> None:

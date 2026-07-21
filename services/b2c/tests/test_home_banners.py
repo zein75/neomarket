@@ -5,7 +5,8 @@ from uuid import UUID, uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from src.api.deps import get_db, get_optional_user
+from src.api.deps import get_db
+from src.api.routers import home as home_router
 from src.main import app
 from src.services import home_service as home_service_module
 
@@ -143,7 +144,7 @@ def patch_home(monkeypatch: pytest.MonkeyPatch):
         return None
 
     app.dependency_overrides[get_db] = fake_db
-    app.dependency_overrides[get_optional_user] = fake_optional_user
+    app.dependency_overrides[home_router.get_optional_banner_user] = fake_optional_user
     yield
     app.dependency_overrides.clear()
 
@@ -340,6 +341,48 @@ def test_unavailable_products_in_unavailable_ids() -> None:
     assert [item["id"] for item in body["items"]] == [str(visible_id)]
     assert body["unavailable_ids"] == [str(hidden_id)]
     assert body["total_products"] == 2
+
+
+def test_all_unavailable_products_returns_empty_items() -> None:
+    collection = _collection(title="Hits", priority=1)
+    first_id = uuid4()
+    second_id = uuid4()
+    FakeCollectionRepository.collections = [collection]
+    FakeCollectionRepository.product_ids_by_collection = {
+        collection.id: [first_id, second_id]
+    }
+
+    response = TestClient(app).get(f"/api/v1/collections/{collection.id}/products")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["items"] == []
+    assert body["unavailable_ids"] == [str(first_id), str(second_id)]
+    assert body["total_products"] == 2
+
+
+def test_collection_products_empty_page_keeps_total_products() -> None:
+    collection = _collection(title="Hits", priority=1)
+    first_id = uuid4()
+    second_id = uuid4()
+    FakeCollectionRepository.collections = [collection]
+    FakeCollectionRepository.product_ids_by_collection = {
+        collection.id: [first_id, second_id]
+    }
+
+    response = TestClient(app).get(
+        f"/api/v1/collections/{collection.id}/products",
+        params={"limit": 20, "offset": 20},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["items"] == []
+    assert body["unavailable_ids"] == []
+    assert body["total_products"] == 2
+    assert body["limit"] == 20
+    assert body["offset"] == 20
+    assert FakeB2BClient.batch_calls == []
 
 
 def test_unknown_collection_returns_404() -> None:

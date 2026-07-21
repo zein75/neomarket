@@ -15,11 +15,8 @@ if TYPE_CHECKING:
 class OrderStatus(enum.Enum):
     CREATED = "CREATED"
     PAID = "PAID"
-    PENDING = "PENDING"
-    CONFIRMED = "CONFIRMED"
     ASSEMBLING = "ASSEMBLING"
     DELIVERING = "DELIVERING"
-    SHIPPED = "SHIPPED"
     DELIVERED = "DELIVERED"
     CANCELLED = "CANCELLED"
     CANCEL_PENDING = "CANCEL_PENDING"
@@ -37,7 +34,7 @@ class Order(Base, TimestampMixin):
         nullable=False,
     )
     status: Mapped[OrderStatus] = mapped_column(
-        Enum(OrderStatus), default=OrderStatus.PENDING, nullable=False
+        Enum(OrderStatus), default=OrderStatus.CREATED, nullable=False
     )
     total_amount: Mapped[int] = mapped_column(Integer, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), default="RUB", nullable=False)

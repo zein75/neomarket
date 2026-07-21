@@ -1,6 +1,8 @@
 from uuid import UUID
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, HTTPException, status
+from fastapi import Security
+from fastapi.security import APIKeyHeader
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,10 +14,11 @@ from src.repositories.user_repo import UserRepository
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
+service_key_scheme = APIKeyHeader(name="X-Service-Key", auto_error=False)
 
 
 async def verify_service_key(
-    x_service_key: str | None = Header(default=None, alias="X-Service-Key"),
+    x_service_key: str | None = Security(service_key_scheme),
 ) -> None:
     if x_service_key != settings.service_key:
         raise HTTPException(

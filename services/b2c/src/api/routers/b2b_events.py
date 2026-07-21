@@ -23,7 +23,11 @@ async def receive_product_event(
     return ProductEventResponse(accepted=True)
 
 
-@router.post("/api/v1/b2b/events", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/api/v1/b2b/events",
+    status_code=status.HTTP_204_NO_CONTENT,
+    include_in_schema=False,
+)
 async def receive_b2b_event(
     event: LegacyB2BEventRequest,
     _: None = Depends(verify_service_key),

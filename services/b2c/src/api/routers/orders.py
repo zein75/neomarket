@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, Query
+from fastapi import APIRouter, Depends, Header, Path, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_current_user, get_db
@@ -57,24 +57,24 @@ async def create_order(
     return order
 
 
-@router.get("/api/v1/orders/{order_id}", response_model=OrderDetailResponse)
-@router.get("/orders/{order_id}", response_model=OrderDetailResponse, include_in_schema=False)
+@router.get("/api/v1/orders/{id}", response_model=OrderDetailResponse)
+@router.get("/orders/{id}", response_model=OrderDetailResponse, include_in_schema=False)
 async def get_order(
-    order_id: UUID,
+    order_id: UUID = Path(alias="id"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> OrderDetailResponse:
     return await OrderService(db).get_order(order_id, current_user.id)
 
 
-@router.post("/api/v1/orders/{order_id}/cancel", response_model=OrderResponse)
+@router.post("/api/v1/orders/{id}/cancel", response_model=OrderResponse)
 @router.post(
-    "/orders/{order_id}/cancel",
+    "/orders/{id}/cancel",
     response_model=OrderResponse,
     include_in_schema=False,
 )
 async def cancel_order(
-    order_id: UUID,
+    order_id: UUID = Path(alias="id"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> OrderResponse:

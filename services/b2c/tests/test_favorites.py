@@ -419,6 +419,26 @@ def test_subscribe_to_unknown_product_returns_404() -> None:
     assert FakeProductSubscriptionRepository.subscriptions == []
 
 
+def test_subscription_user_id_from_query_is_ignored(
+    patch_dependencies: SimpleNamespace,
+) -> None:
+    product_id = uuid4()
+    other_user_id = uuid4()
+    FakeB2BClient.visible_products = {str(product_id): _product(product_id)}
+
+    response = TestClient(app).post(
+        f"/api/v1/favorites/{product_id}/subscribe",
+        params={"user_id": str(other_user_id)},
+        json={"notify_on": ["IN_STOCK"]},
+    )
+
+    assert response.status_code == 201
+    assert len(FakeProductSubscriptionRepository.subscriptions) == 1
+    subscription = FakeProductSubscriptionRepository.subscriptions[0]
+    assert subscription.user_id == patch_dependencies.id
+    assert subscription.user_id != other_user_id
+
+
 def test_unsubscribe_returns_204(
     patch_dependencies: SimpleNamespace,
 ) -> None:
@@ -435,6 +455,15 @@ def test_unsubscribe_returns_204(
 
     response = TestClient(app).delete(
         f"/api/v1/favorites/{product_id}/subscribe",
+    )
+
+    assert response.status_code == 204
+    assert FakeProductSubscriptionRepository.subscriptions == []
+
+
+def test_unsubscribe_missing_returns_204() -> None:
+    response = TestClient(app).delete(
+        f"/api/v1/favorites/{uuid4()}/subscribe",
     )
 
     assert response.status_code == 204

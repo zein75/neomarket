@@ -104,7 +104,6 @@ class OrderService:
                 order_id=order.id,
                 sku_id=cart_item.sku_id,
                 product_id=cart_item.product_id,
-                # Snapshots — populated from B2B data in a real integration
                 product_title="",
                 sku_name="",
                 quantity=cart_item.quantity,
@@ -113,7 +112,6 @@ class OrderService:
             )
             self.order_repo.session.add(order_item)
 
-        # Clear cart
         for cart_item in list(cart.items):
             await self.cart_repo.remove_item(cart_item)
 
@@ -192,12 +190,12 @@ class OrderService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={"code": "ORDER_NOT_FOUND", "message": "Order not found"},
             )
-        if order.status in {OrderStatus.CANCELLED, OrderStatus.CANCEL_PENDING}:
+        if order.status not in {OrderStatus.DELIVERING, OrderStatus.DELIVERED}:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
                     "code": "DELIVERY_NOT_ALLOWED",
-                    "message": "Cancelled order cannot be delivered",
+                    "message": "Order cannot be delivered in current status",
                     "current_status": order.status.value,
                 },
             )
@@ -308,8 +306,15 @@ class OrderService:
                 raise
 
     async def _unreserve(self, order: Order) -> None:
+        payload = {
+            "order_id": str(order.id),
+            "items": [
+                {"sku_id": str(item.sku_id), "quantity": item.quantity}
+                for item in order.items
+            ],
+        }
         async with B2BClient(settings.b2b_base_url) as client:
-            await client.unreserve({"order_id": str(order.id)})
+            await client.unreserve(payload)
 
     async def _try_fulfill(self, order: Order) -> bool:
         payload = {

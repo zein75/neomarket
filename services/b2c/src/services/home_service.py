@@ -104,7 +104,7 @@ class HomeService:
                 collection_title=collection.title,
                 items=[],
                 unavailable_ids=[],
-                total_products=0,
+                total_products=total_products,
                 limit=limit,
                 offset=offset,
             )

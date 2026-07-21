@@ -1,11 +1,13 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header
 from fastapi import Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.deps import get_db, get_optional_user
+from src.api.deps import get_db
+from src.core.security import decode_access_token
 from src.models.user import User
+from src.repositories.user_repo import UserRepository
 from src.schemas.home import (
     BannerEventsCreate,
     BannerEventsResponse,
@@ -19,6 +21,25 @@ from src.services.home_service import HomeService
 router = APIRouter(tags=["home"])
 
 
+async def get_optional_banner_user(
+    authorization: str | None = Header(default=None, alias="Authorization"),
+    db: AsyncSession = Depends(get_db),
+) -> User | None:
+    if not authorization:
+        return None
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token:
+        return None
+    user_id_str = decode_access_token(token)
+    if not user_id_str:
+        return None
+    try:
+        user_id = UUID(user_id_str)
+    except ValueError:
+        return None
+    return await UserRepository(db).get_by_id(user_id)
+
+
 @router.get("/api/v1/home/banners", response_model=BannerListResponse)
 async def list_banners(
     db: AsyncSession = Depends(get_db),
@@ -29,7 +50,7 @@ async def list_banners(
 @router.post("/api/v1/banner-events", response_model=BannerEventsResponse)
 async def record_banner_events(
     data: BannerEventsCreate,
-    current_user: User | None = Depends(get_optional_user),
+    current_user: User | None = Depends(get_optional_banner_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, int]:
     result = await HomeService(db).record_banner_events(

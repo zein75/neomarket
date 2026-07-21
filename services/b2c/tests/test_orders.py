@@ -70,7 +70,13 @@ def _order_with_total(
 
 
 def _unreserve_payload(order: Order) -> dict[str, object]:
-    return {"order_id": str(order.id)}
+    return {
+        "order_id": str(order.id),
+        "items": [
+            {"sku_id": str(item.sku_id), "quantity": item.quantity}
+            for item in order.items
+        ],
+    }
 
 
 def _order_request() -> OrderCreateRequest:
@@ -362,7 +368,7 @@ async def test_idempotency_returns_existing_order() -> None:
     user_id = uuid4()
     existing = Order(
         user_id=user_id,
-        status=OrderStatus.CONFIRMED,
+        status=OrderStatus.PAID,
         total_amount=500,
         currency="RUB",
         idempotency_key="checkout-3",
@@ -570,6 +576,24 @@ async def test_repeated_fulfill_idempotent() -> None:
             ],
         },
     ]
+
+
+async def test_cancelled_order_delivery_does_not_fulfill() -> None:
+    user_id = uuid4()
+    order = _order(user_id=user_id, status=OrderStatus.CANCELLED)
+    FakeOrderRepository.orders_by_id[order.id] = order
+
+    with pytest.raises(HTTPException) as exc:
+        await OrderService(FakeSession()).mark_delivered(order.id)
+
+    assert exc.value.status_code == 409
+    assert exc.value.detail == {
+        "code": "DELIVERY_NOT_ALLOWED",
+        "message": "Order cannot be delivered in current status",
+        "current_status": "CANCELLED",
+    }
+    assert order.status == OrderStatus.CANCELLED
+    assert FakeB2BClient.fulfill_calls == []
 
 
 async def test_cancel_paid_order_transitions_to_cancelled() -> None:

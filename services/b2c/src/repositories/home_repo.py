@@ -17,7 +17,7 @@ class BannerRepository(BaseRepository[Banner]):
         result = await self.session.execute(
             select(Banner)
             .where(
-                Banner.is_active == True,  # noqa: E712
+                Banner.is_active.is_(True),
                 (Banner.start_at.is_(None)) | (Banner.start_at <= now),
                 (Banner.end_at.is_(None)) | (Banner.end_at >= now),
             )
@@ -59,7 +59,7 @@ class CollectionRepository(BaseRepository[Collection]):
         offset: int,
     ) -> tuple[list[Collection], int]:
         base_query = select(Collection).where(
-            Collection.is_active == True,  # noqa: E712
+            Collection.is_active.is_(True),
             (Collection.start_date.is_(None)) | (Collection.start_date <= today),
         )
         total = (
@@ -81,7 +81,7 @@ class CollectionRepository(BaseRepository[Collection]):
         result = await self.session.execute(
             select(Collection).where(
                 Collection.id == collection_id,
-                Collection.is_active == True,  # noqa: E712
+                Collection.is_active.is_(True),
                 (Collection.start_date.is_(None)) | (Collection.start_date <= today),
             )
         )
