@@ -1,24 +1,38 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends, Header, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_current_user, get_db
+from src.models.order import OrderStatus
 from src.models.user import User
-from src.schemas.order import OrderCreateRequest, OrderResponse
+from src.schemas.order import (
+    OrderCreateRequest,
+    OrderDetailResponse,
+    OrderPaginatedResponse,
+    OrderResponse,
+)
 from src.services.cart_service import CartService
 from src.services.order_service import OrderService
 
 router = APIRouter(tags=["orders"])
 
 
-@router.get("/api/v1/orders", response_model=list[OrderResponse])
-@router.get("/orders", response_model=list[OrderResponse], include_in_schema=False)
+@router.get("/api/v1/orders", response_model=OrderPaginatedResponse)
+@router.get("/orders", response_model=OrderPaginatedResponse, include_in_schema=False)
 async def list_orders(
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    status: OrderStatus | None = Query(default=None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> list[OrderResponse]:
-    return await OrderService(db).list_orders(current_user.id)
+) -> OrderPaginatedResponse:
+    return await OrderService(db).list_orders(
+        current_user.id,
+        limit=limit,
+        offset=offset,
+        status_filter=status,
+    )
 
 
 @router.post("/api/v1/orders", response_model=OrderResponse, status_code=201)
@@ -43,13 +57,13 @@ async def create_order(
     return order
 
 
-@router.get("/api/v1/orders/{order_id}", response_model=OrderResponse)
-@router.get("/orders/{order_id}", response_model=OrderResponse, include_in_schema=False)
+@router.get("/api/v1/orders/{order_id}", response_model=OrderDetailResponse)
+@router.get("/orders/{order_id}", response_model=OrderDetailResponse, include_in_schema=False)
 async def get_order(
     order_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> OrderResponse:
+) -> OrderDetailResponse:
     return await OrderService(db).get_order(order_id, current_user.id)
 
 

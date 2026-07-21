@@ -87,3 +87,94 @@ class OrderResponse(BaseModel):
         if data.get("created_at") is None:
             data["created_at"] = datetime.now(timezone.utc)
         return data
+
+
+class OrderListItemResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    status: OrderStatus
+    total_amount: int
+    items_count: int
+    created_at: datetime
+    updated_at: datetime
+
+    @model_validator(mode="before")
+    @classmethod
+    def from_order_model(cls, value: Any) -> Any:
+        if isinstance(value, dict):
+            data = dict(value)
+        else:
+            data = {
+                "id": getattr(value, "id"),
+                "status": getattr(value, "status"),
+                "total_amount": getattr(value, "total_amount"),
+                "items_count": len(getattr(value, "items", []) or []),
+                "created_at": getattr(value, "created_at", None),
+                "updated_at": getattr(value, "updated_at", None),
+            }
+        now = datetime.now(timezone.utc)
+        data.setdefault("items_count", 0)
+        if data.get("created_at") is None:
+            data["created_at"] = now
+        if data.get("updated_at") is None:
+            data["updated_at"] = data["created_at"]
+        return data
+
+
+class OrderPaginatedResponse(BaseModel):
+    items: list[OrderListItemResponse]
+    total_count: int
+    limit: int
+    offset: int
+
+
+class OrderDetailItemResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    sku_id: UUID
+    product_id: UUID
+    product_title: str
+    sku_name: str
+    quantity: int
+    unit_price: int
+    line_total: int
+
+
+class OrderDetailResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    status: OrderStatus
+    items: list[OrderDetailItemResponse] = []
+    total_amount: int
+    delivery_address: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+    @model_validator(mode="before")
+    @classmethod
+    def from_order_model(cls, value: Any) -> Any:
+        if isinstance(value, dict):
+            data = dict(value)
+        else:
+            address = getattr(value, "address", {}) or {}
+            data = {
+                "id": getattr(value, "id"),
+                "status": getattr(value, "status"),
+                "items": getattr(value, "items", []),
+                "total_amount": getattr(value, "total_amount"),
+                "delivery_address": getattr(value, "delivery_address", None),
+                "created_at": getattr(value, "created_at", None),
+                "updated_at": getattr(value, "updated_at", None),
+            }
+            if data["delivery_address"] is None and isinstance(address, dict):
+                value = address.get("delivery_address")
+                data["delivery_address"] = str(value) if value is not None else None
+        now = datetime.now(timezone.utc)
+        if data.get("created_at") is None:
+            data["created_at"] = now
+        if data.get("updated_at") is None:
+            data["updated_at"] = data["created_at"]
+        return data

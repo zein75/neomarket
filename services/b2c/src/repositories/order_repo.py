@@ -1,10 +1,10 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.models.order import Order
+from src.models.order import Order, OrderStatus
 
 from .base import BaseRepository
 
@@ -17,6 +17,18 @@ class OrderRepository(BaseRepository[Order]):
         result = await self.session.execute(
             select(Order)
             .where(Order.id == order_id)
+            .options(selectinload(Order.items))
+        )
+        return result.scalar_one_or_none()
+
+    async def get_user_order_with_items(
+        self,
+        order_id: UUID,
+        user_id: UUID,
+    ) -> Order | None:
+        result = await self.session.execute(
+            select(Order)
+            .where(Order.id == order_id, Order.user_id == user_id)
             .options(selectinload(Order.items))
         )
         return result.scalar_one_or_none()
@@ -37,3 +49,30 @@ class OrderRepository(BaseRepository[Order]):
             .order_by(Order.created_at.desc())
         )
         return list(result.scalars().all())
+
+    async def list_for_user(
+        self,
+        user_id: UUID,
+        *,
+        limit: int,
+        offset: int,
+        status_filter: OrderStatus | None = None,
+    ) -> tuple[list[Order], int]:
+        filters = [Order.user_id == user_id]
+        if status_filter is not None:
+            filters.append(Order.status == status_filter)
+
+        total_result = await self.session.execute(
+            select(func.count()).select_from(Order).where(*filters)
+        )
+        total_count = int(total_result.scalar_one())
+
+        result = await self.session.execute(
+            select(Order)
+            .where(*filters)
+            .options(selectinload(Order.items))
+            .order_by(Order.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        return list(result.scalars().all()), total_count

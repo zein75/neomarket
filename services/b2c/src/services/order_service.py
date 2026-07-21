@@ -10,7 +10,7 @@ from src.core.config import settings
 from src.models.order import Order, OrderItem, OrderStatus
 from src.repositories.cart_repo import CartRepository
 from src.repositories.order_repo import OrderRepository
-from src.schemas.order import OrderCreateRequest
+from src.schemas.order import OrderCreateRequest, OrderPaginatedResponse
 
 
 logger = logging.getLogger(__name__)
@@ -120,18 +120,33 @@ class OrderService:
         await self.order_repo.session.flush()
         return await self.order_repo.get_with_items(order.id)
 
-    async def list_orders(self, user_id: UUID) -> list[Order]:
-        return await self.order_repo.list_by_user(user_id)
+    async def list_orders(
+        self,
+        user_id: UUID,
+        *,
+        limit: int = 20,
+        offset: int = 0,
+        status_filter: OrderStatus | None = None,
+    ) -> OrderPaginatedResponse:
+        orders, total_count = await self.order_repo.list_for_user(
+            user_id,
+            limit=limit,
+            offset=offset,
+            status_filter=status_filter,
+        )
+        return OrderPaginatedResponse(
+            items=orders,
+            total_count=total_count,
+            limit=limit,
+            offset=offset,
+        )
 
     async def get_order(self, order_id: UUID, user_id: UUID) -> Order:
-        order = await self.order_repo.get_with_items(order_id)
+        order = await self.order_repo.get_user_order_with_items(order_id, user_id)
         if not order:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Order not found"
-            )
-        if order.user_id != user_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"code": "ORDER_NOT_FOUND", "message": "Order not found"},
             )
         return order
 

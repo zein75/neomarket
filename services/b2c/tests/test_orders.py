@@ -5,7 +5,7 @@ import pytest
 from fastapi import HTTPException
 
 from src.models.order import Order, OrderItem, OrderStatus
-from src.schemas.order import OrderCreateRequest, OrderResponse
+from src.schemas.order import OrderCreateRequest, OrderDetailResponse, OrderResponse
 from src.services import order_service as order_service_module
 from src.services.order_service import OrderService
 
@@ -55,6 +55,17 @@ def _order(*, user_id: UUID, status: OrderStatus) -> Order:
     )
     order.id = uuid4()
     order.items = [item]
+    return order
+
+
+def _order_with_total(
+    *,
+    user_id: UUID,
+    status: OrderStatus,
+    total_amount: int,
+) -> Order:
+    order = _order(user_id=user_id, status=status)
+    order.total_amount = total_amount
     return order
 
 
@@ -112,6 +123,29 @@ class FakeOrderRepository:
             if order.id == order_id:
                 return order
         return None
+
+    async def get_user_order_with_items(self, order_id: UUID, user_id: UUID):
+        order = await self.get_with_items(order_id)
+        if order and order.user_id == user_id:
+            return order
+        return None
+
+    async def list_for_user(
+        self,
+        user_id: UUID,
+        *,
+        limit: int,
+        offset: int,
+        status_filter: OrderStatus | None = None,
+    ):
+        orders = [
+            order
+            for order in self.orders_by_id.values()
+            if order.user_id == user_id
+            and (status_filter is None or order.status == status_filter)
+        ]
+        orders.sort(key=lambda order: str(order.id), reverse=True)
+        return orders[offset : offset + limit], len(orders)
 
     async def create(self, **data):
         order = Order(**data)
@@ -346,6 +380,80 @@ async def test_b2b_unavailable_returns_503() -> None:
 
     assert exc.value.status_code == 503
     assert FakeOrderRepository.created_orders == []
+
+
+async def test_orders_list_returns_own_orders_paginated() -> None:
+    user_id = uuid4()
+    own_paid = _order_with_total(
+        user_id=user_id,
+        status=OrderStatus.PAID,
+        total_amount=300,
+    )
+    own_delivered = _order_with_total(
+        user_id=user_id,
+        status=OrderStatus.DELIVERED,
+        total_amount=900,
+    )
+    other_user_order = _order_with_total(
+        user_id=uuid4(),
+        status=OrderStatus.PAID,
+        total_amount=100,
+    )
+    FakeOrderRepository.orders_by_id = {
+        own_paid.id: own_paid,
+        own_delivered.id: own_delivered,
+        other_user_order.id: other_user_order,
+    }
+
+    response = await OrderService(FakeSession()).list_orders(
+        user_id,
+        limit=1,
+        offset=0,
+        status_filter=OrderStatus.PAID,
+    )
+    payload = response.model_dump(mode="json")
+
+    assert payload["total_count"] == 1
+    assert payload["limit"] == 1
+    assert payload["offset"] == 0
+    assert len(payload["items"]) == 1
+    assert payload["items"][0]["id"] == str(own_paid.id)
+    assert payload["items"][0]["status"] == "PAID"
+    assert payload["items"][0]["total_amount"] == 300
+    assert payload["items"][0]["items_count"] == 1
+
+
+async def test_order_detail_shows_fixed_prices() -> None:
+    user_id = uuid4()
+    order = _order(user_id=user_id, status=OrderStatus.PAID)
+    order.total_amount = 300
+    order.items[0].unit_price = 150
+    order.items[0].line_total = 300
+    FakeOrderRepository.orders_by_id[order.id] = order
+
+    loaded = await OrderService(FakeSession()).get_order(order.id, user_id)
+    payload = OrderDetailResponse.model_validate(loaded).model_dump(mode="json")
+
+    assert payload["id"] == str(order.id)
+    assert payload["total_amount"] == 300
+    assert payload["items"][0]["unit_price"] == 150
+    assert payload["items"][0]["line_total"] == 300
+    assert payload["items"][0]["product_title"] == "Phone"
+    assert payload["items"][0]["sku_name"] == "128 GB"
+
+
+async def test_other_user_order_returns_404_not_403() -> None:
+    order = _order(user_id=uuid4(), status=OrderStatus.PAID)
+    FakeOrderRepository.orders_by_id[order.id] = order
+
+    with pytest.raises(HTTPException) as exc:
+        await OrderService(FakeSession()).get_order(
+            order_id=order.id,
+            user_id=uuid4(),
+        )
+
+    assert exc.value.status_code == 404
+    assert exc.value.detail["code"] == "ORDER_NOT_FOUND"
 
 
 async def test_cancel_paid_order_transitions_to_cancelled() -> None:
