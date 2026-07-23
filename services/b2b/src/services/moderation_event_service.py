@@ -83,7 +83,9 @@ class ModerationEventService:
         if not event.blocking_reason_id:
             return None
         payload_reason = {}
-        if isinstance(event.payload, dict) and isinstance(
+        if isinstance(event.blocking_reason, dict):
+            payload_reason = event.blocking_reason
+        elif isinstance(event.payload, dict) and isinstance(
             event.payload.get("blocking_reason"),
             dict,
         ):

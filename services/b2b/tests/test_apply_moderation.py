@@ -232,6 +232,59 @@ def test_blocked_event_then_seller_view_returns_blocking_reason() -> None:
     ]
 
 
+def test_blocked_event_saves_full_top_level_blocking_reason_for_seller_view() -> None:
+    product = _product()
+    reason_id = uuid4()
+    FakeProductRepository.product = product
+
+    async def fake_db():
+        yield FakeSession()
+
+    async def fake_seller():
+        return SimpleNamespace(id=product.seller_id, is_active=True)
+
+    app.dependency_overrides[moderation_router.get_db] = fake_db
+    app.dependency_overrides[products_router.get_db] = fake_db
+    app.dependency_overrides[products_router.get_seller_or_service] = fake_seller
+    try:
+        event_response = TestClient(app).post(
+            "/api/v1/events/moderation",
+            headers={"X-Service-Key": "dev-service-key-change-in-production"},
+            json={
+                "idempotency_key": str(uuid4()),
+                "event_type": "BLOCKED",
+                "product_id": str(product.id),
+                "occurred_at": datetime.now(timezone.utc).isoformat(),
+                "hard_block": False,
+                "blocking_reason": {
+                    "id": str(reason_id),
+                    "title": "Description mismatch",
+                    "comment": "Photos and description contradict each other",
+                },
+                "field_reports": [
+                    {
+                        "field_name": "description",
+                        "sku_id": None,
+                        "comment": "Description copied from another product",
+                    }
+                ],
+            },
+        )
+        product_response = TestClient(app).get(f"/api/v1/products/{product.id}")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert event_response.status_code == 204
+    assert product_response.status_code == 200
+    body = product_response.json()
+    assert body["blocking_reason"] == {
+        "id": str(reason_id),
+        "title": "Description mismatch",
+        "comment": "Photos and description contradict each other",
+    }
+    assert body["moderator_comment"] == "Photos and description contradict each other"
+
+
 @pytest.mark.asyncio
 async def test_blocked_hard_sets_terminal_status() -> None:
     product = _product()
