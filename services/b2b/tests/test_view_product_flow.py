@@ -232,6 +232,35 @@ def test_canonical_product_route_accepts_service_key_and_returns_public_shape() 
     assert "field_reports" not in body
 
 
+def test_service_key_product_route_returns_blocked_product_public_shape() -> None:
+    product = _product(seller_id=uuid4(), status=ProductStatus.BLOCKED)
+    product.blocking_reason = {
+        "id": str(uuid4()),
+        "title": "Bad photos",
+        "comment": "Photo must show the product clearly",
+    }
+    product.field_reports = [
+        {"field_name": "images[0]", "sku_id": None, "comment": "Image is blurry"}
+    ]
+    FakeProductRepository.product = product
+    app.dependency_overrides[products_router.get_db] = _fake_db
+    try:
+        response = TestClient(app).get(
+            f"/api/v1/products/{product.id}",
+            headers={"X-Service-Key": "dev-service-key-change-in-production"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "BLOCKED"
+    assert "cost_price" not in body["skus"][0]
+    assert "reserved_quantity" not in body["skus"][0]
+    assert "blocking_reason" not in body
+    assert "field_reports" not in body
+
+
 def test_public_product_response_does_not_expose_seller_sku_fields() -> None:
     product = _product(seller_id=uuid4())
     FakeProductRepository.product = product

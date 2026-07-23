@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError
 
 from src.api.routers import moderation_events as moderation_router
+from src.api.routers import products as products_router
 from src.main import app
 from src.models.product import ProductStatus
 from src.schemas.moderation_event import ModerationDecisionEvent
@@ -169,7 +170,66 @@ async def test_blocked_event_saves_blocking_reason_id() -> None:
         _event(product.id, event_type="BLOCKED", blocking_reason_id=reason_id)
     )
 
-    assert product.blocking_reason == {"id": str(reason_id)}
+    assert product.blocking_reason == {
+        "id": str(reason_id),
+        "title": "Moderation block",
+        "comment": "Image is blurry",
+    }
+
+
+def test_blocked_event_then_seller_view_returns_blocking_reason() -> None:
+    product = _product()
+    reason_id = uuid4()
+    FakeProductRepository.product = product
+
+    async def fake_db():
+        yield FakeSession()
+
+    async def fake_seller():
+        return SimpleNamespace(id=product.seller_id, is_active=True)
+
+    app.dependency_overrides[moderation_router.get_db] = fake_db
+    app.dependency_overrides[products_router.get_db] = fake_db
+    app.dependency_overrides[products_router.get_seller_or_service] = fake_seller
+    try:
+        event_response = TestClient(app).post(
+            "/api/v1/moderation/events",
+            headers={"X-Service-Key": "dev-service-key-change-in-production"},
+            json={
+                "idempotency_key": str(uuid4()),
+                "event_type": "BLOCKED",
+                "product_id": str(product.id),
+                "occurred_at": datetime.now(timezone.utc).isoformat(),
+                "blocking_reason_id": str(reason_id),
+                "field_reports": [
+                    {
+                        "field_name": "images[0]",
+                        "sku_id": None,
+                        "comment": "Image is blurry",
+                    }
+                ],
+            },
+        )
+        product_response = TestClient(app).get(f"/api/v1/products/{product.id}")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert event_response.status_code == 204
+    assert product_response.status_code == 200
+    body = product_response.json()
+    assert body["status"] == "BLOCKED"
+    assert body["blocking_reason"] == {
+        "id": str(reason_id),
+        "title": "Moderation block",
+        "comment": "Image is blurry",
+    }
+    assert body["field_reports"] == [
+        {
+            "field_name": "images[0]",
+            "sku_id": None,
+            "comment": "Image is blurry",
+        }
+    ]
 
 
 @pytest.mark.asyncio

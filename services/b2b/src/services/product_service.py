@@ -55,6 +55,18 @@ class ProductService:
         product = await self.get_active(product_id)
         return self._public_product_detail(product)
 
+    async def get_service_detail(self, product_id: UUID) -> dict[str, object]:
+        product = await self.repo.get_with_skus(product_id)
+        if not product:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "code": "PRODUCT_NOT_FOUND",
+                    "message": "Product not found",
+                },
+            )
+        return self._public_product_detail(product)
+
     async def get_public_batch(self, product_ids: list[UUID]) -> list[dict[str, object]]:
         products = await self.repo.list_public_catalog(product_ids)
         visible_by_id = {

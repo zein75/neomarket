@@ -196,7 +196,7 @@ async def get_seller_product(
 ) -> Any:
     svc = ProductService(db)
     if current_seller is None:
-        return await svc.get_public_detail(product_id)
+        return await svc.get_service_detail(product_id)
     return await svc.get_for_seller(product_id, current_seller.id)
 
 

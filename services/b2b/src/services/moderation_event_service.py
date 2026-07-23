@@ -73,7 +73,43 @@ class ModerationEventService:
             ProductStatus.HARD_BLOCKED if event.hard_block else ProductStatus.BLOCKED
         )
         product.is_active = False
-        product.blocking_reason = (
-            {"id": str(event.blocking_reason_id)} if event.blocking_reason_id else None
-        )
+        product.blocking_reason = self._blocking_reason_payload(event)
         product.field_reports = event.field_reports
+
+    def _blocking_reason_payload(
+        self,
+        event: ModerationDecisionEvent,
+    ) -> dict[str, str] | None:
+        if not event.blocking_reason_id:
+            return None
+        payload_reason = {}
+        if isinstance(event.payload, dict) and isinstance(
+            event.payload.get("blocking_reason"),
+            dict,
+        ):
+            payload_reason = event.payload["blocking_reason"]
+        title = (
+            payload_reason.get("title")
+            or event.model_extra.get("blocking_reason_title")
+            or "Moderation block"
+        )
+        comment = (
+            payload_reason.get("comment")
+            or event.model_extra.get("moderator_comment")
+            or self._first_field_report_comment(event)
+            or "Product blocked by moderation"
+        )
+        return {
+            "id": str(event.blocking_reason_id),
+            "title": str(title),
+            "comment": str(comment),
+        }
+
+    def _first_field_report_comment(
+        self,
+        event: ModerationDecisionEvent,
+    ) -> str | None:
+        for report in event.field_reports:
+            if isinstance(report, dict) and report.get("comment"):
+                return str(report["comment"])
+        return None
