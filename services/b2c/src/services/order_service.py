@@ -166,7 +166,7 @@ class OrderService:
         return order
 
     async def cancel_order(self, order_id: UUID, user_id: UUID) -> Order:
-        order = await self.order_repo.get_with_items(order_id)
+        order = await self.order_repo.get_with_items_for_update(order_id)
         if not order or order.user_id != user_id:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -201,7 +201,7 @@ class OrderService:
         return order
 
     async def mark_delivered(self, order_id: UUID) -> Order:
-        order = await self.order_repo.get_with_items(order_id)
+        order = await self.order_repo.get_with_items_for_update(order_id)
         if not order:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

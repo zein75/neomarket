@@ -119,6 +119,7 @@ class FakeOrderRepository:
     orders_by_id: dict[UUID, Order] = {}
     pending_fulfillments: dict[UUID, SimpleNamespace] = {}
     created_orders: list[Order] = []
+    locked_gets: list[UUID] = []
 
     def __init__(self, session) -> None:
         self.session = session
@@ -133,6 +134,10 @@ class FakeOrderRepository:
             if order.id == order_id:
                 return order
         return None
+
+    async def get_with_items_for_update(self, order_id: UUID):
+        self.locked_gets.append(order_id)
+        return await self.get_with_items(order_id)
 
     async def get_user_order_with_items(self, order_id: UUID, user_id: UUID):
         order = await self.get_with_items(order_id)
@@ -243,6 +248,7 @@ def patch_dependencies(monkeypatch):
     FakeOrderRepository.orders_by_id = {}
     FakeOrderRepository.pending_fulfillments = {}
     FakeOrderRepository.created_orders = []
+    FakeOrderRepository.locked_gets = []
     FakeB2BClient.products = []
     FakeB2BClient.reserve_calls = []
     FakeB2BClient.unreserve_calls = []
@@ -586,6 +592,7 @@ async def test_delivered_status_triggers_fulfill_to_b2b() -> None:
     delivered = await OrderService(FakeSession()).mark_delivered(order.id)
 
     assert delivered.status == OrderStatus.DELIVERED
+    assert FakeOrderRepository.locked_gets == [order.id]
     assert FakeB2BClient.fulfill_calls == [
         {
             "order_id": str(order.id),
@@ -676,6 +683,8 @@ async def test_cancelled_order_delivery_does_not_fulfill() -> None:
 async def test_cancel_paid_order_transitions_to_cancelled() -> None:
     user_id = uuid4()
     order = _order(user_id=user_id, status=OrderStatus.PAID)
+    order.address_id = uuid4()
+    order.address = {"id": str(order.address_id)}
     FakeOrderRepository.orders_by_id[order.id] = order
 
     cancelled = await OrderService(FakeSession()).cancel_order(
@@ -684,7 +693,15 @@ async def test_cancel_paid_order_transitions_to_cancelled() -> None:
     )
 
     assert cancelled.status == OrderStatus.CANCELLED
+    assert FakeOrderRepository.locked_gets == [order.id]
     assert FakeB2BClient.unreserve_calls == [_unreserve_payload(order)]
+    response = OrderResponse.model_validate(cancelled).model_dump(mode="json")
+    assert response["address"]["id"] == str(order.address_id)
+    assert response["address"]["country"] == "RU"
+    assert response["address"]["city"] == "Yekaterinburg"
+    assert response["address"]["street"] == "Mira"
+    assert response["address"]["building"] == "19"
+    assert response["address"]["created_at"]
 
 
 async def test_unreserve_failure_transitions_to_cancel_pending() -> None:
