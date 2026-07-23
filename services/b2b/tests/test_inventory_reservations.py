@@ -4,9 +4,18 @@ from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 from src.api.routers import reservations as reservations_router
 from src.main import app
+from src.models import Base
+from src.models.product import Product
+from src.models.reservation import Reservation
+from src.models.reservation_operation import ReservationOperation
+from src.models.seller import Seller
+from src.models.sku import SKU
 from src.schemas.reservation import ReserveItem, ReserveRequest, UnreserveRequest
 from src.services import reservation_service as reservation_service_module
 from src.services.reservation_service import ReservationService
@@ -40,14 +49,10 @@ class FakeSKURepository:
 
 
 class FakeReservationRepository:
-    reservations_by_key: dict[str, object] = {}
     reservations_by_order: dict[object, list[object]] = {}
 
     def __init__(self, session: object) -> None:
         self.session = session
-
-    async def get_by_idempotency_key(self, idempotency_key: str):
-        return self.reservations_by_key.get(idempotency_key)
 
     async def create_batch(self, *, order_id, idempotency_key, items):
         created_at = datetime.now(timezone.utc)
@@ -62,7 +67,6 @@ class FakeReservationRepository:
             )
             for item in items
         ]
-        self.reservations_by_key[idempotency_key] = reservations[0]
         self.reservations_by_order[order_id] = reservations
         return reservations
 
@@ -72,6 +76,25 @@ class FakeReservationRepository:
     async def delete_many(self, reservations):
         for reservation in reservations:
             self.reservations_by_order[reservation.order_id].remove(reservation)
+
+
+class FakeReservationOperationRepository:
+    operations_by_key: dict[str, object] = {}
+
+    def __init__(self, session: object) -> None:
+        self.session = session
+
+    async def get_by_idempotency_key(self, idempotency_key: str):
+        return self.operations_by_key.get(idempotency_key)
+
+    async def create(self, *, idempotency_key: str, order_id):
+        operation = SimpleNamespace(
+            idempotency_key=idempotency_key,
+            order_id=order_id,
+            created_at=datetime.now(timezone.utc),
+        )
+        self.operations_by_key[idempotency_key] = operation
+        return operation
 
 
 class FakeB2CClient:
@@ -89,12 +112,17 @@ class FakeB2CClient:
 @pytest.fixture(autouse=True)
 def patch_dependencies(monkeypatch: pytest.MonkeyPatch):
     FakeSKURepository.skus = {}
-    FakeReservationRepository.reservations_by_key = {}
     FakeReservationRepository.reservations_by_order = {}
+    FakeReservationOperationRepository.operations_by_key = {}
     FakeB2CClient.out_of_stock_events = []
     monkeypatch.setattr(reservation_service_module, "SKURepository", FakeSKURepository)
     monkeypatch.setattr(
         reservation_service_module, "ReservationRepository", FakeReservationRepository
+    )
+    monkeypatch.setattr(
+        reservation_service_module,
+        "ReservationOperationRepository",
+        FakeReservationOperationRepository,
     )
     monkeypatch.setattr(
         reservation_service_module, "B2CClient", FakeB2CClient, raising=False
@@ -214,6 +242,112 @@ async def test_unreserve_restores_quantities() -> None:
     assert response["processed_at"] is not None
     assert sku.stock == 10
     assert sku.reserved_quantity == 0
+
+
+def test_multi_sku_reserve_idempotency_key_allowed_by_real_schema() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+
+    seller_id = uuid4()
+    product_id = uuid4()
+    sku_a_id = uuid4()
+    sku_b_id = uuid4()
+    order_id = uuid4()
+    idempotency_key = str(uuid4())
+
+    with Session(engine) as session:
+        session.add(
+            Seller(
+                id=seller_id,
+                email="seller@example.test",
+                hashed_password="hash",
+                company_name="Seller",
+            )
+        )
+        session.add(
+            Product(
+                id=product_id,
+                seller_id=seller_id,
+                title="Phone",
+                description="Last phone",
+                category="electronics",
+            )
+        )
+        session.add_all(
+            [
+                SKU(
+                    id=sku_a_id,
+                    product_id=product_id,
+                    name="Phone / Black",
+                    price=100,
+                    stock=10,
+                    reserved_quantity=0,
+                    images=[],
+                ),
+                SKU(
+                    id=sku_b_id,
+                    product_id=product_id,
+                    name="Case / Black",
+                    price=10,
+                    stock=10,
+                    reserved_quantity=0,
+                    images=[],
+                ),
+            ]
+        )
+        session.flush()
+
+        session.add(
+            ReservationOperation(
+                idempotency_key=idempotency_key,
+                order_id=order_id,
+            )
+        )
+        session.add_all(
+            [
+                Reservation(
+                    sku_id=sku_a_id,
+                    order_id=order_id,
+                    quantity=1,
+                    idempotency_key=idempotency_key,
+                ),
+                Reservation(
+                    sku_id=sku_b_id,
+                    order_id=order_id,
+                    quantity=1,
+                    idempotency_key=idempotency_key,
+                ),
+            ]
+        )
+        session.commit()
+
+    Base.metadata.drop_all(engine)
+
+
+def test_reserve_idempotency_key_unique_across_real_operations() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    idempotency_key = str(uuid4())
+
+    with Session(engine) as session:
+        session.add(
+            ReservationOperation(
+                idempotency_key=idempotency_key,
+                order_id=uuid4(),
+            )
+        )
+        session.commit()
+
+        session.add(
+            ReservationOperation(
+                idempotency_key=idempotency_key,
+                order_id=uuid4(),
+            )
+        )
+        with pytest.raises(IntegrityError):
+            session.commit()
+
+    Base.metadata.drop_all(engine)
 
 
 def test_reserve_missing_service_key_returns_401() -> None:

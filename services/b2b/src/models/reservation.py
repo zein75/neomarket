@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import ForeignKey, Integer, String
+from sqlalchemy import ForeignKey, Index, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import mapped_column, Mapped
 
@@ -9,6 +9,14 @@ from .base import Base, TimestampMixin
 
 class Reservation(Base, TimestampMixin):
     __tablename__ = "reservations"
+    __table_args__ = (
+        Index(
+            "ix_reservations_idempotency_key_sku_id",
+            "idempotency_key",
+            "sku_id",
+            unique=True,
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4

@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.clients.b2c import B2CClient
 from src.models.reservation import Reservation
 from src.repositories.fulfilled_order_repo import FulfilledOrderRepository
+from src.repositories.reservation_operation_repo import ReservationOperationRepository
 from src.repositories.reservation_repo import ReservationRepository
 from src.repositories.sku_repo import SKURepository
 from src.schemas.reservation import (
@@ -21,6 +22,7 @@ from src.schemas.reservation import (
 class ReservationService:
     def __init__(self, session: AsyncSession) -> None:
         self.reservation_repo = ReservationRepository(session)
+        self.reservation_operation_repo = ReservationOperationRepository(session)
         self.sku_repo = SKURepository(session)
         self.fulfilled_order_repo = FulfilledOrderRepository(session)
 
@@ -44,7 +46,7 @@ class ReservationService:
 
     async def reserve(self, data: ReserveRequest) -> dict[str, object]:
         idempotency_key = str(data.idempotency_key)
-        existing = await self.reservation_repo.get_by_idempotency_key(
+        existing = await self.reservation_operation_repo.get_by_idempotency_key(
             idempotency_key
         )
         if existing:
@@ -102,10 +104,14 @@ class ReservationService:
                 out_of_stock_skus.append(sku)
 
         await self.sku_repo.session.flush()
-        reservations = await self.reservation_repo.create_batch(
+        await self.reservation_repo.create_batch(
             order_id=data.order_id,
             idempotency_key=idempotency_key,
             items=data.items,
+        )
+        operation = await self.reservation_operation_repo.create(
+            idempotency_key=idempotency_key,
+            order_id=data.order_id,
         )
         for sku in out_of_stock_skus:
             try:
@@ -116,7 +122,7 @@ class ReservationService:
             "status": "RESERVED",
             "order_id": data.order_id,
             "reserved_at": getattr(
-                reservations[0],
+                operation,
                 "created_at",
                 datetime.now(timezone.utc),
             ),
