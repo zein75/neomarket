@@ -10,7 +10,7 @@ from src.models.product import ProductStatus
 from src.models.sku import SKU
 from src.repositories.product_repo import ProductRepository
 from src.repositories.sku_repo import SKURepository
-from src.schemas.sku import SKUCreate, SKUUpdate
+from src.schemas.sku import SKUCreate, SKUResponse, SKUUpdate
 
 
 class SKUService:
@@ -44,7 +44,9 @@ class SKUService:
             "price": sku.price,
             "discount": getattr(sku, "discount", 0),
             "article": getattr(sku, "article", None),
-            "characteristics": getattr(sku, "characteristics", {}),
+            "characteristics": SKUResponse._normalize_characteristics(
+                getattr(sku, "characteristics", [])
+            ),
             "stock_quantity": sku.stock,
             "active_quantity": self._active_quantity(sku),
             "images": sku.images,

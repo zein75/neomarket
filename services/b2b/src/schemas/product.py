@@ -6,7 +6,7 @@ from uuid import NAMESPACE_URL, UUID, uuid5
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from src.models.product import ProductStatus
-from src.schemas.sku import SKUResponse
+from src.schemas.sku import SKUCharacteristic, SKUResponse
 
 
 class ProductImageCreate(BaseModel):
@@ -184,11 +184,11 @@ class SKUPublicResponse(BaseModel):
     product_id: UUID
     name: str
     price: int
-    discount: int = 0
-    article: str | None = None
-    characteristics: dict[str, Any] = Field(default_factory=dict)
+    discount: int
+    article: str | None
+    characteristics: list[SKUCharacteristic]
     stock_quantity: int
-    active_quantity: int | None = None
+    active_quantity: int
     images: list[dict[str, Any]]
     is_active: bool
 
@@ -215,9 +215,13 @@ class SKUPublicResponse(BaseModel):
                     data[optional] = getattr(value, optional)
         data.setdefault("discount", 0)
         data.setdefault("article", None)
-        data.setdefault("characteristics", {})
         if "stock_quantity" not in data and "stock" in data:
             data["stock_quantity"] = data["stock"]
+        data["characteristics"] = SKUResponse._normalize_characteristics(
+            data.get("characteristics", [])
+        )
+        if data.get("active_quantity") is None:
+            data["active_quantity"] = data["stock_quantity"]
         data["images"] = SKUResponse._normalize_images(
             data.get("images", []), data.get("id")
         )

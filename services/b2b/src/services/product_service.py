@@ -365,7 +365,9 @@ class ProductService:
             "price": sku.price,
             "discount": getattr(sku, "discount", 0),
             "article": getattr(sku, "article", None),
-            "characteristics": getattr(sku, "characteristics", {}),
+            "characteristics": ProductResponse._normalize_characteristics(
+                getattr(sku, "characteristics", [])
+            ),
             "stock_quantity": sku.stock,
             "active_quantity": self._active_quantity(sku),
             "images": sku.images,

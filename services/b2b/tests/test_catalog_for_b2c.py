@@ -15,7 +15,15 @@ from src.services.category_service import CategoryService
 from src.services.product_service import ProductService
 
 
-def _sku(*, product_id, stock=10, reserved_quantity=2, cost_price=70000, price=129900):
+def _sku(
+    *,
+    product_id,
+    stock=10,
+    reserved_quantity=2,
+    cost_price=70000,
+    price=129900,
+    characteristics=None,
+):
     return SimpleNamespace(
         id=uuid4(),
         product_id=product_id,
@@ -24,6 +32,7 @@ def _sku(*, product_id, stock=10, reserved_quantity=2, cost_price=70000, price=1
         cost_price=cost_price,
         stock=stock,
         reserved_quantity=reserved_quantity,
+        characteristics=characteristics or {},
         images=["https://cdn.neomarket.test/skus/keyboard-black.jpg"],
         is_active=True,
     )
@@ -59,6 +68,7 @@ def _product(
                 product_id=product_id,
                 stock=stock,
                 reserved_quantity=reserved,
+                characteristics={"color": "Black"},
                 price=price,
             )
         ],
@@ -316,7 +326,7 @@ def test_public_product_detail_route_uses_public_sku_shape() -> None:
     assert sku["stock_quantity"] == 5
     assert sku["discount"] == 0
     assert sku["article"] is None
-    assert sku["characteristics"] == {}
+    assert sku["characteristics"] == [{"name": "color", "value": "Black"}]
     assert "cost_price" not in sku
     assert "reserved_quantity" not in sku
 
@@ -348,7 +358,7 @@ def test_public_products_batch_route_returns_visible_public_details() -> None:
     assert sku["stock_quantity"] == 5
     assert sku["discount"] == 0
     assert sku["article"] is None
-    assert sku["characteristics"] == {}
+    assert sku["characteristics"] == [{"name": "color", "value": "Black"}]
     assert "cost_price" not in sku
     assert "reserved_quantity" not in sku
 

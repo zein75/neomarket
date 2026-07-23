@@ -383,6 +383,7 @@ def test_public_sku_route_uses_public_catalog_shape() -> None:
         price=129900,
         stock=10,
         reserved_quantity=3,
+        characteristics={"color": "Black"},
         images=["https://cdn.neomarket.test/skus/keyboard-black.jpg"],
         is_active=True,
         created_at=datetime.now(timezone.utc),
@@ -406,7 +407,7 @@ def test_public_sku_route_uses_public_catalog_shape() -> None:
     assert body["active_quantity"] == 7
     assert body["discount"] == 0
     assert body["article"] is None
-    assert body["characteristics"] == {}
+    assert body["characteristics"] == [{"name": "color", "value": "Black"}]
     assert "cost_price" not in body
     assert "reserved_quantity" not in body
 
