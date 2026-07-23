@@ -44,6 +44,7 @@ class Order(Base, TimestampMixin):
     idempotency_key: Mapped[str] = mapped_column(
         String(128), unique=True, nullable=False
     )
+    request_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     user: Mapped["User"] = relationship("User", back_populates="orders")
     items: Mapped[list["OrderItem"]] = relationship(
