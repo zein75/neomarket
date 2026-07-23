@@ -50,3 +50,16 @@ class CartResponse(BaseModel):
     @property
     def total(self) -> int:
         return self.subtotal
+
+
+class CartValidationIssue(BaseModel):
+    sku_id: UUID
+    issue_type: str
+    severity: str
+    message: str
+
+
+class CartValidateResponse(BaseModel):
+    is_valid: bool
+    can_checkout: bool
+    issues: list[CartValidationIssue] = []

@@ -3,9 +3,14 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Header, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.deps import get_db, get_optional_user
+from src.api.deps import get_current_user, get_db, get_optional_user
 from src.models.user import User
-from src.schemas.cart import CartItemAdd, CartItemUpdate, CartResponse
+from src.schemas.cart import (
+    CartItemAdd,
+    CartItemUpdate,
+    CartResponse,
+    CartValidateResponse,
+)
 from src.services.cart_service import CartService
 
 router = APIRouter(tags=["cart"])
@@ -35,6 +40,32 @@ async def get_cart(
         current_user=current_user,
         db=db,
     )
+
+
+@router.get("/api/v1/cart/validate", response_model=CartValidateResponse)
+@router.get("/cart/validate", response_model=CartValidateResponse, include_in_schema=False)
+async def validate_cart(
+    x_session_id: str | None = Header(default=None),
+    current_user: User | None = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
+    svc = CartService(db)
+    cart = await svc.get_or_create_cart(user=current_user, session_id=x_session_id)
+    await db.commit()
+    return await svc.validate_cart(cart.id)
+
+
+@router.post("/api/v1/cart/merge", response_model=CartResponse)
+@router.post("/cart/merge", response_model=CartResponse, include_in_schema=False)
+async def merge_guest_cart(
+    x_session_id: str = Header(),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
+    svc = CartService(db)
+    cart = await svc.merge_guest_cart(current_user, x_session_id)
+    await db.commit()
+    return await svc.get_enriched_cart(cart.id)
 
 
 @router.post("/api/v1/cart/items", response_model=CartResponse)

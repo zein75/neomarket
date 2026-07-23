@@ -290,14 +290,49 @@ async def test_guest_cart_merged_on_login() -> None:
     FakeCartRepository.carts_by_id[auth_cart.id] = auth_cart
     FakeCartRepository.carts_by_id[guest_cart.id] = guest_cart
 
-    merged = await CartService(FakeSession()).get_or_create_cart(
-        user=user,
-        session_id="guest-1",
-    )
+    merged = await CartService(FakeSession()).merge_guest_cart(user, "guest-1")
 
     assert merged.id == auth_cart.id
     assert auth_item.quantity == 5
     assert FakeCartRepository.removed_carts == [guest_cart.id]
+
+
+@pytest.mark.asyncio
+async def test_authenticated_cart_ignores_x_session_id_outside_merge() -> None:
+    user_id = uuid4()
+    product_id = uuid4()
+    sku_id = uuid4()
+    user = SimpleNamespace(id=user_id)
+    auth_cart = _cart(user_id=user_id)
+    guest_cart = _cart(session_id="guest-1")
+    auth_item = _item(
+        cart_id=auth_cart.id,
+        product_id=product_id,
+        sku_id=sku_id,
+        quantity=2,
+    )
+    guest_item = _item(
+        cart_id=guest_cart.id,
+        product_id=product_id,
+        sku_id=sku_id,
+        quantity=5,
+    )
+    auth_cart.items = [auth_item]
+    guest_cart.items = [guest_item]
+    FakeCartRepository.carts_by_user[user_id] = auth_cart
+    FakeCartRepository.carts_by_session["guest-1"] = guest_cart
+    FakeCartRepository.carts_by_id[auth_cart.id] = auth_cart
+    FakeCartRepository.carts_by_id[guest_cart.id] = guest_cart
+
+    cart = await CartService(FakeSession()).get_or_create_cart(
+        user=user,
+        session_id="guest-1",
+    )
+
+    assert cart.id == auth_cart.id
+    assert auth_item.quantity == 2
+    assert guest_item.quantity == 5
+    assert FakeCartRepository.removed_carts == []
 
 
 def test_patch_cart_item_addresses_item_by_sku_id() -> None:
@@ -395,6 +430,122 @@ def test_clear_cart_returns_204_and_removes_all_items() -> None:
 
     assert response.status_code == 204
     assert cart.items == []
+
+
+def test_cart_validate_returns_checkout_issues() -> None:
+    cart = _cart(session_id="guest-1")
+    product_id = uuid4()
+    sku_id = uuid4()
+    cart.items = [_item(cart_id=cart.id, product_id=product_id, sku_id=sku_id, quantity=2)]
+    FakeCartRepository.carts_by_id[cart.id] = cart
+    FakeCartRepository.carts_by_session["guest-1"] = cart
+    FakeB2BClient.products = [
+        {
+            "id": str(product_id),
+            "title": "Keyboard",
+            "skus": [
+                {
+                    "id": str(sku_id),
+                    "name": "Black",
+                    "price": 12500,
+                    "active_quantity": 0,
+                    "images": [],
+                }
+            ],
+        }
+    ]
+
+    async def fake_db():
+        yield FakeSession()
+
+    async def fake_optional_user():
+        return None
+
+    app.dependency_overrides[cart_router.get_db] = fake_db
+    app.dependency_overrides[cart_router.get_optional_user] = fake_optional_user
+    try:
+        response = TestClient(app).get(
+            "/api/v1/cart/validate",
+            headers={"X-Session-Id": "guest-1"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["is_valid"] is False
+    assert payload["can_checkout"] is False
+    assert payload["issues"] == [
+        {
+            "sku_id": str(sku_id),
+            "issue_type": "OUT_OF_STOCK",
+            "severity": "critical",
+            "message": "Cart item is not available: OUT_OF_STOCK",
+        }
+    ]
+
+
+def test_cart_merge_endpoint_merges_guest_cart_on_login() -> None:
+    user_id = uuid4()
+    product_id = uuid4()
+    sku_id = uuid4()
+    user = SimpleNamespace(id=user_id)
+    auth_cart = _cart(user_id=user_id)
+    guest_cart = _cart(session_id="guest-1")
+    auth_item = _item(
+        cart_id=auth_cart.id,
+        product_id=product_id,
+        sku_id=sku_id,
+        quantity=2,
+    )
+    guest_item = _item(
+        cart_id=guest_cart.id,
+        product_id=product_id,
+        sku_id=sku_id,
+        quantity=5,
+    )
+    auth_cart.items = [auth_item]
+    guest_cart.items = [guest_item]
+    FakeCartRepository.carts_by_user[user_id] = auth_cart
+    FakeCartRepository.carts_by_session["guest-1"] = guest_cart
+    FakeCartRepository.carts_by_id[auth_cart.id] = auth_cart
+    FakeCartRepository.carts_by_id[guest_cart.id] = guest_cart
+    FakeB2BClient.products = [
+        {
+            "id": str(product_id),
+            "title": "Keyboard",
+            "skus": [
+                {
+                    "id": str(sku_id),
+                    "name": "Black",
+                    "price": 12500,
+                    "active_quantity": 7,
+                    "images": [],
+                }
+            ],
+        }
+    ]
+
+    async def fake_db():
+        yield FakeSession()
+
+    async def fake_current_user():
+        return user
+
+    app.dependency_overrides[cart_router.get_db] = fake_db
+    app.dependency_overrides[cart_router.get_current_user] = fake_current_user
+    try:
+        response = TestClient(app).post(
+            "/api/v1/cart/merge",
+            headers={"X-Session-Id": "guest-1"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert auth_item.quantity == 5
+    assert FakeCartRepository.removed_carts == [guest_cart.id]
+    assert response.json()["items"][0]["quantity"] == 5
 
 
 @pytest.mark.asyncio

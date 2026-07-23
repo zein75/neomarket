@@ -24,10 +24,6 @@ class CartService:
             cart = await self.repo.get_by_user_id(user.id)
             if not cart:
                 cart = await self.repo.create(user_id=user.id)
-            if session_id:
-                guest_cart = await self.repo.get_by_session_id(session_id)
-                if guest_cart and guest_cart.id != cart.id:
-                    await self._merge_guest_cart(cart, guest_cart)
         elif session_id:
             cart = await self.repo.get_by_session_id(session_id)
             if not cart:
@@ -54,6 +50,15 @@ class CartService:
                     unit_price=getattr(guest_item, "unit_price", 0),
                 )
         await self.repo.remove_cart(guest_cart)
+
+    async def merge_guest_cart(self, user: User, session_id: str) -> Cart:
+        auth_cart = await self.repo.get_by_user_id(user.id)
+        if not auth_cart:
+            auth_cart = await self.repo.create(user_id=user.id)
+        guest_cart = await self.repo.get_by_session_id(session_id)
+        if guest_cart and guest_cart.id != auth_cart.id:
+            await self._merge_guest_cart(auth_cart, guest_cart)
+        return auth_cart
 
     async def get_cart_with_items(self, cart_id: UUID) -> Cart:
         cart = await self.repo.get_with_items(cart_id)
@@ -152,6 +157,27 @@ class CartService:
             "items_count": sum(item.quantity for item in cart.items),
             "subtotal": subtotal,
             "is_valid": is_valid,
+        }
+
+    async def validate_cart(self, cart_id: UUID) -> dict[str, object]:
+        cart = await self.get_enriched_cart(cart_id)
+        issues = []
+        for item in cart["items"]:
+            reason = item.get("unavailable_reason")
+            if reason:
+                issues.append(
+                    {
+                        "sku_id": item["sku_id"],
+                        "issue_type": str(reason),
+                        "severity": "critical",
+                        "message": f"Cart item is not available: {reason}",
+                    }
+                )
+        is_valid = not issues
+        return {
+            "is_valid": is_valid,
+            "can_checkout": is_valid,
+            "issues": issues,
         }
 
     async def _get_products(self, product_ids: list[str]) -> list[dict[str, object]]:
