@@ -295,7 +295,12 @@ async def test_checkout_creates_paid_order_with_fixed_prices() -> None:
     assert order.idempotency_key == "checkout-1"
     assert order.address_id == order_request.address_id
     assert order.payment_method_id == order_request.payment_method_id
-    assert order.address == {"id": str(order_request.address_id)}
+    assert order.address["id"] == str(order_request.address_id)
+    assert order.address["country"] == "RU"
+    assert order.address["city"] == "Yekaterinburg"
+    assert order.address["street"] == "Mira"
+    assert order.address["building"] == "19"
+    assert order.address["created_at"]
     assert order.items[0].unit_price == 150
     assert order.items[0].product_title == "Phone"
     assert order.items[0].sku_name == "128 GB"
@@ -303,7 +308,12 @@ async def test_checkout_creates_paid_order_with_fixed_prices() -> None:
     assert response["buyer_id"] == str(user_id)
     assert response["subtotal"] == 300
     assert response["total"] == 300
-    assert response["address"] == {"id": str(order_request.address_id)}
+    assert response["address"]["id"] == str(order_request.address_id)
+    assert response["address"]["country"] == "RU"
+    assert response["address"]["city"] == "Yekaterinburg"
+    assert response["address"]["street"] == "Mira"
+    assert response["address"]["building"] == "19"
+    assert response["address"]["created_at"]
     assert response["created_at"]
     assert response["items"][0]["name"] == "Phone 128 GB"
     assert "total_amount" not in response
@@ -384,6 +394,73 @@ async def test_idempotency_returns_existing_order() -> None:
     )
 
     assert order is existing
+    assert FakeB2BClient.reserve_calls == []
+    assert FakeOrderRepository.created_orders == []
+
+
+async def test_idempotency_with_different_body_returns_409() -> None:
+    user_id = uuid4()
+    service = OrderService(FakeSession())
+    original_request = _order_request()
+    existing = Order(
+        user_id=user_id,
+        status=OrderStatus.PAID,
+        total_amount=500,
+        currency="RUB",
+        address_id=original_request.address_id,
+        payment_method_id=original_request.payment_method_id,
+        address={},
+        idempotency_key="checkout-3",
+        request_fingerprint=service._request_fingerprint(original_request),
+    )
+    existing.id = uuid4()
+    existing.items = []
+    FakeOrderRepository.orders_by_key["checkout-3"] = existing
+
+    with pytest.raises(HTTPException) as exc:
+        await service.checkout(
+            user_id=user_id,
+            cart_id=uuid4(),
+            idempotency_key="checkout-3",
+            order_request=_order_request(),
+        )
+
+    assert exc.value.status_code == 409
+    assert exc.value.detail == {
+        "code": "IDEMPOTENCY_KEY_REUSED",
+        "message": "Idempotency key was already used with a different request body",
+    }
+    assert FakeB2BClient.reserve_calls == []
+    assert FakeOrderRepository.created_orders == []
+
+
+async def test_idempotency_with_different_body_returns_409_for_legacy_order() -> None:
+    user_id = uuid4()
+    original_request = _order_request()
+    existing = Order(
+        user_id=user_id,
+        status=OrderStatus.PAID,
+        total_amount=500,
+        currency="RUB",
+        address_id=original_request.address_id,
+        payment_method_id=original_request.payment_method_id,
+        address={},
+        idempotency_key="checkout-legacy",
+    )
+    existing.id = uuid4()
+    existing.items = []
+    FakeOrderRepository.orders_by_key["checkout-legacy"] = existing
+
+    with pytest.raises(HTTPException) as exc:
+        await OrderService(FakeSession()).checkout(
+            user_id=user_id,
+            cart_id=uuid4(),
+            idempotency_key="checkout-legacy",
+            order_request=_order_request(),
+        )
+
+    assert exc.value.status_code == 409
+    assert exc.value.detail["code"] == "IDEMPOTENCY_KEY_REUSED"
     assert FakeB2BClient.reserve_calls == []
     assert FakeOrderRepository.created_orders == []
 

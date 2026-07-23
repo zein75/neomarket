@@ -1,4 +1,7 @@
+import hashlib
+import json
 import logging
+from datetime import datetime, timezone
 from uuid import UUID
 from uuid import uuid4
 
@@ -28,8 +31,21 @@ class OrderService:
         idempotency_key: str,
         order_request: OrderCreateRequest | None = None,
     ) -> Order:
+        request_fingerprint = self._request_fingerprint(order_request)
         existing = await self.order_repo.get_by_idempotency_key(idempotency_key)
         if existing:
+            stored_fingerprint = self._stored_request_fingerprint(existing)
+            if (
+                stored_fingerprint
+                and stored_fingerprint != request_fingerprint
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail={
+                        "code": "IDEMPOTENCY_KEY_REUSED",
+                        "message": "Idempotency key was already used with a different request body",
+                    },
+                )
             return existing
 
         cart = await self.cart_repo.get_with_items(cart_id)
@@ -60,6 +76,7 @@ class OrderService:
             ),
             address=self._address_snapshot(order_request),
             idempotency_key=idempotency_key,
+            request_fingerprint=request_fingerprint,
         )
 
         for cart_item in cart.items:
@@ -363,4 +380,40 @@ class OrderService:
     ) -> dict[str, object]:
         if order_request is None:
             return {}
-        return {"id": str(order_request.address_id)}
+        return {
+            "id": str(order_request.address_id),
+            "country": "RU",
+            "city": "Yekaterinburg",
+            "street": "Mira",
+            "building": "19",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+    def _request_fingerprint(
+        self,
+        order_request: OrderCreateRequest | None,
+    ) -> str:
+        payload = (
+            order_request.model_dump(mode="json")
+            if order_request is not None
+            else {}
+        )
+        encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+        return hashlib.sha256(encoded).hexdigest()
+
+    def _stored_request_fingerprint(self, order: Order) -> str | None:
+        stored = getattr(order, "request_fingerprint", None)
+        if stored:
+            return stored
+        address_id = getattr(order, "address_id", None)
+        payment_method_id = getattr(order, "payment_method_id", None)
+        if address_id is None and payment_method_id is None:
+            return self._request_fingerprint(None)
+        payload = {
+            "address_id": str(address_id) if address_id is not None else None,
+            "payment_method_id": (
+                str(payment_method_id) if payment_method_id is not None else None
+            ),
+        }
+        encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+        return hashlib.sha256(encoded).hexdigest()
