@@ -65,6 +65,7 @@ async def block_ticket(
         ticket_id,
         current_moderator.id,
         blocking_reason_ids=data.blocking_reason_ids,
+        comment=data.comment,
         field_reports=data.field_reports,
     )
     await db.commit()

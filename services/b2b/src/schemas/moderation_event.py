@@ -14,7 +14,7 @@ class ModerationDecisionEvent(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     idempotency_key: UUID
-    event_type: ModerationEventType
+    event_type: ModerationEventType | None = None
     occurred_at: datetime
     product_id: UUID
     hard_block: bool = False
@@ -25,6 +25,12 @@ class ModerationDecisionEvent(BaseModel):
 
     @model_validator(mode="after")
     def flatten_payload(self):
+        if self.event_type is None:
+            status_value = self.model_extra.get("status")
+            if status_value is None and self.payload:
+                status_value = self.payload.get("status")
+            if status_value is not None:
+                self.event_type = ModerationEventType(str(status_value))
         if self.blocking_reason and self.blocking_reason_id is None:
             reason_id = self.blocking_reason.get("id")
             if reason_id:
@@ -49,4 +55,6 @@ class ModerationDecisionEvent(BaseModel):
                 "field_reports",
                 [],
             )
+        if self.event_type is None:
+            raise ValueError("event_type or status is required")
         return self

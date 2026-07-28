@@ -209,6 +209,8 @@ async def test_hard_block_transitions_to_terminal_and_emits_event() -> None:
     FakeModerationRepository.cards[card.id] = card
     FakeModerationRepository.blocking_reasons[reason_id] = SimpleNamespace(
         id=reason_id,
+        title="Counterfeit product",
+        description="Moderator confirmed counterfeit goods",
         hard_block=True,
     )
 
@@ -227,7 +229,11 @@ async def test_hard_block_transitions_to_terminal_and_emits_event() -> None:
     assert event["occurred_at"]
     assert event["hard_block"] is True
     assert event["blocking_reason_id"] == str(reason_id)
-    assert "blocking_reason" not in event
+    assert event["blocking_reason"] == {
+        "id": str(reason_id),
+        "title": "Counterfeit product",
+        "comment": "Moderator confirmed counterfeit goods",
+    }
     assert "PRODUCT_MODERATION_DECIDED" not in event.values()
 
 
@@ -238,6 +244,8 @@ def test_block_ticket_route_returns_contract_response_and_emits_event() -> None:
     FakeModerationRepository.cards[card.id] = card
     FakeModerationRepository.blocking_reasons[reason_id] = SimpleNamespace(
         id=reason_id,
+        title="Description mismatch",
+        description="Default catalog reason",
         hard_block=True,
     )
 
@@ -248,7 +256,10 @@ def test_block_ticket_route_returns_contract_response_and_emits_event() -> None:
     try:
         response = TestClient(app).post(
             f"/api/v1/tickets/{card.id}/block",
-            json={"blocking_reason_ids": [str(reason_id)]},
+            json={
+                "blocking_reason_ids": [str(reason_id)],
+                "comment": "Photos and description contradict each other",
+            },
             headers={"X-Moderator-Id": str(moderator_id)},
         )
     finally:
@@ -264,6 +275,11 @@ def test_block_ticket_route_returns_contract_response_and_emits_event() -> None:
     assert body["created_at"]
     assert FakeB2BClient.events[0]["event_type"] == "BLOCKED"
     assert FakeB2BClient.events[0]["blocking_reason_id"] == str(reason_id)
+    assert FakeB2BClient.events[0]["blocking_reason"] == {
+        "id": str(reason_id),
+        "title": "Description mismatch",
+        "comment": "Photos and description contradict each other",
+    }
 
 
 def test_blocking_reasons_route_returns_hard_block_catalog() -> None:

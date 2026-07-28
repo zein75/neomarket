@@ -48,6 +48,7 @@ class ModerationService:
         moderator_id: UUID,
         *,
         blocking_reason_ids: list[UUID],
+        comment: str | None = None,
         field_reports: list[dict[str, object]] | None = None,
     ):
         card = await self._get_mutable_card(card_id, moderator_id)
@@ -78,10 +79,15 @@ class ModerationService:
                 },
             )
 
+        selected_reason = next(
+            reason for reason in reasons if reason.id == blocking_reason_ids[0]
+        )
+
         return await self._block_card(
             card,
             hard_block=any(reason.hard_block for reason in reasons),
-            blocking_reason_id=blocking_reason_ids[0],
+            blocking_reason=selected_reason,
+            comment=comment,
             field_reports=field_reports or [],
         )
 
@@ -90,7 +96,8 @@ class ModerationService:
         card: object,
         *,
         hard_block: bool,
-        blocking_reason_id: UUID | None,
+        blocking_reason: object | None,
+        comment: str | None,
         field_reports: list[dict[str, object]],
     ):
         card.status = (
@@ -100,7 +107,8 @@ class ModerationService:
             self._blocked_event(
                 card,
                 hard_block=hard_block,
-                blocking_reason_id=blocking_reason_id,
+                blocking_reason=blocking_reason,
+                comment=comment,
                 field_reports=field_reports or [],
             )
         )
@@ -169,24 +177,64 @@ class ModerationService:
         card: object,
         *,
         hard_block: bool,
-        blocking_reason_id: UUID | None,
+        blocking_reason: object | None,
+        comment: str | None,
         field_reports: list[dict[str, object]],
     ) -> dict[str, object]:
         product_id = str(card.product_id)
         key_part = "hard-blocked" if hard_block else "blocked"
+        blocking_reason_id = getattr(blocking_reason, "id", None)
         return {
             "idempotency_key": str(
                 uuid5(NAMESPACE_URL, f"moderation:{key_part}:{product_id}")
             ),
             "event_type": "BLOCKED",
+            "status": "BLOCKED",
             "product_id": product_id,
             "occurred_at": datetime.now(timezone.utc).isoformat(),
             "hard_block": hard_block,
             "blocking_reason_id": str(blocking_reason_id)
             if blocking_reason_id
             else None,
+            "blocking_reason": self._blocking_reason_payload(
+                blocking_reason,
+                comment=comment,
+                field_reports=field_reports,
+            ),
             "field_reports": field_reports,
         }
+
+    def _blocking_reason_payload(
+        self,
+        blocking_reason: object | None,
+        *,
+        comment: str | None,
+        field_reports: list[dict[str, object]],
+    ) -> dict[str, str] | None:
+        reason_id = getattr(blocking_reason, "id", None)
+        if not reason_id:
+            return None
+        title = getattr(blocking_reason, "title", None) or "Moderation block"
+        reason_comment = (
+            comment
+            or getattr(blocking_reason, "description", None)
+            or self._first_field_report_comment(field_reports)
+            or "Product blocked by moderation"
+        )
+        return {
+            "id": str(reason_id),
+            "title": str(title),
+            "comment": str(reason_comment),
+        }
+
+    def _first_field_report_comment(
+        self,
+        field_reports: list[dict[str, object]],
+    ) -> str | None:
+        for report in field_reports:
+            if isinstance(report, dict) and report.get("comment"):
+                return str(report["comment"])
+        return None
 
     def _has_skus(self, card: object) -> bool:
         if hasattr(card, "sku_ids"):
