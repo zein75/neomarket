@@ -7,6 +7,7 @@ from src.api.deps import get_current_user, get_db, get_optional_user
 from src.models.user import User
 from src.schemas.cart import (
     CartItemAdd,
+    CartItemResponse,
     CartItemUpdate,
     CartResponse,
     CartValidateResponse,
@@ -83,23 +84,44 @@ async def add_item(
     return await svc.get_enriched_cart(cart.id)
 
 
-@router.delete("/api/v1/cart", status_code=status.HTTP_204_NO_CONTENT)
-@router.delete("/cart", status_code=status.HTTP_204_NO_CONTENT, include_in_schema=False)
-async def clear_cart(
+@router.get("/api/v1/cart/items/{item_id}", response_model=CartItemResponse)
+@router.get("/cart/items/{item_id}", response_model=CartItemResponse, include_in_schema=False)
+async def get_item(
+    item_id: UUID,
     x_session_id: str | None = Header(default=None),
     current_user: User | None = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db),
-) -> Response:
+) -> dict[str, object]:
     svc = CartService(db)
     cart = await svc.get_or_create_cart(user=current_user, session_id=x_session_id)
-    await svc.clear_cart(cart.id)
     await db.commit()
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    item = await svc.get_item(item_id, cart_id=cart.id)
+    enriched = await svc.get_enriched_cart(cart.id)
+    for response_item in enriched["items"]:
+        if response_item["sku_id"] == item.sku_id:
+            return response_item
+    raise RuntimeError("Cart item disappeared during enrichment")
+
+
+@router.put("/api/v1/cart/items/{item_id}", response_model=CartResponse)
+@router.put("/cart/items/{item_id}", response_model=CartResponse, include_in_schema=False)
+async def update_item_by_id(
+    item_id: UUID,
+    data: CartItemUpdate,
+    x_session_id: str | None = Header(default=None),
+    current_user: User | None = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
+    svc = CartService(db)
+    cart = await svc.get_or_create_cart(user=current_user, session_id=x_session_id)
+    await svc.update_item(item_id, data, cart_id=cart.id)
+    await db.commit()
+    return await svc.get_enriched_cart(cart.id)
 
 
 @router.patch("/api/v1/cart/items/{sku_id}", response_model=CartResponse)
 @router.patch("/cart/items/{sku_id}", response_model=CartResponse, include_in_schema=False)
-async def update_item(
+async def patch_item_by_sku(
     sku_id: UUID,
     data: CartItemUpdate,
     x_session_id: str | None = Header(default=None),
@@ -113,16 +135,30 @@ async def update_item(
     return await svc.get_enriched_cart(cart.id)
 
 
-@router.delete("/api/v1/cart/items/{sku_id}", response_model=CartResponse)
-@router.delete("/cart/items/{sku_id}", response_model=CartResponse, include_in_schema=False)
+@router.delete("/api/v1/cart/items/{item_id}", response_model=CartResponse)
+@router.delete("/cart/items/{item_id}", response_model=CartResponse, include_in_schema=False)
 async def remove_item(
-    sku_id: UUID,
+    item_id: UUID,
     x_session_id: str | None = Header(default=None),
     current_user: User | None = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, object]:
     svc = CartService(db)
     cart = await svc.get_or_create_cart(user=current_user, session_id=x_session_id)
-    await svc.remove_item(sku_id, cart_id=cart.id)
+    await svc.remove_item(item_id, cart_id=cart.id)
     await db.commit()
     return await svc.get_enriched_cart(cart.id)
+
+
+@router.delete("/api/v1/cart", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/cart", status_code=status.HTTP_204_NO_CONTENT, include_in_schema=False)
+async def clear_cart(
+    x_session_id: str | None = Header(default=None),
+    current_user: User | None = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    svc = CartService(db)
+    cart = await svc.get_or_create_cart(user=current_user, session_id=x_session_id)
+    await svc.clear_cart(cart.id)
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

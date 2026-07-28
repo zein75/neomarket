@@ -99,6 +99,12 @@ class FakeCartRepository:
             return None
         return next((item for item in cart.items if item.sku_id == sku_id), None)
 
+    async def get_item_by_id(self, cart_id: UUID, item_id: UUID):
+        cart = self.carts_by_id.get(cart_id)
+        if not cart:
+            return None
+        return next((item for item in cart.items if item.id == item_id), None)
+
     async def remove_item(self, item) -> None:
         cart = self.carts_by_id.get(item.cart_id)
         if cart:
@@ -228,6 +234,15 @@ async def test_get_cart_enriched_with_b2b_data() -> None:
     assert response["items"][0]["unit_price"] == 12500
     assert response["items"][0]["line_total"] == 25000
     assert response["subtotal"] == 25000
+    assert response["summary"] == {
+        "total_amount": 25000,
+        "total_items": 2,
+        "unavailable_count": 0,
+        "checkout_ready": True,
+    }
+    assert response["checkout_payload"] == {
+        "items": [{"sku_id": sku_id, "quantity": 2}],
+    }
     assert response["is_valid"] is True
 
 
@@ -260,6 +275,10 @@ async def test_unavailable_sku_shown_with_reason() -> None:
     assert response["items"][0]["unavailable_reason"] == "OUT_OF_STOCK"
     assert response["items"][0]["line_total"] == 0
     assert response["subtotal"] == 0
+    assert response["summary"]["total_amount"] == 0
+    assert response["summary"]["unavailable_count"] == 1
+    assert response["summary"]["checkout_ready"] is False
+    assert response["checkout_payload"] == {"items": []}
     assert response["is_valid"] is False
 
 
@@ -372,6 +391,81 @@ def test_patch_cart_item_addresses_item_by_sku_id() -> None:
     assert response.json()["items"][0]["quantity"] == 4
 
 
+def test_put_cart_item_addresses_item_by_item_id() -> None:
+    cart = _cart(session_id="guest-1")
+    product_id = uuid4()
+    sku_id = uuid4()
+    item = _item(cart_id=cart.id, product_id=product_id, sku_id=sku_id, quantity=2)
+    cart.items = [item]
+    FakeCartRepository.carts_by_id[cart.id] = cart
+    FakeCartRepository.carts_by_session["guest-1"] = cart
+    FakeB2BClient.products = [
+        {
+            "id": str(product_id),
+            "title": "Keyboard",
+            "skus": [{"id": str(sku_id), "name": "Black", "price": 12500, "active_quantity": 7}],
+        }
+    ]
+
+    async def fake_db():
+        yield FakeSession()
+
+    async def fake_optional_user():
+        return None
+
+    app.dependency_overrides[cart_router.get_db] = fake_db
+    app.dependency_overrides[cart_router.get_optional_user] = fake_optional_user
+    try:
+        response = TestClient(app).put(
+            f"/api/v1/cart/items/{item.id}",
+            json={"quantity": 4},
+            headers={"X-Session-Id": "guest-1"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["items"][0]["id"] == str(item.id)
+    assert response.json()["items"][0]["quantity"] == 4
+
+
+def test_get_cart_item_addresses_item_by_item_id() -> None:
+    cart = _cart(session_id="guest-1")
+    product_id = uuid4()
+    sku_id = uuid4()
+    item = _item(cart_id=cart.id, product_id=product_id, sku_id=sku_id, quantity=2)
+    cart.items = [item]
+    FakeCartRepository.carts_by_id[cart.id] = cart
+    FakeCartRepository.carts_by_session["guest-1"] = cart
+    FakeB2BClient.products = [
+        {
+            "id": str(product_id),
+            "title": "Keyboard",
+            "skus": [{"id": str(sku_id), "name": "Black", "price": 12500, "active_quantity": 7}],
+        }
+    ]
+
+    async def fake_db():
+        yield FakeSession()
+
+    async def fake_optional_user():
+        return None
+
+    app.dependency_overrides[cart_router.get_db] = fake_db
+    app.dependency_overrides[cart_router.get_optional_user] = fake_optional_user
+    try:
+        response = TestClient(app).get(
+            f"/api/v1/cart/items/{item.id}",
+            headers={"X-Session-Id": "guest-1"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["id"] == str(item.id)
+    assert response.json()["sku_id"] == str(sku_id)
+
+
 def test_delete_cart_item_addresses_item_by_sku_id() -> None:
     cart = _cart(session_id="guest-1")
     product_id = uuid4()
@@ -400,6 +494,27 @@ def test_delete_cart_item_addresses_item_by_sku_id() -> None:
     assert response.status_code == 200
     assert response.json()["items"] == []
     assert cart.items == []
+
+
+def test_cart_without_identity_returns_400() -> None:
+    async def fake_db():
+        yield FakeSession()
+
+    async def fake_optional_user():
+        return None
+
+    app.dependency_overrides[cart_router.get_db] = fake_db
+    app.dependency_overrides[cart_router.get_optional_user] = fake_optional_user
+    try:
+        response = TestClient(app).get("/api/v1/cart")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "code": "MISSING_CART_IDENTITY",
+        "message": "Provide Authorization or X-Session-Id",
+    }
 
 
 def test_clear_cart_returns_204_and_removes_all_items() -> None:

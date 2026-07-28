@@ -45,6 +45,12 @@ class CartRepository(BaseRepository[Cart]):
         )
         return result.scalar_one_or_none()
 
+    async def get_item_by_id(self, cart_id: UUID, item_id: UUID) -> CartItem | None:
+        result = await self.session.execute(
+            select(CartItem).where(CartItem.cart_id == cart_id, CartItem.id == item_id)
+        )
+        return result.scalar_one_or_none()
+
     async def add_item(
         self,
         cart_id: UUID,

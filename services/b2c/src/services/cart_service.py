@@ -29,7 +29,13 @@ class CartService:
             if not cart:
                 cart = await self.repo.create(session_id=session_id)
         else:
-            cart = await self.repo.create()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "code": "MISSING_CART_IDENTITY",
+                    "message": "Provide Authorization or X-Session-Id",
+                },
+            )
         return cart
 
     async def _merge_guest_cart(self, auth_cart: Cart, guest_cart: Cart) -> None:
@@ -91,9 +97,17 @@ class CartService:
             unit_price=unit_price,
         )
 
+    async def get_item(self, item_id: UUID, *, cart_id: UUID) -> CartItem:
+        item = await self._get_item_by_id_or_sku(cart_id, item_id)
+        if not item:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Cart item not found"
+            )
+        return item
+
     async def update_item(
         self,
-        sku_id: UUID,
+        item_id: UUID,
         data: CartItemUpdate,
         cart_id: UUID | None = None,
     ) -> CartItem:
@@ -101,19 +115,19 @@ class CartService:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Cart item not found"
             )
-        item = await self.repo.get_item_by_sku(cart_id, sku_id)
+        item = await self._get_item_by_id_or_sku(cart_id, item_id)
         if not item:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Cart item not found"
             )
         return await self.repo.update_item_quantity(item, data.quantity)
 
-    async def remove_item(self, sku_id: UUID, cart_id: UUID | None = None) -> None:
+    async def remove_item(self, item_id: UUID, cart_id: UUID | None = None) -> None:
         if cart_id is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Cart item not found"
             )
-        item = await self.repo.get_item_by_sku(cart_id, sku_id)
+        item = await self._get_item_by_id_or_sku(cart_id, item_id)
         if not item:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Cart item not found"
@@ -148,6 +162,17 @@ class CartService:
                 is_valid = False
             response_items.append(enriched)
 
+        unavailable_count = sum(
+            1 for response_item in response_items if not response_item["is_available"]
+        )
+        checkout_items = [
+            {
+                "sku_id": item["sku_id"],
+                "quantity": item["quantity"],
+            }
+            for item in response_items
+            if item["is_available"]
+        ]
         return {
             "id": cart.id,
             "user_id": cart.user_id,
@@ -157,6 +182,15 @@ class CartService:
             "items_count": sum(item.quantity for item in cart.items),
             "subtotal": subtotal,
             "is_valid": is_valid,
+            "summary": {
+                "total_amount": subtotal,
+                "total_items": sum(item.quantity for item in cart.items),
+                "unavailable_count": unavailable_count,
+                "checkout_ready": is_valid and bool(response_items),
+            },
+            "checkout_payload": {
+                "items": checkout_items,
+            },
         }
 
     async def validate_cart(self, cart_id: UUID) -> dict[str, object]:
@@ -190,6 +224,20 @@ class CartService:
         async with B2BClient(settings.b2b_base_url) as client:
             return await client.get_sku(str(sku_id))
 
+    async def _get_item_by_id_or_sku(
+        self,
+        cart_id: UUID,
+        item_id: UUID | None,
+    ) -> CartItem | None:
+        if item_id is None:
+            return None
+        get_item_by_id = getattr(self.repo, "get_item_by_id", None)
+        if get_item_by_id:
+            item = await get_item_by_id(cart_id, item_id)
+            if item:
+                return item
+        return await self.repo.get_item_by_sku(cart_id, item_id)
+
     def _build_sku_index(
         self,
         products: list[dict[str, object]],
@@ -216,6 +264,7 @@ class CartService:
             str(sku.get("name", "") if sku else "").strip(),
         ]
         return {
+            "id": item.id,
             "sku_id": item.sku_id,
             "product_id": item.product_id,
             "name": " ".join(part for part in name_parts if part) or "Unavailable SKU",

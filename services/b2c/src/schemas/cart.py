@@ -17,6 +17,7 @@ class CartItemUpdate(BaseModel):
 class CartItemResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
+    id: UUID | None = None
     sku_id: UUID
     product_id: UUID | None = None
     name: str | None = None
@@ -45,6 +46,8 @@ class CartResponse(BaseModel):
     items_count: int = 0
     subtotal: int = 0
     is_valid: bool = True
+    summary: dict[str, Any] = {}
+    checkout_payload: dict[str, Any] = {}
 
     @computed_field
     @property
