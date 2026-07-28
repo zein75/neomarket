@@ -247,7 +247,7 @@ class ProductPublicShortResponse(BaseModel):
 
 
 class ProductPublicPaginatedResponse(BaseModel):
-    items: list[ProductPublicShortResponse]
+    items: list[ProductPublicResponse]
     total_count: int
     limit: int
     offset: int

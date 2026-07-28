@@ -132,7 +132,7 @@ def test_idor_query_param_seller_id_ignored(monkeypatch: pytest.MonkeyPatch) -> 
         yield SimpleNamespace()
 
     monkeypatch.setattr(products_router, "ProductService", FakeProductService)
-    app.dependency_overrides[products_router.get_current_seller] = fake_current_seller
+    app.dependency_overrides[products_router.get_seller_or_service] = fake_current_seller
     app.dependency_overrides[products_router.get_db] = fake_db
     try:
         response = TestClient(app).get(

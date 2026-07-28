@@ -249,9 +249,11 @@ async def test_catalog_response_has_no_cost_price() -> None:
 
     item = body.items[0].model_dump()
     assert item["slug"].startswith("wireless-keyboard-")
-    assert item["min_price"] == 129900
+    assert item["skus"][0]["price"] == 129900
+    assert item["skus"][0]["characteristics"] == [{"name": "color", "value": "Black"}]
     assert "created_at" in item
-    assert "skus" not in item
+    assert "cost_price" not in item["skus"][0]
+    assert "reserved_quantity" not in item["skus"][0]
 
 
 def test_public_catalog_route_returns_contract_envelope() -> None:
@@ -276,8 +278,42 @@ def test_public_catalog_route_returns_contract_envelope() -> None:
     assert body["limit"] == 20
     assert body["offset"] == 0
     assert body["items"][0]["slug"].startswith("wireless-keyboard-")
-    assert body["items"][0]["min_price"] == 129900
+    assert body["items"][0]["skus"][0]["price"] == 129900
+    assert body["items"][0]["skus"][0]["characteristics"] == [
+        {"name": "color", "value": "Black"}
+    ]
+    assert "cost_price" not in body["items"][0]["skus"][0]
+    assert "reserved_quantity" not in body["items"][0]["skus"][0]
     assert "created_at" in body["items"][0]
+
+
+def test_canonical_catalog_route_uses_service_key_and_public_shape() -> None:
+    visible = _product(status=ProductStatus.MODERATED, deleted=False, stock=5, reserved=1)
+    hidden = _product(status=ProductStatus.HARD_BLOCKED, deleted=False, stock=5, reserved=0)
+    FakeProductRepository.products = [hidden, visible]
+
+    async def fake_db():
+        yield SimpleNamespace()
+
+    app.dependency_overrides[products_router.get_db] = fake_db
+    try:
+        missing_key = TestClient(app).get("/api/v1/products")
+        response = TestClient(app).get(
+            f"/api/v1/products?ids={hidden.id},{visible.id},{uuid4()}",
+            headers={"X-Service-Key": "dev-service-key-change-in-production"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert missing_key.status_code == 401
+    assert response.status_code == 200
+    body = response.json()
+    assert [item["id"] for item in body["items"]] == [str(visible.id)]
+    assert body["total_count"] == 1
+    sku = body["items"][0]["skus"][0]
+    assert sku["characteristics"] == [{"name": "color", "value": "Black"}]
+    assert "cost_price" not in sku
+    assert "reserved_quantity" not in sku
 
 
 def test_legacy_products_route_requires_service_key_and_uses_public_shape() -> None:
@@ -302,7 +338,10 @@ def test_legacy_products_route_requires_service_key_and_uses_public_shape() -> N
     body = response.json()
     assert "items" in body
     assert body["items"][0]["slug"].startswith("wireless-keyboard-")
-    assert "skus" not in body["items"][0]
+    sku = body["items"][0]["skus"][0]
+    assert sku["characteristics"] == [{"name": "color", "value": "Black"}]
+    assert "cost_price" not in sku
+    assert "reserved_quantity" not in sku
 
 
 def test_public_product_detail_route_uses_public_sku_shape() -> None:

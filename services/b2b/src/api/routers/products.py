@@ -92,18 +92,42 @@ async def get_similar_public_products(
     )
 
 
-@router.get("/api/v1/products", response_model=ProductPaginatedResponse)
+@router.get(
+    "/api/v1/products",
+    response_model=ProductPaginatedResponse | ProductPublicPaginatedResponse,
+)
 async def list_seller_products(
+    ids: str | None = Query(None),
+    category: UUID | None = Query(None),
+    category_id: UUID | None = Query(None),
+    search: str | None = Query(None),
+    min_price: int | None = Query(None, ge=0),
+    max_price: int | None = Query(None, ge=0),
+    seller_id: UUID | None = Query(None),
+    in_stock: bool | None = Query(None),
+    sort: str | None = Query(None),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     status: ProductStatus | None = Query(None),
     include_deleted: bool = Query(False),
     deleted: bool | None = Query(None),
-    search: str | None = Query(None),
-    current_seller: Seller = Depends(get_current_seller),
+    current_seller: Seller | None = Depends(get_seller_or_service),
     db: AsyncSession = Depends(get_db),
 ) -> Any:
     svc = ProductService(db)
+    if current_seller is None:
+        return await svc.list_public_catalog(
+            product_ids=_parse_ids(ids),
+            category_id=category or category_id,
+            search=search,
+            min_price=min_price,
+            max_price=max_price,
+            seller_id=seller_id,
+            in_stock=in_stock,
+            sort=sort,
+            limit=limit,
+            offset=offset,
+        )
     return await svc.list_for_seller_cabinet(
         seller_id=current_seller.id,
         limit=limit,

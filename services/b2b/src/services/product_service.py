@@ -124,7 +124,7 @@ class ProductService:
         sorted_products = self._sort_public_catalog(filtered, sort)
         page = sorted_products[offset : offset + limit]
         return ProductPublicPaginatedResponse(
-            items=[self._public_product_short(product) for product in page],
+            items=[self._public_product_detail(product) for product in page],
             total_count=len(filtered),
             limit=limit,
             offset=offset,
@@ -184,7 +184,7 @@ class ProductService:
                 candidates = [*candidates, *fallback]
         page = candidates[offset : offset + limit]
         return ProductPublicPaginatedResponse(
-            items=[self._public_product_short(product) for product in page],
+            items=[self._public_product_detail(product) for product in page],
             total_count=len(candidates),
             limit=limit,
             offset=offset,
