@@ -707,6 +707,8 @@ async def test_cancel_paid_order_transitions_to_cancelled() -> None:
 async def test_unreserve_failure_transitions_to_cancel_pending() -> None:
     user_id = uuid4()
     order = _order(user_id=user_id, status=OrderStatus.PAID)
+    order.address_id = uuid4()
+    order.address = {"id": str(order.address_id)}
     FakeOrderRepository.orders_by_id[order.id] = order
     FakeB2BClient.unreserve_error = HTTPException(
         status_code=503,
@@ -720,6 +722,13 @@ async def test_unreserve_failure_transitions_to_cancel_pending() -> None:
 
     assert pending.status == OrderStatus.CANCEL_PENDING
     assert FakeB2BClient.unreserve_calls == [_unreserve_payload(order)]
+    response = OrderResponse.model_validate(pending).model_dump(mode="json")
+    assert response["address"]["id"] == str(order.address_id)
+    assert response["address"]["country"] == "RU"
+    assert response["address"]["city"] == "Yekaterinburg"
+    assert response["address"]["street"] == "Mira"
+    assert response["address"]["building"] == "19"
+    assert response["address"]["created_at"]
 
 
 async def test_cancel_assembling_order_transitions_to_cancelled() -> None:
