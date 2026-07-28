@@ -16,6 +16,11 @@ from src.models.reservation import Reservation
 from src.models.reservation_operation import ReservationOperation
 from src.models.seller import Seller
 from src.models.sku import SKU
+from src.repositories.reservation_operation_repo import (
+    ReservationOperationRepository,
+)
+from src.repositories.reservation_repo import ReservationRepository
+from src.repositories.sku_repo import SKURepository
 from src.schemas.reservation import ReserveItem, ReserveRequest, UnreserveRequest
 from src.services import reservation_service as reservation_service_module
 from src.services.reservation_service import ReservationService
@@ -27,6 +32,29 @@ class FakeSession:
 
     async def commit(self) -> None:
         return None
+
+
+class SyncSessionAdapter:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def add(self, instance) -> None:
+        self._session.add(instance)
+
+    def add_all(self, instances) -> None:
+        self._session.add_all(instances)
+
+    async def execute(self, statement):
+        return self._session.execute(statement)
+
+    async def flush(self) -> None:
+        self._session.flush()
+
+    async def refresh(self, instance) -> None:
+        self._session.refresh(instance)
+
+    async def delete(self, instance) -> None:
+        self._session.delete(instance)
 
 
 def _sku(*, stock=10, reserved_quantity=0):
@@ -320,6 +348,111 @@ def test_multi_sku_reserve_idempotency_key_allowed_by_real_schema() -> None:
             ]
         )
         session.commit()
+
+    Base.metadata.drop_all(engine)
+
+
+@pytest.mark.asyncio
+async def test_reserve_all_skus_succeeds_on_real_schema(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(reservation_service_module, "SKURepository", SKURepository)
+    monkeypatch.setattr(
+        reservation_service_module,
+        "ReservationRepository",
+        ReservationRepository,
+    )
+    monkeypatch.setattr(
+        reservation_service_module,
+        "ReservationOperationRepository",
+        ReservationOperationRepository,
+    )
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+
+    seller_id = uuid4()
+    product_id = uuid4()
+    sku_a_id = uuid4()
+    sku_b_id = uuid4()
+    order_id = uuid4()
+    idempotency_key = str(uuid4())
+
+    with Session(engine) as session:
+        session.add(
+            Seller(
+                id=seller_id,
+                email="seller@example.test",
+                hashed_password="hash",
+                company_name="Seller",
+            )
+        )
+        session.add(
+            Product(
+                id=product_id,
+                seller_id=seller_id,
+                title="Phone bundle",
+                description="Last phone",
+                category="electronics",
+            )
+        )
+        session.add_all(
+            [
+                SKU(
+                    id=sku_a_id,
+                    product_id=product_id,
+                    name="Phone / Black",
+                    price=100,
+                    stock=5,
+                    reserved_quantity=0,
+                    images=[],
+                ),
+                SKU(
+                    id=sku_b_id,
+                    product_id=product_id,
+                    name="Case / Black",
+                    price=10,
+                    stock=4,
+                    reserved_quantity=1,
+                    images=[],
+                ),
+            ]
+        )
+        session.commit()
+
+        service = ReservationService(SyncSessionAdapter(session))
+        request = _reserve_request(
+            (sku_a_id, 2),
+            (sku_b_id, 3),
+            order_id=order_id,
+            idempotency_key=idempotency_key,
+        )
+
+        first = await service.reserve(request)
+        second = await service.reserve(request)
+        session.commit()
+
+        sku_a = session.get(SKU, sku_a_id)
+        sku_b = session.get(SKU, sku_b_id)
+        reservations = (
+            session.query(Reservation)
+            .filter(Reservation.idempotency_key == idempotency_key)
+            .all()
+        )
+
+        assert first == second
+        assert sku_a is not None
+        assert sku_a.stock == 5
+        assert sku_a.reserved_quantity == 2
+        assert sku_b is not None
+        assert sku_b.stock == 4
+        assert sku_b.reserved_quantity == 4
+        assert len(reservations) == 2
+        assert {reservation.sku_id for reservation in reservations} == {
+            sku_a_id,
+            sku_b_id,
+        }
+        assert session.get(ReservationOperation, idempotency_key) is not None
 
     Base.metadata.drop_all(engine)
 
