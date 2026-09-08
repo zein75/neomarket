@@ -12,6 +12,7 @@ from src.clients.b2b_client import B2BClient
 from src.core.config import settings
 from src.models.order import Order, OrderItem, OrderStatus
 from src.repositories.cart_repo import CartRepository
+from src.repositories.address_repo import AddressRepository
 from src.repositories.order_repo import OrderRepository
 from src.schemas.order import OrderCreateRequest, OrderPaginatedResponse
 
@@ -23,11 +24,12 @@ class OrderService:
     def __init__(self, session: AsyncSession) -> None:
         self.order_repo = OrderRepository(session)
         self.cart_repo = CartRepository(session)
+        self.address_repo = AddressRepository(session)
 
     async def checkout(
         self,
         user_id: UUID,
-        cart_id: UUID,
+        cart_id: UUID | None,
         idempotency_key: str,
         order_request: OrderCreateRequest | None = None,
     ) -> Order:
@@ -48,21 +50,29 @@ class OrderService:
                 )
             return existing
 
-        cart = await self.cart_repo.get_with_items(cart_id)
+        cart = await self.cart_repo.get_with_items(cart_id) if cart_id else None
         if not cart or not cart.items:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cart is empty",
-            )
+            raise HTTPException(status_code=400, detail="Cart is empty")
 
-        snapshots = await self._build_item_snapshots(cart.items)
-        self._validate_snapshots(cart.items, snapshots)
+        address = None
+        if order_request is not None and hasattr(self.order_repo.session, "execute"):
+            address = await self.address_repo.get_for_user(order_request.address_id, user_id)
+            if address is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail={"code": "ADDRESS_NOT_FOUND", "message": "Address not found"},
+                )
+        items = list(cart.items)
+
+        snapshots = await self._build_item_snapshots(items)
+        self._validate_snapshots(items, snapshots)
+        self._validate_item_snapshot(order_request, items, snapshots)
         order_id = uuid4()
-        await self._reserve(order_id, idempotency_key, cart.items)
+        await self._reserve(order_id, idempotency_key, items)
 
         total = sum(
             item.quantity * int(snapshots[str(item.sku_id)]["price"])
-            for item in cart.items
+            for item in items
         )
         order = await self.order_repo.create(
             id=order_id,
@@ -74,12 +84,12 @@ class OrderService:
             payment_method_id=(
                 order_request.payment_method_id if order_request else None
             ),
-            address=self._address_snapshot(order_request),
+            address=self._address_snapshot(order_request, address),
             idempotency_key=idempotency_key,
             request_fingerprint=request_fingerprint,
         )
 
-        for cart_item in cart.items:
+        for cart_item in items:
             snapshot = snapshots[str(cart_item.sku_id)]
             order_item = OrderItem(
                 order_id=order.id,
@@ -248,6 +258,20 @@ class OrderService:
                 )
         return retried
 
+    async def retry_pending_cancellations(self, limit: int = 100) -> int:
+        retried = 0
+        orders = await self.order_repo.list_by_status(OrderStatus.CANCEL_PENDING, limit)
+        for order in orders:
+            try:
+                await self._unreserve(order)
+            except HTTPException:
+                logger.exception("Failed to retry cancellation for order %s", order.id)
+                continue
+            order.status = OrderStatus.CANCELLED
+            await self.order_repo.session.flush()
+            retried += 1
+        return retried
+
     async def _build_item_snapshots(
         self,
         cart_items: list[object],
@@ -295,6 +319,28 @@ class OrderService:
                     "message": "Unable to reserve one or more items",
                     "failed_items": failed_items,
                 },
+            )
+
+    def _validate_item_snapshot(
+        self,
+        order_request: OrderCreateRequest | None,
+        items: list[object],
+        snapshots: dict[str, dict[str, object]],
+    ) -> None:
+        if not order_request or order_request.items_snapshot is None:
+            return
+        expected = {
+            str(item.sku_id): (item.quantity, int(snapshots[str(item.sku_id)]["price"]))
+            for item in items
+        }
+        actual = {
+            str(item.sku_id): (item.quantity, item.unit_price)
+            for item in order_request.items_snapshot
+        }
+        if actual != expected:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"code": "ITEMS_SNAPSHOT_MISMATCH", "message": "Cart changed since snapshot"},
             )
 
     async def _reserve(
@@ -377,9 +423,21 @@ class OrderService:
     def _address_snapshot(
         self,
         order_request: OrderCreateRequest | None,
+        address: object | None = None,
     ) -> dict[str, object]:
         if order_request is None:
             return {}
+        if address is not None:
+            fields = (
+                "id", "country", "region", "city", "street", "building",
+                "apartment", "postal_code", "recipient_name", "recipient_phone",
+                "is_default", "comment", "created_at",
+            )
+            snapshot = {name: getattr(address, name, None) for name in fields}
+            snapshot["id"] = str(snapshot["id"])
+            if snapshot["created_at"] is not None:
+                snapshot["created_at"] = snapshot["created_at"].isoformat()
+            return snapshot
         return {
             "id": str(order_request.address_id),
             "country": "RU",

@@ -24,3 +24,4 @@ __all__ = [
     "PendingFulfillment",
     "ProcessedB2BEvent",
 ]
+from .address import Address

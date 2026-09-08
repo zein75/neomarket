@@ -7,9 +7,21 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from src.models.order import OrderStatus
 
 
+class OrderItemSnapshot(BaseModel):
+    sku_id: UUID
+    quantity: int = Field(ge=1)
+    unit_price: int = Field(ge=0)
+
+
 class OrderCreateRequest(BaseModel):
     address_id: UUID
     payment_method_id: UUID
+    comment: str | None = Field(default=None, max_length=1000)
+    items_snapshot: list[OrderItemSnapshot] | None = None
+
+
+class CancelOrderRequest(BaseModel):
+    reason: str | None = Field(default=None, max_length=500)
 
 
 class OrderItemResponse(BaseModel):
@@ -18,6 +30,10 @@ class OrderItemResponse(BaseModel):
     sku_id: UUID
     product_id: UUID
     name: str
+    product_title: str | None = None
+    sku_name: str | None = None
+    sku_code: str | None = None
+    image_url: str | None = None
     quantity: int
     unit_price: int
     line_total: int
@@ -48,22 +64,31 @@ class OrderItemResponse(BaseModel):
 
 class OrderAddressResponse(BaseModel):
     id: UUID | None = None
-    country: str
-    city: str
-    street: str
-    building: str
-    created_at: datetime
+    country: str | None = None
+    region: str | None = None
+    city: str | None = None
+    street: str | None = None
+    building: str | None = None
+    apartment: str | None = None
+    postal_code: str | None = None
+    recipient_name: str | None = None
+    recipient_phone: str | None = None
+    is_default: bool | None = None
+    comment: str | None = None
+    created_at: datetime | None = None
 
 
 class OrderResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    buyer_id: UUID
+    buyer_id: UUID | None = None
     status: OrderStatus
-    subtotal: int
-    total: int
-    address: OrderAddressResponse
+    subtotal: int | None = None
+    total: int | None = None
+    total_amount: int | None = None
+    address: OrderAddressResponse | None = None
+    delivery_address: str | None = None
     created_at: datetime
     currency: str
     items: list[OrderItemResponse]
@@ -93,6 +118,8 @@ class OrderResponse(BaseModel):
             data["subtotal"] = data["total_amount"]
         if "total" not in data and "total_amount" in data:
             data["total"] = data["total_amount"]
+        if "total_amount" not in data:
+            data["total_amount"] = data.get("total") or data.get("subtotal")
         address = data.get("address") or {}
         if isinstance(address, dict):
             # The relational address_id is the selected address for the order;
@@ -112,6 +139,7 @@ class OrderResponse(BaseModel):
             address.setdefault("street", "Mira")
             address.setdefault("building", "19")
             data["address"] = address
+            data.setdefault("delivery_address", address.get("delivery_address"))
         if data.get("created_at") is None:
             data["created_at"] = datetime.now(timezone.utc)
         return data

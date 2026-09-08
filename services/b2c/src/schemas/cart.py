@@ -71,4 +71,5 @@ class CartValidationIssue(BaseModel):
 class CartValidateResponse(BaseModel):
     is_valid: bool
     can_checkout: bool
+    cart: CartResponse | None = None
     issues: list[CartValidationIssue] = []

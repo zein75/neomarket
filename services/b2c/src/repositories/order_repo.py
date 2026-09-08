@@ -13,6 +13,15 @@ class OrderRepository(BaseRepository[Order]):
     def __init__(self, session: AsyncSession) -> None:
         super().__init__(session, Order)
 
+    async def list_by_status(self, status: OrderStatus, limit: int = 100) -> list[Order]:
+        result = await self.session.execute(
+            select(Order)
+            .where(Order.status == status)
+            .options(selectinload(Order.items))
+            .limit(limit)
+        )
+        return list(result.scalars().all())
+
     async def get_with_items(self, order_id: UUID) -> Order | None:
         result = await self.session.execute(
             select(Order)

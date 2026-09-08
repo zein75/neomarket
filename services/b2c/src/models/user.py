@@ -8,6 +8,7 @@ from sqlalchemy.orm import mapped_column, Mapped, relationship
 from .base import Base, TimestampMixin
 
 if TYPE_CHECKING:
+    from .address import Address
     from .cart import Cart
     from .favorite import Favorite
     from .order import Order
@@ -29,3 +30,4 @@ class User(Base, TimestampMixin):
     carts: Mapped[list["Cart"]] = relationship("Cart", back_populates="user")
     favorites: Mapped[list["Favorite"]] = relationship("Favorite", back_populates="user")
     orders: Mapped[list["Order"]] = relationship("Order", back_populates="user")
+    addresses: Mapped[list["Address"]] = relationship("Address", back_populates="user", cascade="all, delete-orphan")

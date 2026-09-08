@@ -219,6 +219,7 @@ class CartService:
         return {
             "is_valid": is_valid,
             "can_checkout": is_valid,
+            "cart": cart,
             "issues": issues,
         }
 

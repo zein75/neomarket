@@ -43,7 +43,8 @@ async def get_cart(
     )
 
 
-@router.get("/api/v1/cart/validate", response_model=CartValidateResponse)
+@router.post("/api/v1/cart/validate", response_model=CartValidateResponse)
+@router.get("/api/v1/cart/validate", response_model=CartValidateResponse, include_in_schema=False)
 @router.get("/cart/validate", response_model=CartValidateResponse, include_in_schema=False)
 async def validate_cart(
     x_session_id: str | None = Header(default=None),
