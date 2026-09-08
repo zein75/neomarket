@@ -3,6 +3,7 @@ from uuid import UUID
 
 from fastapi import HTTPException, status
 import httpx
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.clients.b2c import B2CClient
@@ -81,6 +82,14 @@ class ReservationService:
                 },
             )
 
+        # Re-check after the SKU locks: a concurrent retry may have completed
+        # the same idempotent operation while this request was waiting.
+        existing = await self.reservation_operation_repo.get_by_idempotency_key(
+            idempotency_key
+        )
+        if existing:
+            return self._reservation_result(existing)
+
         insufficient_skus = []
         for item in data.items:
             sku = skus_by_id[item.sku_id]
@@ -103,16 +112,27 @@ class ReservationService:
             if self._active_quantity(sku) == 0:
                 out_of_stock_skus.append(sku)
 
-        await self.sku_repo.session.flush()
-        await self.reservation_repo.create_batch(
-            order_id=data.order_id,
-            idempotency_key=idempotency_key,
-            items=data.items,
-        )
-        operation = await self.reservation_operation_repo.create(
-            idempotency_key=idempotency_key,
-            order_id=data.order_id,
-        )
+        try:
+            await self.sku_repo.session.flush()
+            await self.reservation_repo.create_batch(
+                order_id=data.order_id,
+                idempotency_key=idempotency_key,
+                items=data.items,
+            )
+            operation = await self.reservation_operation_repo.create(
+                idempotency_key=idempotency_key,
+                order_id=data.order_id,
+            )
+        except IntegrityError:
+            rollback = getattr(self.reservation_operation_repo.session, "rollback", None)
+            if rollback:
+                await rollback()
+            existing = await self.reservation_operation_repo.get_by_idempotency_key(
+                idempotency_key
+            )
+            if not existing:
+                raise
+            return self._reservation_result(existing)
         for sku in out_of_stock_skus:
             try:
                 await B2CClient().send_sku_out_of_stock(sku)
@@ -121,6 +141,17 @@ class ReservationService:
         return {
             "status": "RESERVED",
             "order_id": data.order_id,
+            "reserved_at": getattr(
+                operation,
+                "created_at",
+                datetime.now(timezone.utc),
+            ),
+        }
+
+    def _reservation_result(self, operation: object) -> dict[str, object]:
+        return {
+            "status": "RESERVED",
+            "order_id": operation.order_id,
             "reserved_at": getattr(
                 operation,
                 "created_at",

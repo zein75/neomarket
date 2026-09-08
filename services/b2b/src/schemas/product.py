@@ -229,6 +229,10 @@ class SKUPublicResponse(BaseModel):
 
 
 class ProductPublicResponse(ProductResponse):
+    image: str
+    price: int | None
+    in_stock: bool
+    is_in_cart: bool
     skus: list[SKUPublicResponse] = []
 
 
@@ -242,6 +246,10 @@ class ProductPublicShortResponse(BaseModel):
     images: list[ProductImageResponse]
     characteristics: list[CharacteristicResponse]
     status: ProductStatus
+    image: str
+    price: int | None
+    in_stock: bool
+    is_in_cart: bool
     min_price: int | None
     created_at: datetime
 

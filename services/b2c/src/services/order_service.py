@@ -175,8 +175,6 @@ class OrderService:
         cancellable_statuses = {
             OrderStatus.CREATED,
             OrderStatus.PAID,
-            OrderStatus.ASSEMBLING,
-            OrderStatus.DELIVERING,
         }
         if order.status not in cancellable_statuses:
             raise HTTPException(
@@ -193,10 +191,12 @@ class OrderService:
         except HTTPException:
             logger.exception("Failed to unreserve cancelled order %s", order.id)
             order.status = OrderStatus.CANCEL_PENDING
+            self._sync_order_address(order)
             await self.order_repo.session.flush()
             return order
 
         order.status = OrderStatus.CANCELLED
+        self._sync_order_address(order)
         await self.order_repo.session.flush()
         return order
 
@@ -388,6 +388,14 @@ class OrderService:
             "building": "19",
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
+
+    def _sync_order_address(self, order: Order) -> None:
+        address_id = getattr(order, "address_id", None)
+        if address_id is None:
+            return
+        address = dict(getattr(order, "address", None) or {})
+        address["id"] = str(address_id)
+        order.address = address
 
     def _request_fingerprint(
         self,

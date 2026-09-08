@@ -29,10 +29,11 @@ class B2BEventService:
             logger.info("Ignoring duplicate B2B event %s", event.idempotency_key)
             return False
 
-        await self.cart_repo.mark_skus_unavailable(
-            event.sku_ids,
-            self._unavailable_reason(event.event),
-        )
+        reason = self._unavailable_reason(event.event)
+        if event.sku_ids:
+            await self.cart_repo.mark_skus_unavailable(event.sku_ids, reason)
+        else:
+            await self.cart_repo.mark_product_unavailable(event.product_id, reason)
         return True
 
     def _unavailable_reason(self, event: B2BProductEvent) -> str:

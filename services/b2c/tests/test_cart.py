@@ -237,11 +237,17 @@ async def test_get_cart_enriched_with_b2b_data() -> None:
     assert response["summary"] == {
         "total_amount": 25000,
         "total_items": 2,
+        "total_quantity": 2,
+        "available_items": 1,
+        "has_unavailable_items": False,
         "unavailable_count": 0,
         "checkout_ready": True,
+        "currency": "RUB",
     }
     assert response["checkout_payload"] == {
         "items": [{"sku_id": sku_id, "quantity": 2}],
+        "total_amount": 25000,
+        "currency": "RUB",
     }
     assert response["is_valid"] is True
 
@@ -278,7 +284,11 @@ async def test_unavailable_sku_shown_with_reason() -> None:
     assert response["summary"]["total_amount"] == 0
     assert response["summary"]["unavailable_count"] == 1
     assert response["summary"]["checkout_ready"] is False
-    assert response["checkout_payload"] == {"items": []}
+    assert response["checkout_payload"] == {
+        "items": [],
+        "total_amount": 0,
+        "currency": "RUB",
+    }
     assert response["is_valid"] is False
 
 

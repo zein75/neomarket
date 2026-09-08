@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from uuid import UUID
 
 from src.api.deps import get_db, verify_service_key
 from src.schemas.b2b_event import (
@@ -31,5 +32,19 @@ async def receive_product_event(
 async def receive_b2b_event(
     event: LegacyB2BEventRequest,
     _: None = Depends(verify_service_key),
+    db: AsyncSession = Depends(get_db),
 ) -> None:
-    return None
+    payload = dict(event.payload)
+    product_event = ProductEventRequest.model_validate(
+        {
+            "event": event.event_type,
+            "idempotency_key": event.idempotency_key,
+            "product_id": payload.get("product_id") or UUID(int=0),
+            "sku_ids": payload.get("sku_ids")
+            or ([payload["sku_id"]] if payload.get("sku_id") else []),
+            "reason": payload.get("reason"),
+            "date": event.occurred_at,
+        }
+    )
+    await B2BEventService(db).handle_product_event(product_event)
+    await db.commit()

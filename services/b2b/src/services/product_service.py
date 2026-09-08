@@ -310,6 +310,7 @@ class ProductService:
         return any(self._active_quantity(sku) > 0 for sku in product.skus)
 
     def _public_product_short(self, product: Product) -> dict[str, object]:
+        images = ProductResponse._normalize_images(product.images, product.id)
         return {
             "id": str(product.id),
             "seller_id": str(product.seller_id),
@@ -317,16 +318,21 @@ class ProductService:
             "description": product.description,
             "category_id": str(product.category_id) if product.category_id else None,
             "slug": self._product_slug(product),
-            "images": ProductResponse._normalize_images(product.images, product.id),
+            "images": images,
+            "image": images[0]["url"] if images else "",
             "characteristics": ProductResponse._normalize_characteristics(
                 product.characteristics
             ),
             "status": self._status_value(product.status),
+            "price": self._min_public_price(product),
+            "in_stock": True,
+            "is_in_cart": False,
             "min_price": self._min_public_price(product),
             "created_at": getattr(product, "created_at", datetime.now(timezone.utc)),
         }
 
     def _public_product_detail(self, product: Product) -> dict[str, object]:
+        images = ProductResponse._normalize_images(product.images, product.id)
         return {
             "id": str(product.id),
             "seller_id": str(product.seller_id),
@@ -334,7 +340,11 @@ class ProductService:
             "description": product.description,
             "category_id": str(product.category_id) if product.category_id else None,
             "slug": self._product_slug(product),
-            "images": ProductResponse._normalize_images(product.images, product.id),
+            "images": images,
+            "image": images[0]["url"] if images else "",
+            "price": self._min_public_price(product),
+            "in_stock": True,
+            "is_in_cart": False,
             "characteristics": ProductResponse._normalize_characteristics(
                 product.characteristics
             ),

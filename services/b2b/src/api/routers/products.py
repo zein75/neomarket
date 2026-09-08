@@ -68,7 +68,7 @@ async def get_product(
     db: AsyncSession = Depends(get_db),
 ) -> Any:
     svc = ProductService(db)
-    return await svc.get_active(product_id)
+    return await svc.get_public_detail(product_id)
 
 
 @router.get(

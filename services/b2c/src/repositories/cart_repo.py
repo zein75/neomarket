@@ -100,6 +100,19 @@ class CartRepository(BaseRepository[Cart]):
         await self.session.flush()
         return int(result.rowcount or 0)
 
+    async def mark_product_unavailable(
+        self,
+        product_id: UUID,
+        unavailable_reason: str,
+    ) -> int:
+        result = await self.session.execute(
+            update(CartItem)
+            .where(CartItem.product_id == product_id)
+            .values(unavailable_reason=unavailable_reason)
+        )
+        await self.session.flush()
+        return int(result.rowcount or 0)
+
     async def remove_cart(self, cart: Cart) -> None:
         await self.session.delete(cart)
         await self.session.flush()

@@ -249,6 +249,10 @@ async def test_catalog_response_has_no_cost_price() -> None:
 
     item = body.items[0].model_dump()
     assert item["slug"].startswith("wireless-keyboard-")
+    assert item["image"].endswith("keyboard.jpg")
+    assert item["price"] == 129900
+    assert item["in_stock"] is True
+    assert item["is_in_cart"] is False
     assert item["skus"][0]["price"] == 129900
     assert item["skus"][0]["characteristics"] == [{"name": "color", "value": "Black"}]
     assert "created_at" in item
@@ -278,6 +282,10 @@ def test_public_catalog_route_returns_contract_envelope() -> None:
     assert body["limit"] == 20
     assert body["offset"] == 0
     assert body["items"][0]["slug"].startswith("wireless-keyboard-")
+    assert body["items"][0]["image"].endswith("keyboard.jpg")
+    assert body["items"][0]["price"] == 129900
+    assert body["items"][0]["in_stock"] is True
+    assert body["items"][0]["is_in_cart"] is False
     assert body["items"][0]["skus"][0]["price"] == 129900
     assert body["items"][0]["skus"][0]["characteristics"] == [
         {"name": "color", "value": "Black"}

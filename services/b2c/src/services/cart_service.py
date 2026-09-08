@@ -185,11 +185,19 @@ class CartService:
             "summary": {
                 "total_amount": subtotal,
                 "total_items": sum(item.quantity for item in cart.items),
+                "total_quantity": sum(item.quantity for item in cart.items),
+                "available_items": sum(
+                    1 for response_item in response_items if response_item["is_available"]
+                ),
+                "has_unavailable_items": unavailable_count > 0,
                 "unavailable_count": unavailable_count,
                 "checkout_ready": is_valid and bool(response_items),
+                "currency": cart.currency,
             },
             "checkout_payload": {
                 "items": checkout_items,
+                "total_amount": subtotal,
+                "currency": cart.currency,
             },
         }
 
@@ -265,17 +273,23 @@ class CartService:
         ]
         return {
             "id": item.id,
+            "item_id": item.id,
             "sku_id": item.sku_id,
             "product_id": item.product_id,
             "name": " ".join(part for part in name_parts if part) or "Unavailable SKU",
+            "product_title": name_parts[0] if name_parts else "",
+            "sku_name": name_parts[1] if len(name_parts) > 1 else "",
             "quantity": item.quantity,
             "unit_price": unit_price,
             "unit_price_at_add": getattr(item, "unit_price", None),
             "line_total": item.quantity * unit_price if is_available else 0,
             "available_quantity": int(sku.get("active_quantity", 0)) if sku else 0,
+            "available_stock": int(sku.get("active_quantity", 0)) if sku else 0,
             "is_available": is_available,
+            "available": is_available,
             "unavailable_reason": unavailable_reason,
             "image": self._first_image(sku),
+            "image_url": self._image_url(sku),
         }
 
     def _unavailable_reason(
@@ -310,3 +324,9 @@ class CartService:
         if isinstance(first, dict):
             return first
         return {"url": first}
+
+    def _image_url(self, sku: dict[str, object] | None) -> str | None:
+        image = self._first_image(sku)
+        if not image or image.get("url") is None:
+            return None
+        return str(image["url"])

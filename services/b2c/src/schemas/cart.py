@@ -28,6 +28,12 @@ class CartItemResponse(BaseModel):
     is_available: bool = False
     unavailable_reason: str | None = None
     image: dict[str, Any] | None = None
+    item_id: UUID | None = None
+    product_title: str = ""
+    sku_name: str = ""
+    image_url: str | None = None
+    available_stock: int = 0
+    available: bool = False
 
     @computed_field
     @property

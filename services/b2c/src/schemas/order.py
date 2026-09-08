@@ -82,6 +82,7 @@ class OrderResponse(BaseModel):
                 "subtotal": total_amount,
                 "total": total_amount,
                 "address": getattr(value, "address", {}),
+                "address_id": getattr(value, "address_id", None),
                 "created_at": getattr(value, "created_at", None),
                 "currency": getattr(value, "currency"),
                 "items": getattr(value, "items", []),
@@ -94,7 +95,9 @@ class OrderResponse(BaseModel):
             data["total"] = data["total_amount"]
         address = data.get("address") or {}
         if isinstance(address, dict):
-            address_id = address.get("id") or data.get("address_id")
+            # The relational address_id is the selected address for the order;
+            # never let a stale embedded snapshot replace it in the response.
+            address_id = data.get("address_id") or address.get("id")
             if address_id is None and not isinstance(value, dict):
                 address_id = getattr(value, "address_id", None)
             if address_id is not None:

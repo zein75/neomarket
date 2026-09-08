@@ -32,7 +32,7 @@ class B2CClient:
     async def _post_event(self, event: dict[str, Any]) -> None:
         async with httpx.AsyncClient(timeout=settings.b2c_timeout_seconds) as client:
             response = await client.post(
-                f"{self.base_url}/api/v1/b2b/events",
+                f"{self.base_url}/api/v1/events/product",
                 json=event,
                 headers={"X-Service-Key": self.service_key},
             )
@@ -42,32 +42,29 @@ class B2CClient:
 
     def build_product_deleted_event(self, product: Any) -> dict[str, Any]:
         return {
-            "event_type": "PRODUCT_DELETED",
+            "event": "PRODUCT_DELETED",
             "idempotency_key": str(uuid5(NAMESPACE_URL, f"b2c-product-deleted:{product.id}")),
-            "occurred_at": datetime.now(timezone.utc).isoformat(),
-            "payload": {
-                "product_id": str(product.id),
-                "reason": "PRODUCT_DELETED",
-            },
+            "date": datetime.now(timezone.utc).isoformat(),
+            "product_id": str(product.id),
+            "sku_ids": [str(sku.id) for sku in getattr(product, "skus", [])],
+            "reason": "PRODUCT_DELETED",
         }
 
     def build_sku_out_of_stock_event(self, sku: Any) -> dict[str, Any]:
         return {
-            "event_type": "SKU_OUT_OF_STOCK",
+            "event": "SKU_OUT_OF_STOCK",
             "idempotency_key": str(uuid5(NAMESPACE_URL, f"sku-out-of-stock:{sku.id}")),
-            "occurred_at": datetime.now(timezone.utc).isoformat(),
-            "payload": {
-                "sku_id": str(sku.id),
-            },
+            "date": datetime.now(timezone.utc).isoformat(),
+            "product_id": str(sku.product_id),
+            "sku_ids": [str(sku.id)],
         }
 
     def build_product_blocked_event(self, product: Any) -> dict[str, Any]:
         return {
-            "event_type": "PRODUCT_BLOCKED",
+            "event": "PRODUCT_BLOCKED",
             "idempotency_key": str(uuid5(NAMESPACE_URL, f"product-blocked:{product.id}")),
-            "occurred_at": datetime.now(timezone.utc).isoformat(),
-            "payload": {
-                "product_id": str(product.id),
-                "status": str(product.status),
-            },
+            "date": datetime.now(timezone.utc).isoformat(),
+            "product_id": str(product.id),
+            "sku_ids": [str(sku.id) for sku in getattr(product, "skus", [])],
+            "reason": str(product.status),
         }
