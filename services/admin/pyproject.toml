@@ -1,0 +1,17 @@
+[project]
+name = "admin"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "sqlalchemy>=2.0.0",
+    "asyncpg>=0.30.0",
+    "alembic>=1.14.0",
+    "redis>=5.2.0",
+    "httpx>=0.28.0",
+    "shared",
+]
+
+[tool.uv.sources]
+shared = { workspace = true }
