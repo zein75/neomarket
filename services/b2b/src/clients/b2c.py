@@ -30,10 +30,20 @@ class B2CClient:
         await self._post_event(event)
 
     async def _post_event(self, event: dict[str, Any]) -> None:
+        payload = {
+            "event_type": event["event"],
+            "idempotency_key": event["idempotency_key"],
+            "occurred_at": event["date"],
+            "payload": {
+                "product_id": event["product_id"],
+                "sku_ids": event["sku_ids"],
+                "reason": event.get("reason"),
+            },
+        }
         async with httpx.AsyncClient(timeout=settings.b2c_timeout_seconds) as client:
             response = await client.post(
-                f"{self.base_url}/api/v1/events/product",
-                json=event,
+                f"{self.base_url}/api/v1/b2b/events",
+                json=payload,
                 headers={"X-Service-Key": self.service_key},
             )
             if response.status_code == 409:
