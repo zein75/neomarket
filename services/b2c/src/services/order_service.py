@@ -7,6 +7,7 @@ from uuid import uuid4
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 
 from src.clients.b2b_client import B2BClient
 from src.core.config import settings
@@ -36,19 +37,7 @@ class OrderService:
         request_fingerprint = self._request_fingerprint(order_request)
         existing = await self.order_repo.get_by_idempotency_key(idempotency_key)
         if existing:
-            stored_fingerprint = self._stored_request_fingerprint(existing)
-            if (
-                stored_fingerprint
-                and stored_fingerprint != request_fingerprint
-            ):
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail={
-                        "code": "IDEMPOTENCY_KEY_REUSED",
-                        "message": "Idempotency key was already used with a different request body",
-                    },
-                )
-            return existing
+            return self._return_idempotent_order(existing, request_fingerprint)
 
         cart = await self.cart_repo.get_with_items(cart_id) if cart_id else None
         if not cart or not cart.items:
@@ -74,20 +63,30 @@ class OrderService:
             item.quantity * int(snapshots[str(item.sku_id)]["price"])
             for item in items
         )
-        order = await self.order_repo.create(
-            id=order_id,
-            user_id=user_id,
-            status=OrderStatus.PAID,
-            total_amount=total,
-            currency=cart.currency,
-            address_id=order_request.address_id if order_request else None,
-            payment_method_id=(
-                order_request.payment_method_id if order_request else None
-            ),
-            address=self._address_snapshot(order_request, address),
-            idempotency_key=idempotency_key,
-            request_fingerprint=request_fingerprint,
-        )
+        try:
+            order = await self.order_repo.create(
+                id=order_id,
+                user_id=user_id,
+                status=OrderStatus.PAID,
+                total_amount=total,
+                currency=cart.currency,
+                address_id=order_request.address_id if order_request else None,
+                payment_method_id=(
+                    order_request.payment_method_id if order_request else None
+                ),
+                address=self._address_snapshot(order_request, address),
+                idempotency_key=idempotency_key,
+                request_fingerprint=request_fingerprint,
+            )
+        except IntegrityError:
+            # A concurrent request may have won the unique idempotency-key
+            # insert between the initial read and this flush. Its result is
+            # the result for both requests, not a storage error for the loser.
+            await self.order_repo.session.rollback()
+            existing = await self.order_repo.get_by_idempotency_key(idempotency_key)
+            if existing is None:
+                raise
+            return self._return_idempotent_order(existing, request_fingerprint)
 
         for cart_item in items:
             snapshot = snapshots[str(cart_item.sku_id)]
@@ -466,6 +465,22 @@ class OrderService:
         )
         encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
         return hashlib.sha256(encoded).hexdigest()
+
+    def _return_idempotent_order(
+        self,
+        existing: Order,
+        request_fingerprint: str,
+    ) -> Order:
+        stored_fingerprint = self._stored_request_fingerprint(existing)
+        if stored_fingerprint and stored_fingerprint != request_fingerprint:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "IDEMPOTENCY_KEY_REUSED",
+                    "message": "Idempotency key was already used with a different request body",
+                },
+            )
+        return existing
 
     def _stored_request_fingerprint(self, order: Order) -> str | None:
         stored = getattr(order, "request_fingerprint", None)

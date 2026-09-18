@@ -3,6 +3,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from fastapi import HTTPException
+from sqlalchemy.exc import IntegrityError
 
 from src.models.order import Order, OrderItem, OrderStatus
 from src.schemas.order import OrderCreateRequest, OrderDetailResponse, OrderResponse
@@ -87,12 +88,16 @@ class FakeSession:
     def __init__(self) -> None:
         self.added = []
         self.flushed = False
+        self.rolled_back = False
 
     def add(self, obj) -> None:
         self.added.append(obj)
 
     async def flush(self) -> None:
         self.flushed = True
+
+    async def rollback(self) -> None:
+        self.rolled_back = True
 
     async def delete(self, obj) -> None:
         return None
@@ -120,6 +125,8 @@ class FakeOrderRepository:
     pending_fulfillments: dict[UUID, SimpleNamespace] = {}
     created_orders: list[Order] = []
     locked_gets: list[UUID] = []
+    race_order: Order | None = None
+    raise_integrity_error = False
 
     def __init__(self, session) -> None:
         self.session = session
@@ -163,6 +170,11 @@ class FakeOrderRepository:
         return orders[offset : offset + limit], len(orders)
 
     async def create(self, **data):
+        if self.raise_integrity_error:
+            self.raise_integrity_error = False
+            if self.race_order is not None:
+                self.orders_by_key[self.race_order.idempotency_key] = self.race_order
+            raise IntegrityError("insert", {}, Exception("duplicate idempotency key"))
         order = Order(**data)
         order.id = data.get("id") or uuid4()
         order.items = []
@@ -249,6 +261,8 @@ def patch_dependencies(monkeypatch):
     FakeOrderRepository.pending_fulfillments = {}
     FakeOrderRepository.created_orders = []
     FakeOrderRepository.locked_gets = []
+    FakeOrderRepository.race_order = None
+    FakeOrderRepository.raise_integrity_error = False
     FakeB2BClient.products = []
     FakeB2BClient.reserve_calls = []
     FakeB2BClient.unreserve_calls = []
@@ -403,6 +417,52 @@ async def test_idempotency_returns_existing_order() -> None:
     assert order is existing
     assert FakeB2BClient.reserve_calls == []
     assert FakeOrderRepository.created_orders == []
+
+
+async def test_concurrent_idempotency_race_returns_existing_order() -> None:
+    user_id = uuid4()
+    product_id = uuid4()
+    sku_id = uuid4()
+    cart = _cart(
+        user_id=user_id,
+        items=[_cart_item(product_id=product_id, sku_id=sku_id)],
+    )
+    FakeCartRepository.cart = cart
+    FakeB2BClient.products = [
+        {
+            "id": str(product_id),
+            "title": "Phone",
+            "skus": [
+                {
+                    "id": str(sku_id),
+                    "name": "128 GB",
+                    "price": 150,
+                    "active_quantity": 5,
+                }
+            ],
+        }
+    ]
+    existing = Order(
+        user_id=user_id,
+        status=OrderStatus.PAID,
+        total_amount=150,
+        currency="RUB",
+        idempotency_key="checkout-race",
+    )
+    existing.id = uuid4()
+    existing.items = []
+    FakeOrderRepository.race_order = existing
+    FakeOrderRepository.raise_integrity_error = True
+    session = FakeSession()
+
+    order = await OrderService(session).checkout(
+        user_id=user_id,
+        cart_id=cart.id,
+        idempotency_key="checkout-race",
+    )
+
+    assert order is existing
+    assert session.rolled_back is True
 
 
 async def test_idempotency_with_different_body_returns_409() -> None:
