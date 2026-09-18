@@ -52,7 +52,8 @@ async def create_order(
     cart = await CartService(db).get_or_create_cart(
         user=current_user, session_id=x_session_id
     )
-    order = await OrderService(db).checkout(
+    service = OrderService(db)
+    order = await service.checkout(
         current_user.id,
         cart.id,
         idempotency_key=key,
@@ -60,7 +61,10 @@ async def create_order(
     )
     await db.commit()
     payload = OrderResponse.model_validate(order).model_dump(mode="json")
-    return JSONResponse(status_code=200 if existing else 201, content=payload)
+    return JSONResponse(
+        status_code=200 if existing or service.last_checkout_replayed else 201,
+        content=payload,
+    )
 
 
 @router.get("/api/v1/orders/{id}", response_model=OrderDetailResponse)

@@ -26,6 +26,7 @@ class OrderService:
         self.order_repo = OrderRepository(session)
         self.cart_repo = CartRepository(session)
         self.address_repo = AddressRepository(session)
+        self.last_checkout_replayed = False
 
     async def checkout(
         self,
@@ -34,6 +35,7 @@ class OrderService:
         idempotency_key: str,
         order_request: OrderCreateRequest | None = None,
     ) -> Order:
+        self.last_checkout_replayed = False
         request_fingerprint = self._request_fingerprint(order_request)
         existing = await self.order_repo.get_by_idempotency_key(idempotency_key)
         if existing:
@@ -480,6 +482,7 @@ class OrderService:
                     "message": "Idempotency key was already used with a different request body",
                 },
             )
+        self.last_checkout_replayed = True
         return existing
 
     def _stored_request_fingerprint(self, order: Order) -> str | None:

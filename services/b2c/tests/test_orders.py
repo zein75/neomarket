@@ -454,8 +454,9 @@ async def test_concurrent_idempotency_race_returns_existing_order() -> None:
     FakeOrderRepository.race_order = existing
     FakeOrderRepository.raise_integrity_error = True
     session = FakeSession()
+    service = OrderService(session)
 
-    order = await OrderService(session).checkout(
+    order = await service.checkout(
         user_id=user_id,
         cart_id=cart.id,
         idempotency_key="checkout-race",
@@ -463,6 +464,7 @@ async def test_concurrent_idempotency_race_returns_existing_order() -> None:
 
     assert order is existing
     assert session.rolled_back is True
+    assert service.last_checkout_replayed is True
 
 
 async def test_idempotency_with_different_body_returns_409() -> None:
