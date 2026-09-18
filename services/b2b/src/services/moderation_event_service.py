@@ -74,37 +74,20 @@ class ModerationEventService:
         )
         product.is_active = False
         product.blocking_reason = self._blocking_reason_payload(event)
-        product.field_reports = event.field_reports
+        product.field_reports = [
+            report.model_dump(mode="json") for report in event.field_reports
+        ]
 
     def _blocking_reason_payload(
         self,
         event: ModerationDecisionEvent,
     ) -> dict[str, str] | None:
-        if not event.blocking_reason_id:
+        if event.blocking_reason is None:
             return None
-        payload_reason = {}
-        if isinstance(event.blocking_reason, dict):
-            payload_reason = event.blocking_reason
-        elif isinstance(event.payload, dict) and isinstance(
-            event.payload.get("blocking_reason"),
-            dict,
-        ):
-            payload_reason = event.payload["blocking_reason"]
-        title = (
-            payload_reason.get("title")
-            or event.model_extra.get("blocking_reason_title")
-            or "Moderation block"
-        )
-        comment = (
-            payload_reason.get("comment")
-            or event.model_extra.get("moderator_comment")
-            or self._first_field_report_comment(event)
-            or "Product blocked by moderation"
-        )
         return {
-            "id": str(event.blocking_reason_id),
-            "title": str(title),
-            "comment": str(comment),
+            "id": str(event.blocking_reason.id),
+            "title": event.blocking_reason.title,
+            "comment": event.blocking_reason.comment,
         }
 
     def _first_field_report_comment(
@@ -112,6 +95,6 @@ class ModerationEventService:
         event: ModerationDecisionEvent,
     ) -> str | None:
         for report in event.field_reports:
-            if isinstance(report, dict) and report.get("comment"):
-                return str(report["comment"])
+            if report.comment:
+                return report.comment
         return None

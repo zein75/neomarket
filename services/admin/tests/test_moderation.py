@@ -228,7 +228,6 @@ async def test_hard_block_transitions_to_terminal_and_emits_event() -> None:
     assert event["product_id"] == str(card.product_id)
     assert event["occurred_at"]
     assert event["hard_block"] is True
-    assert event["blocking_reason_id"] == str(reason_id)
     assert event["blocking_reason"] == {
         "id": str(reason_id),
         "title": "Counterfeit product",
@@ -274,7 +273,6 @@ def test_block_ticket_route_returns_contract_response_and_emits_event() -> None:
     assert body["status"] == "HARD_BLOCKED"
     assert body["created_at"]
     assert FakeB2BClient.events[0]["event_type"] == "BLOCKED"
-    assert FakeB2BClient.events[0]["blocking_reason_id"] == str(reason_id)
     assert FakeB2BClient.events[0]["blocking_reason"] == {
         "id": str(reason_id),
         "title": "Description mismatch",
@@ -343,7 +341,6 @@ async def test_hard_block_event_carries_hard_block_true() -> None:
 
     assert FakeB2BClient.events[0]["event_type"] == "BLOCKED"
     assert FakeB2BClient.events[0]["hard_block"] is True
-    assert FakeB2BClient.events[0]["blocking_reason_id"] == str(reason_id)
 
 
 async def test_any_modify_on_hard_blocked_returns_409() -> None:

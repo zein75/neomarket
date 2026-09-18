@@ -10,7 +10,7 @@ from src.api.routers import moderation_events as moderation_router
 from src.api.routers import products as products_router
 from src.main import app
 from src.models.product import ProductStatus
-from src.schemas.moderation_event import ModerationDecisionEvent
+from src.schemas.moderation_event import BlockingReason, ModerationDecisionEvent
 from src.services import product_service as product_service_module
 from src.services import moderation_event_service as moderation_service_module
 from src.services.moderation_event_service import ModerationEventService
@@ -117,10 +117,14 @@ def _event(
         occurred_at=datetime.now(timezone.utc),
         product_id=product_id,
         hard_block=hard_block,
-        blocking_reason_id=blocking_reason_id or uuid4(),
+        blocking_reason=BlockingReason(
+            id=blocking_reason_id or uuid4(),
+            title="Moderation block",
+            comment="Image is blurry",
+        ),
         field_reports=[
             {
-                "field_name": "images[0]",
+                "field_name": "product_images",
                 "sku_id": None,
                 "comment": "Image is blurry",
             }
@@ -156,7 +160,7 @@ async def test_blocked_soft_saves_field_reports() -> None:
     assert product.status == ProductStatus.BLOCKED
     assert product.is_active is False
     assert product.blocking_reason["id"]
-    assert product.field_reports[0]["field_name"] == "images[0]"
+    assert product.field_reports[0]["field_name"] == "product_images"
     assert len(FakeB2CClient.blocked_events) == 1
 
 
@@ -200,10 +204,14 @@ def test_blocked_event_then_seller_view_returns_blocking_reason() -> None:
                 "event_type": "BLOCKED",
                 "product_id": str(product.id),
                 "occurred_at": datetime.now(timezone.utc).isoformat(),
-                "blocking_reason_id": str(reason_id),
+                "blocking_reason": {
+                    "id": str(reason_id),
+                    "title": "Moderation block",
+                    "comment": "Image is blurry",
+                },
                 "field_reports": [
                     {
-                        "field_name": "images[0]",
+                "field_name": "product_images",
                         "sku_id": None,
                         "comment": "Image is blurry",
                     }
@@ -225,7 +233,7 @@ def test_blocked_event_then_seller_view_returns_blocking_reason() -> None:
     }
     assert body["field_reports"] == [
         {
-            "field_name": "images[0]",
+            "field_name": "product_images",
             "sku_id": None,
             "comment": "Image is blurry",
         }
@@ -400,7 +408,7 @@ def test_moderation_event_route_returns_204() -> None:
     assert response.content == b""
 
 
-def test_moderation_event_route_accepts_canonical_status_field() -> None:
+def test_moderation_event_route_rejects_undeclared_status_field() -> None:
     product = _product()
     FakeProductRepository.product = product
 
@@ -422,8 +430,8 @@ def test_moderation_event_route_accepts_canonical_status_field() -> None:
     finally:
         app.dependency_overrides.clear()
 
-    assert response.status_code == 204
-    assert product.status == ProductStatus.MODERATED
+    assert response.status_code == 400
+    assert product.status == ProductStatus.ON_MODERATION
 
 
 def test_moderation_event_alias_returns_204() -> None:

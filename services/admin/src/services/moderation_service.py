@@ -183,19 +183,14 @@ class ModerationService:
     ) -> dict[str, object]:
         product_id = str(card.product_id)
         key_part = "hard-blocked" if hard_block else "blocked"
-        blocking_reason_id = getattr(blocking_reason, "id", None)
         return {
             "idempotency_key": str(
                 uuid5(NAMESPACE_URL, f"moderation:{key_part}:{product_id}")
             ),
             "event_type": "BLOCKED",
-            "status": "BLOCKED",
             "product_id": product_id,
             "occurred_at": datetime.now(timezone.utc).isoformat(),
             "hard_block": hard_block,
-            "blocking_reason_id": str(blocking_reason_id)
-            if blocking_reason_id
-            else None,
             "blocking_reason": self._blocking_reason_payload(
                 blocking_reason,
                 comment=comment,
