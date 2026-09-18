@@ -37,6 +37,12 @@ class OrderService:
     ) -> Order:
         self.last_checkout_replayed = False
         request_fingerprint = self._request_fingerprint(order_request)
+        # The lock must be acquired before the idempotency lookup and before
+        # inventory reservation. Otherwise a concurrent request can reserve
+        # the same cart and fail before it observes the winning order.
+        lock_key = getattr(self.order_repo, "lock_idempotency_key", None)
+        if lock_key is not None:
+            await lock_key(idempotency_key)
         existing = await self.order_repo.get_by_idempotency_key(idempotency_key)
         if existing:
             return self._return_idempotent_order(existing, request_fingerprint)

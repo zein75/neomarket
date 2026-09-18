@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -58,6 +58,16 @@ class OrderRepository(BaseRepository[Order]):
             .options(selectinload(Order.items))
         )
         return result.scalar_one_or_none()
+
+    async def lock_idempotency_key(self, idempotency_key: str) -> None:
+        """Serialize check/reserve/create for one key until this transaction commits."""
+        await self.session.execute(
+            text(
+                "SELECT pg_advisory_xact_lock("
+                "hashtextextended(:idempotency_key, 0))"
+            ),
+            {"idempotency_key": idempotency_key},
+        )
 
     async def list_by_user(self, user_id: UUID) -> list[Order]:
         result = await self.session.execute(
