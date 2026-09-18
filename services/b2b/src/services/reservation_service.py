@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from uuid import UUID
+from uuid import NAMESPACE_URL, UUID, uuid5
 
 from fastapi import HTTPException, status
 import httpx
@@ -8,14 +8,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.clients.b2c import B2CClient
 from src.models.reservation import Reservation
+from src.models.product import ProductStatus
 from src.repositories.fulfilled_order_repo import FulfilledOrderRepository
 from src.repositories.reservation_operation_repo import ReservationOperationRepository
 from src.repositories.reservation_repo import ReservationRepository
+from src.repositories.outbox_event_repo import OutboxEventRepository
 from src.repositories.sku_repo import SKURepository
 from src.schemas.reservation import (
     FulfillRequest,
     ReservationCreate,
     ReserveRequest,
+    ReserveItem,
     UnreserveRequest,
 )
 
@@ -26,6 +29,7 @@ class ReservationService:
         self.reservation_operation_repo = ReservationOperationRepository(session)
         self.sku_repo = SKURepository(session)
         self.fulfilled_order_repo = FulfilledOrderRepository(session)
+        self.outbox_repo = OutboxEventRepository(session)
 
     async def create(self, data: ReservationCreate) -> Reservation:
         sku = await self.sku_repo.get_by_id(data.sku_id)
@@ -93,7 +97,13 @@ class ReservationService:
         insufficient_skus = []
         for item in data.items:
             sku = skus_by_id[item.sku_id]
-            if not sku.is_active or self._active_quantity(sku) < item.quantity:
+            product = getattr(sku, "product", None)
+            product_status = getattr(product, "status", None)
+            if (
+                not sku.is_active
+                or product_status != ProductStatus.MODERATED
+                or self._active_quantity(sku) < item.quantity
+            ):
                 insufficient_skus.append(str(item.sku_id))
 
         if insufficient_skus:
@@ -123,6 +133,37 @@ class ReservationService:
                 idempotency_key=idempotency_key,
                 order_id=data.order_id,
             )
+            for sku in out_of_stock_skus:
+                build_event = getattr(B2CClient(), "build_sku_out_of_stock_event", None)
+                event = (
+                    build_event(sku)
+                    if build_event
+                    else {
+                        "event": "SKU_OUT_OF_STOCK",
+                        "idempotency_key": str(
+                            uuid5(NAMESPACE_URL, f"sku-out-of-stock:{sku.id}")
+                        ),
+                        "date": datetime.now(timezone.utc).isoformat(),
+                        "product_id": str(
+                            getattr(sku, "product_id", getattr(getattr(sku, "product", None), "id", ""))
+                        ),
+                        "sku_ids": [str(sku.id)],
+                    }
+                )
+                await self.outbox_repo.create_b2c_event(
+                    idempotency_key=event["idempotency_key"],
+                    event_type=event["event"],
+                    payload={
+                        "event_type": event["event"],
+                        "idempotency_key": event["idempotency_key"],
+                        "occurred_at": event["date"],
+                        "payload": {
+                            "product_id": event["product_id"],
+                            "sku_id": event["sku_ids"][0],
+                            "available_quantity": 0,
+                        },
+                    },
+                )
         except IntegrityError:
             rollback = getattr(self.reservation_operation_repo.session, "rollback", None)
             if rollback:
@@ -225,7 +266,16 @@ class ReservationService:
         }
 
     async def cancel_by_order(self, order_id: UUID) -> None:
-        await self.unreserve(UnreserveRequest(order_id=order_id))
+        reservations = await self.reservation_repo.list_by_order(order_id)
+        await self.unreserve(
+            UnreserveRequest(
+                order_id=order_id,
+                items=[
+                    ReserveItem(sku_id=item.sku_id, quantity=item.quantity)
+                    for item in reservations
+                ],
+            )
+        )
 
     def _active_quantity(self, sku: object) -> int:
         return max(sku.stock - getattr(sku, "reserved_quantity", 0), 0)

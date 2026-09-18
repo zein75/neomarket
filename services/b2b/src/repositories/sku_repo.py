@@ -30,6 +30,7 @@ class SKURepository(BaseRepository[SKU]):
         result = await self.session.execute(
             select(SKU)
             .where(SKU.id.in_(sku_ids))
+            .options(joinedload(SKU.product))
             .with_for_update()
         )
         return list(result.scalars().all())

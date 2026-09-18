@@ -12,8 +12,10 @@ from src.api.routers import reservations as reservations_router
 from src.main import app
 from src.models import Base
 from src.models.product import Product
+from src.models.product import ProductStatus
 from src.models.reservation import Reservation
 from src.models.reservation_operation import ReservationOperation
+from src.models.outbox_event import OutboxEvent
 from src.models.seller import Seller
 from src.models.sku import SKU
 from src.repositories.reservation_operation_repo import (
@@ -58,8 +60,11 @@ class SyncSessionAdapter:
 
 
 def _sku(*, stock=10, reserved_quantity=0):
+    product_id = uuid4()
     return SimpleNamespace(
         id=uuid4(),
+        product_id=product_id,
+        product=SimpleNamespace(id=product_id, status=ProductStatus.MODERATED),
         stock=stock,
         reserved_quantity=reserved_quantity,
         is_active=True,
@@ -264,7 +269,12 @@ async def test_unreserve_restores_quantities() -> None:
     service = ReservationService(FakeSession())
 
     await service.reserve(_reserve_request((sku.id, 3), order_id=order_id))
-    response = await service.unreserve(UnreserveRequest(order_id=order_id))
+    response = await service.unreserve(
+        UnreserveRequest(
+            order_id=order_id,
+            items=[ReserveItem(sku_id=sku.id, quantity=3)],
+        )
+    )
 
     assert response["status"] == "UNRESERVED"
     assert response["processed_at"] is not None
@@ -299,6 +309,7 @@ def test_multi_sku_reserve_idempotency_key_allowed_by_real_schema() -> None:
                 title="Phone",
                 description="Last phone",
                 category="electronics",
+                status=ProductStatus.MODERATED,
             )
         )
         session.add_all(
@@ -394,6 +405,7 @@ async def test_reserve_all_skus_succeeds_on_real_schema(
                 title="Phone bundle",
                 description="Last phone",
                 category="electronics",
+                status=ProductStatus.MODERATED,
             )
         )
         session.add_all(
@@ -439,6 +451,7 @@ async def test_reserve_all_skus_succeeds_on_real_schema(
             .filter(Reservation.idempotency_key == idempotency_key)
             .all()
         )
+        outbox_events = session.query(OutboxEvent).all()
 
         assert first == second
         assert sku_a is not None
@@ -452,6 +465,9 @@ async def test_reserve_all_skus_succeeds_on_real_schema(
             sku_a_id,
             sku_b_id,
         }
+        assert len(outbox_events) == 1
+        assert outbox_events[0].event_type == "SKU_OUT_OF_STOCK"
+        assert outbox_events[0].payload["payload"]["sku_id"] == str(sku_b_id)
         assert session.get(ReservationOperation, idempotency_key) is not None
 
     Base.metadata.drop_all(engine)
