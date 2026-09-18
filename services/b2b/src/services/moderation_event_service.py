@@ -29,7 +29,7 @@ class ModerationEventService:
                 },
             )
 
-        decision = event.event_type.value
+        decision = event.status.value
         if decision not in {
             ProductStatus.MODERATED.value,
             ProductStatus.BLOCKED.value,
@@ -70,12 +70,12 @@ class ModerationEventService:
 
     def _apply_blocked(self, product: object, event: ModerationDecisionEvent) -> None:
         product.status = (
-            ProductStatus.HARD_BLOCKED if event.hard_block else ProductStatus.BLOCKED
+            ProductStatus.HARD_BLOCKED if event.hard_block is True else ProductStatus.BLOCKED
         )
         product.is_active = False
         product.blocking_reason = self._blocking_reason_payload(event)
         product.field_reports = [
-            report.model_dump(mode="json") for report in event.field_reports
+            report.model_dump(mode="json") for report in (event.field_reports or [])
         ]
 
     def _blocking_reason_payload(

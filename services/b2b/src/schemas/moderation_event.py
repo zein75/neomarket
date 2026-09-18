@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class ModerationEventType(StrEnum):
@@ -40,9 +40,40 @@ class ModerationDecisionEvent(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     idempotency_key: UUID
+    product_id: UUID
+    status: ModerationEventType
+    hard_block: bool | None = None
+    blocking_reason: BlockingReason | None = None
+    field_reports: list[FieldReport] | None = None
+
+    @model_validator(mode="after")
+    def validate_status_payload(self) -> "ModerationDecisionEvent":
+        if self.status is ModerationEventType.BLOCKED:
+            if self.hard_block is None:
+                raise ValueError("hard_block is required when status is BLOCKED")
+            if self.blocking_reason is None:
+                raise ValueError("blocking_reason is required when status is BLOCKED")
+            if self.field_reports is None:
+                raise ValueError("field_reports is required when status is BLOCKED")
+        elif any(
+            value is not None
+            for value in (self.hard_block, self.blocking_reason, self.field_reports)
+        ):
+            raise ValueError("blocking fields are only allowed when status is BLOCKED")
+        return self
+
+
+class ModerationEventRequest(BaseModel):
+    """Public request schema from the unified B2B Swagger contract."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    idempotency_key: UUID
+    product_id: UUID
     event_type: ModerationEventType
     occurred_at: datetime
-    product_id: UUID
-    hard_block: bool = False
-    blocking_reason: BlockingReason | None = None
+    moderator_id: UUID | None = None
+    moderator_comment: str | None = None
+    blocking_reason_id: UUID | None = None
+    hard_block: bool | None = None
     field_reports: list[FieldReport] = Field(default_factory=list)

@@ -1,4 +1,3 @@
-from datetime import datetime, timezone
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -34,7 +33,11 @@ def _product(*, status=ProductStatus.ON_MODERATION):
         category_id=uuid4(),
         images=["https://cdn.neomarket.test/products/keyboard.jpg"],
         characteristics={"layout": "US"},
-        blocking_reason={"title": "Old reason"},
+        blocking_reason={
+            "id": str(uuid4()),
+            "title": "Old reason",
+            "comment": "Old comment",
+        },
         field_reports=[{"field_name": "description", "comment": "Old report"}],
         status=status,
         category=None,
@@ -106,29 +109,33 @@ def patch_dependencies(monkeypatch: pytest.MonkeyPatch):
 def _event(
     product_id,
     *,
-    event_type: str,
+    status: str,
     hard_block: bool = False,
     key: str | None = None,
     blocking_reason_id=None,
 ):
-    return ModerationDecisionEvent(
-        idempotency_key=key or str(uuid4()),
-        event_type=event_type,
-        occurred_at=datetime.now(timezone.utc),
-        product_id=product_id,
-        hard_block=hard_block,
-        blocking_reason=BlockingReason(
+    kwargs = {}
+    if status == "BLOCKED":
+        kwargs = {
+            "hard_block": hard_block,
+            "blocking_reason": BlockingReason(
             id=blocking_reason_id or uuid4(),
             title="Moderation block",
             comment="Image is blurry",
-        ),
-        field_reports=[
+            ),
+            "field_reports": [
             {
                 "field_name": "product_images",
                 "sku_id": None,
                 "comment": "Image is blurry",
             }
-        ],
+            ],
+        }
+    return ModerationDecisionEvent(
+        idempotency_key=key or str(uuid4()),
+        product_id=product_id,
+        status=status,
+        **kwargs,
     )
 
 
@@ -138,7 +145,7 @@ async def test_moderated_event_clears_blocking_data() -> None:
     FakeProductRepository.product = product
 
     response = await ModerationEventService(FakeSession()).apply(
-        _event(product.id, event_type="MODERATED")
+        _event(product.id, status="MODERATED")
     )
 
     assert response == {"status": "APPLIED"}
@@ -154,7 +161,7 @@ async def test_blocked_soft_saves_field_reports() -> None:
     FakeProductRepository.product = product
 
     await ModerationEventService(FakeSession()).apply(
-        _event(product.id, event_type="BLOCKED", hard_block=False)
+        _event(product.id, status="BLOCKED", hard_block=False)
     )
 
     assert product.status == ProductStatus.BLOCKED
@@ -171,7 +178,7 @@ async def test_blocked_event_saves_blocking_reason_id() -> None:
     FakeProductRepository.product = product
 
     await ModerationEventService(FakeSession()).apply(
-        _event(product.id, event_type="BLOCKED", blocking_reason_id=reason_id)
+        _event(product.id, status="BLOCKED", blocking_reason_id=reason_id)
     )
 
     assert product.blocking_reason == {
@@ -203,12 +210,10 @@ def test_blocked_event_then_seller_view_returns_blocking_reason() -> None:
                 "idempotency_key": str(uuid4()),
                 "event_type": "BLOCKED",
                 "product_id": str(product.id),
-                "occurred_at": datetime.now(timezone.utc).isoformat(),
-                "blocking_reason": {
-                    "id": str(reason_id),
-                    "title": "Moderation block",
-                    "comment": "Image is blurry",
-                },
+                "occurred_at": "2026-09-18T12:00:00Z",
+                "hard_block": False,
+                "blocking_reason_id": str(reason_id),
+                "moderator_comment": "Image is blurry",
                 "field_reports": [
                     {
                 "field_name": "product_images",
@@ -260,9 +265,8 @@ def test_blocked_event_saves_full_top_level_blocking_reason_for_seller_view() ->
             headers={"X-Service-Key": "dev-service-key-change-in-production"},
             json={
                 "idempotency_key": str(uuid4()),
-                "event_type": "BLOCKED",
+                "status": "BLOCKED",
                 "product_id": str(product.id),
-                "occurred_at": datetime.now(timezone.utc).isoformat(),
                 "hard_block": False,
                 "blocking_reason": {
                     "id": str(reason_id),
@@ -299,7 +303,7 @@ async def test_blocked_hard_sets_terminal_status() -> None:
     FakeProductRepository.product = product
 
     await ModerationEventService(FakeSession()).apply(
-        _event(product.id, event_type="BLOCKED", hard_block=True)
+        _event(product.id, status="BLOCKED", hard_block=True)
     )
 
     assert product.status == ProductStatus.HARD_BLOCKED
@@ -324,11 +328,11 @@ async def test_duplicate_event_same_idempotency_key_no_side_effects() -> None:
     service = ModerationEventService(FakeSession())
     key = str(uuid4())
 
-    first = await service.apply(_event(product.id, event_type="BLOCKED", key=key))
+    first = await service.apply(_event(product.id, status="BLOCKED", key=key))
     product.status = ProductStatus.ON_MODERATION
     product.blocking_reason = None
     product.field_reports = []
-    second = await service.apply(_event(product.id, event_type="BLOCKED", key=key))
+    second = await service.apply(_event(product.id, status="BLOCKED", key=key))
 
     assert first == {"status": "APPLIED"}
     assert second == {"status": "DUPLICATE"}
@@ -361,7 +365,7 @@ async def test_parallel_duplicate_event_no_side_effects(
     )
 
     response = await ModerationEventService(FakeSession()).apply(
-        _event(product.id, event_type="BLOCKED")
+        _event(product.id, status="BLOCKED")
     )
 
     assert response == {"status": "DUPLICATE"}
@@ -396,9 +400,8 @@ def test_moderation_event_route_returns_204() -> None:
             headers={"X-Service-Key": "dev-service-key-change-in-production"},
             json={
                 "idempotency_key": str(uuid4()),
-                "event_type": "MODERATED",
+                "status": "MODERATED",
                 "product_id": str(product.id),
-                "occurred_at": datetime.now(timezone.utc).isoformat(),
             },
         )
     finally:
@@ -408,7 +411,7 @@ def test_moderation_event_route_returns_204() -> None:
     assert response.content == b""
 
 
-def test_moderation_event_route_rejects_undeclared_status_field() -> None:
+def test_moderation_event_route_rejects_undeclared_event_type_field() -> None:
     product = _product()
     FakeProductRepository.product = product
 
@@ -422,9 +425,8 @@ def test_moderation_event_route_rejects_undeclared_status_field() -> None:
             headers={"X-Service-Key": "dev-service-key-change-in-production"},
             json={
                 "idempotency_key": str(uuid4()),
-                "status": "MODERATED",
+                "event_type": "MODERATED",
                 "product_id": str(product.id),
-                "occurred_at": datetime.now(timezone.utc).isoformat(),
             },
         )
     finally:
@@ -448,8 +450,7 @@ def test_moderation_event_route_rejects_undeclared_field_report_fields() -> None
             headers={"X-Service-Key": "dev-service-key-change-in-production"},
             json={
                 "idempotency_key": str(uuid4()),
-                "event_type": "BLOCKED",
-                "occurred_at": datetime.now(timezone.utc).isoformat(),
+                "status": "BLOCKED",
                 "product_id": str(product.id),
                 "blocking_reason": {
                     "id": str(uuid4()),
@@ -489,7 +490,7 @@ def test_moderation_event_alias_returns_204() -> None:
                 "idempotency_key": str(uuid4()),
                 "event_type": "MODERATED",
                 "product_id": str(product.id),
-                "occurred_at": datetime.now(timezone.utc).isoformat(),
+                "occurred_at": "2026-09-18T12:00:00Z",
             },
         )
     finally:

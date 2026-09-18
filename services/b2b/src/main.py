@@ -34,7 +34,11 @@ app = FastAPI(
 async def validation_exception_handler(
     request: Request, exc: RequestValidationError
 ) -> JSONResponse:
-    if _missing_service_key_error(exc.errors()):
+    errors = [
+        {key: value for key, value in error.items() if key != "ctx"}
+        for error in exc.errors()
+    ]
+    if _missing_service_key_error(errors):
         return JSONResponse(
             status_code=401,
             content={
@@ -45,14 +49,14 @@ async def validation_exception_handler(
     if request.method == "POST" and request.url.path == "/api/v1/products":
         return JSONResponse(
             status_code=400,
-            content=_create_product_validation_error(exc.errors()),
+            content=_create_product_validation_error(errors),
         )
     return JSONResponse(
         status_code=400,
         content={
             "code": "VALIDATION_ERROR",
             "message": "Request validation failed",
-            "errors": exc.errors(),
+            "errors": errors,
         },
     )
 
