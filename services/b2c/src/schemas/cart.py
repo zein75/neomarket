@@ -53,25 +53,20 @@ class CartResponse(BaseModel):
 
 
 class CartValidationIssue(BaseModel):
-    cart_item_id: UUID
     sku_id: UUID
-    issue_type: Literal[
-        "BLOCKED",
-        "DELETED",
+    type: Literal[
+        "PRICE_CHANGED",
         "OUT_OF_STOCK",
-        "INSUFFICIENT_STOCK",
-        "ON_MODERATION",
-        "VALIDATION_ERROR",
+        "QUANTITY_REDUCED",
+        "PRODUCT_BLOCKED",
+        "PRODUCT_DELETED",
     ]
-    severity: Literal["critical", "warning"]
     message: str
-    details: dict[str, Any] = Field(default_factory=dict)
+    old_value: str | int | None = None
+    new_value: str | int | None = None
 
 
 class CartValidateResponse(BaseModel):
     is_valid: bool
-    can_checkout: bool
-    total_items: int
-    validation_timestamp: str
     cart: CartResponse
     issues: list[CartValidationIssue] = Field(default_factory=list)

@@ -1,4 +1,3 @@
-from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -81,13 +80,20 @@ class CartService:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Cart not found"
             )
+
+        # The cart flow requires the SKU/product availability check before both
+        # inserting a new line and increasing an existing one.
+        sku_data = await self._get_sku_data(data.sku_id)
+        self._ensure_sku_can_be_added(sku_data, data.quantity)
+
         for item in cart.items:
             if item.sku_id == data.sku_id:
+                requested_quantity = item.quantity + data.quantity
+                self._ensure_sku_can_be_added(sku_data, requested_quantity)
                 return await self.repo.update_item_quantity(
-                    item, item.quantity + data.quantity
+                    item, requested_quantity
                 )
 
-        sku_data = await self._get_sku_data(data.sku_id)
         product_id = UUID(str(sku_data["product_id"]))
         unit_price = int(sku_data.get("price") or 0)
         return await self.repo.add_item(
@@ -97,6 +103,39 @@ class CartService:
             quantity=data.quantity,
             unit_price=unit_price,
         )
+
+    def _ensure_sku_can_be_added(
+        self,
+        sku_data: dict[str, object],
+        quantity: int,
+    ) -> None:
+        if not sku_data or not sku_data.get("product_id"):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"code": "SKU_NOT_FOUND", "message": "SKU not found"},
+            )
+
+        product_status = str(
+            sku_data.get("product_status", sku_data.get("status", "MODERATED"))
+        )
+        if sku_data.get("deleted") is True or product_status != "MODERATED":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "PRODUCT_NOT_AVAILABLE",
+                    "message": "Product is not available",
+                },
+            )
+
+        available_quantity = int(sku_data.get("active_quantity", 0))
+        if quantity > available_quantity:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "INSUFFICIENT_STOCK",
+                    "message": "Requested quantity exceeds available stock",
+                },
+            )
 
     async def get_item(self, item_id: UUID, *, cart_id: UUID) -> CartItem:
         item = await self._get_item_by_id_or_sku(cart_id, item_id)
@@ -230,35 +269,24 @@ class CartService:
         for item in cart["items"]:
             reason = item.get("unavailable_reason")
             if reason:
-                severity = (
-                    "warning"
-                    if reason in {"INSUFFICIENT_STOCK", "ON_MODERATION"}
-                    else "critical"
-                )
                 issue_type = {
-                    "PRODUCT_BLOCKED": "BLOCKED",
-                    "PRODUCT_DELISTED": "DELETED",
+                    "PRODUCT_BLOCKED": "PRODUCT_BLOCKED",
+                    "PRODUCT_DELISTED": "PRODUCT_DELETED",
+                    "INSUFFICIENT_STOCK": "QUANTITY_REDUCED",
+                    "ON_MODERATION": "PRODUCT_BLOCKED",
                 }.get(str(reason), str(reason))
-                issues.append(
-                    {
-                        "cart_item_id": item["id"],
-                        "sku_id": item["sku_id"],
-                        "issue_type": issue_type,
-                        "severity": severity,
-                        "message": f"Cart item is not available: {reason}",
-                        "details": {
-                            "requested_quantity": item["quantity"],
-                            "available_quantity": item["available_quantity"],
-                        },
-                    }
-                )
+                issue = {
+                    "sku_id": item["sku_id"],
+                    "type": issue_type,
+                    "message": f"Cart item is not available: {reason}",
+                }
+                if reason == "INSUFFICIENT_STOCK":
+                    issue["old_value"] = item["quantity"]
+                    issue["new_value"] = item["available_quantity"]
+                issues.append(issue)
         is_valid = not issues
         return {
             "is_valid": is_valid,
-            "can_checkout": bool(cart["items"])
-            and not any(issue["severity"] == "critical" for issue in issues),
-            "total_items": len(cart["items"]),
-            "validation_timestamp": datetime.now(timezone.utc).isoformat(),
             "cart": cart,
             "issues": issues,
         }
