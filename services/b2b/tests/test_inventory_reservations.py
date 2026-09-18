@@ -132,8 +132,11 @@ class FakeReservationOperationRepository:
 
 class FakeB2CClient:
     out_of_stock_events: list[dict[str, object]] = []
+    fail_delivery = False
 
     async def send_sku_out_of_stock(self, sku) -> None:
+        if self.fail_delivery:
+            raise RuntimeError("B2C unavailable")
         self.out_of_stock_events.append(
             {
                 "event_type": "SKU_OUT_OF_STOCK",
@@ -148,6 +151,7 @@ def patch_dependencies(monkeypatch: pytest.MonkeyPatch):
     FakeReservationRepository.reservations_by_order = {}
     FakeReservationOperationRepository.operations_by_key = {}
     FakeB2CClient.out_of_stock_events = []
+    FakeB2CClient.fail_delivery = False
     monkeypatch.setattr(reservation_service_module, "SKURepository", FakeSKURepository)
     monkeypatch.setattr(
         reservation_service_module, "ReservationRepository", FakeReservationRepository
@@ -209,6 +213,19 @@ async def test_partial_insufficient_stock_returns_409_all_rollback() -> None:
 
 
 @pytest.mark.asyncio
+async def test_unmoderated_product_cannot_be_reserved() -> None:
+    sku = _sku(stock=3, reserved_quantity=0)
+    sku.product.status = ProductStatus.ON_MODERATION
+    FakeSKURepository.skus = {sku.id: sku}
+
+    with pytest.raises(Exception) as exc_info:
+        await ReservationService(FakeSession()).reserve(_reserve_request((sku.id, 1)))
+
+    assert exc_info.value.status_code == 409
+    assert sku.reserved_quantity == 0
+
+
+@pytest.mark.asyncio
 async def test_idempotent_reserve_returns_200_without_double_deduction() -> None:
     sku = _sku(stock=10, reserved_quantity=0)
     FakeSKURepository.skus = {sku.id: sku}
@@ -262,6 +279,20 @@ async def test_sku_out_of_stock_event_emitted() -> None:
 
 
 @pytest.mark.asyncio
+async def test_sku_out_of_stock_delivery_failure_does_not_rollback_reservation() -> None:
+    sku = _sku(stock=3, reserved_quantity=0)
+    FakeSKURepository.skus = {sku.id: sku}
+    FakeB2CClient.fail_delivery = True
+
+    response = await ReservationService(FakeSession()).reserve(
+        _reserve_request((sku.id, 3))
+    )
+
+    assert response["status"] == "RESERVED"
+    assert sku.reserved_quantity == 3
+
+
+@pytest.mark.asyncio
 async def test_unreserve_restores_quantities() -> None:
     sku = _sku(stock=10, reserved_quantity=0)
     FakeSKURepository.skus = {sku.id: sku}
@@ -280,6 +311,27 @@ async def test_unreserve_restores_quantities() -> None:
     assert response["processed_at"] is not None
     assert sku.stock == 10
     assert sku.reserved_quantity == 0
+
+
+@pytest.mark.asyncio
+async def test_unreserve_more_than_reserved_returns_409_without_changes() -> None:
+    sku = _sku(stock=10, reserved_quantity=0)
+    FakeSKURepository.skus = {sku.id: sku}
+    order_id = uuid4()
+    service = ReservationService(FakeSession())
+
+    await service.reserve(_reserve_request((sku.id, 3), order_id=order_id))
+
+    with pytest.raises(Exception) as exc_info:
+        await service.unreserve(
+            UnreserveRequest(
+                order_id=order_id,
+                items=[ReserveItem(sku_id=sku.id, quantity=4)],
+            )
+        )
+
+    assert exc_info.value.status_code == 409
+    assert sku.reserved_quantity == 3
 
 
 def test_multi_sku_reserve_idempotency_key_allowed_by_real_schema() -> None:
@@ -439,6 +491,7 @@ async def test_reserve_all_skus_succeeds_on_real_schema(
             order_id=order_id,
             idempotency_key=idempotency_key,
         )
+        FakeB2CClient.fail_delivery = True
 
         first = await service.reserve(request)
         second = await service.reserve(request)

@@ -2,7 +2,6 @@ from datetime import datetime, timezone
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from fastapi import HTTPException, status
-import httpx
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -102,6 +101,8 @@ class ReservationService:
             if (
                 not sku.is_active
                 or product_status != ProductStatus.MODERATED
+                or getattr(product, "deleted", False)
+                or getattr(sku, "deleted", False)
                 or self._active_quantity(sku) < item.quantity
             ):
                 insufficient_skus.append(str(item.sku_id))
@@ -134,22 +135,18 @@ class ReservationService:
                 order_id=data.order_id,
             )
             for sku in out_of_stock_skus:
-                build_event = getattr(B2CClient(), "build_sku_out_of_stock_event", None)
-                event = (
-                    build_event(sku)
-                    if build_event
-                    else {
-                        "event": "SKU_OUT_OF_STOCK",
-                        "idempotency_key": str(
-                            uuid5(NAMESPACE_URL, f"sku-out-of-stock:{sku.id}")
-                        ),
-                        "date": datetime.now(timezone.utc).isoformat(),
-                        "product_id": str(
-                            getattr(sku, "product_id", getattr(getattr(sku, "product", None), "id", ""))
-                        ),
-                        "sku_ids": [str(sku.id)],
-                    }
-                )
+                event = {
+                    "event": "SKU_OUT_OF_STOCK",
+                    "idempotency_key": str(
+                        uuid5(
+                            NAMESPACE_URL,
+                            f"sku-out-of-stock:{idempotency_key}:{sku.id}",
+                        )
+                    ),
+                    "date": datetime.now(timezone.utc).isoformat(),
+                    "product_id": str(sku.product_id),
+                    "sku_ids": [str(sku.id)],
+                }
                 await self.outbox_repo.create_b2c_event(
                     idempotency_key=event["idempotency_key"],
                     event_type=event["event"],
@@ -177,7 +174,7 @@ class ReservationService:
         for sku in out_of_stock_skus:
             try:
                 await B2CClient().send_sku_out_of_stock(sku)
-            except httpx.HTTPError:
+            except Exception:  # noqa: BLE001 - the committed outbox is the retry source
                 pass
         return {
             "status": "RESERVED",
@@ -209,18 +206,53 @@ class ReservationService:
                 "processed_at": datetime.now(timezone.utc),
             }
 
+        sku_ids = [item.sku_id for item in data.items]
+        if len(set(sku_ids)) != len(sku_ids):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "INVALID_REQUEST",
+                    "message": "Duplicate SKU in unreserve",
+                },
+            )
+
         skus = await self.sku_repo.list_for_update(
-            [reservation.sku_id for reservation in reservations]
+            sku_ids
         )
         skus_by_id = {sku.id: sku for sku in skus}
-        for reservation in reservations:
-            sku = skus_by_id.get(reservation.sku_id)
-            if sku:
-                sku.reserved_quantity = max(
-                    sku.reserved_quantity - reservation.quantity,
-                    0,
+        reservations_by_sku = {
+            reservation.sku_id: reservation for reservation in reservations
+        }
+        for item in data.items:
+            sku = skus_by_id.get(item.sku_id)
+            reservation = reservations_by_sku.get(item.sku_id)
+            if sku is None:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail={
+                        "code": "SKU_UNAVAILABLE",
+                        "message": "One or more SKUs are unavailable",
+                    },
                 )
-        await self.reservation_repo.delete_many(reservations)
+            if reservation is None or reservation.quantity < item.quantity:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail={
+                        "code": "INSUFFICIENT_RESERVATION",
+                        "message": "Cannot unreserve more than reserved",
+                    },
+                )
+
+        to_delete = []
+        for item in data.items:
+            sku = skus_by_id[item.sku_id]
+            reservation = reservations_by_sku[item.sku_id]
+            sku.reserved_quantity -= item.quantity
+            reservation.quantity -= item.quantity
+            if reservation.quantity == 0:
+                to_delete.append(reservation)
+
+        await self.reservation_repo.delete_many(to_delete)
         await self.reservation_repo.session.flush()
         return {
             "status": "UNRESERVED",
@@ -267,6 +299,8 @@ class ReservationService:
 
     async def cancel_by_order(self, order_id: UUID) -> None:
         reservations = await self.reservation_repo.list_by_order(order_id)
+        if not reservations:
+            return
         await self.unreserve(
             UnreserveRequest(
                 order_id=order_id,
