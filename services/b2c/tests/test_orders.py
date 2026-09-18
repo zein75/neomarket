@@ -465,6 +465,10 @@ async def test_concurrent_idempotency_race_returns_existing_order() -> None:
     assert order is existing
     assert session.rolled_back is True
     assert service.last_checkout_replayed is True
+    assert len(FakeB2BClient.unreserve_calls) == 1
+    assert FakeB2BClient.unreserve_calls[0]["items"] == [
+        {"sku_id": str(sku_id), "quantity": 1}
+    ]
 
 
 async def test_idempotency_with_different_body_returns_409() -> None:

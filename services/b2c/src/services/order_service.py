@@ -94,6 +94,10 @@ class OrderService:
             existing = await self.order_repo.get_by_idempotency_key(idempotency_key)
             if existing is None:
                 raise
+            try:
+                await self._unreserve_items(order_id, items)
+            except Exception:  # noqa: BLE001 - keep the winning order response stable
+                logger.exception("Failed to compensate duplicate checkout reserve %s", order_id)
             return self._return_idempotent_order(existing, request_fingerprint)
 
         for cart_item in items:
@@ -400,11 +404,14 @@ class OrderService:
                 raise
 
     async def _unreserve(self, order: Order) -> None:
+        await self._unreserve_items(order.id, order.items)
+
+    async def _unreserve_items(self, order_id: UUID, items: list[object]) -> None:
         payload = {
-            "order_id": str(order.id),
+            "order_id": str(order_id),
             "items": [
                 {"sku_id": str(item.sku_id), "quantity": item.quantity}
-                for item in order.items
+                for item in items
             ],
         }
         async with B2BClient(settings.b2b_base_url) as client:
