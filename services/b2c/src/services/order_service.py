@@ -186,6 +186,8 @@ class OrderService:
         cancellable_statuses = {
             OrderStatus.CREATED,
             OrderStatus.PAID,
+            OrderStatus.ASSEMBLING,
+            OrderStatus.DELIVERING,
         }
         if order.status not in cancellable_statuses:
             raise HTTPException(
@@ -199,7 +201,7 @@ class OrderService:
 
         try:
             await self._unreserve(order)
-        except HTTPException:
+        except Exception:  # noqa: BLE001 - cancellation must remain accepted for async retry
             logger.exception("Failed to unreserve cancelled order %s", order.id)
             order.status = OrderStatus.CANCEL_PENDING
             self._sync_order_address(order)
@@ -265,7 +267,7 @@ class OrderService:
         for order in orders:
             try:
                 await self._unreserve(order)
-            except HTTPException:
+            except Exception:  # noqa: BLE001 - keep retrying other pending cancellations
                 logger.exception("Failed to retry cancellation for order %s", order.id)
                 continue
             order.status = OrderStatus.CANCELLED
