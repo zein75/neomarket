@@ -265,14 +265,12 @@ def test_blocked_event_saves_full_top_level_blocking_reason_for_seller_view() ->
             headers={"X-Service-Key": "dev-service-key-change-in-production"},
             json={
                 "idempotency_key": str(uuid4()),
-                "status": "BLOCKED",
+                "event_type": "BLOCKED",
                 "product_id": str(product.id),
+                "occurred_at": "2026-09-18T12:00:00Z",
                 "hard_block": False,
-                "blocking_reason": {
-                    "id": str(reason_id),
-                    "title": "Description mismatch",
-                    "comment": "Photos and description contradict each other",
-                },
+                "blocking_reason_id": str(reason_id),
+                "moderator_comment": "Photos and description contradict each other",
                 "field_reports": [
                     {
                         "field_name": "description",
@@ -291,7 +289,7 @@ def test_blocked_event_saves_full_top_level_blocking_reason_for_seller_view() ->
     body = product_response.json()
     assert body["blocking_reason"] == {
         "id": str(reason_id),
-        "title": "Description mismatch",
+        "title": "Moderation block",
         "comment": "Photos and description contradict each other",
     }
     assert body["moderator_comment"] == "Photos and description contradict each other"
@@ -400,8 +398,9 @@ def test_moderation_event_route_returns_204() -> None:
             headers={"X-Service-Key": "dev-service-key-change-in-production"},
             json={
                 "idempotency_key": str(uuid4()),
-                "status": "MODERATED",
+                "event_type": "MODERATED",
                 "product_id": str(product.id),
+                "occurred_at": "2026-09-18T12:00:00Z",
             },
         )
     finally:
@@ -411,7 +410,7 @@ def test_moderation_event_route_returns_204() -> None:
     assert response.content == b""
 
 
-def test_moderation_event_route_rejects_undeclared_event_type_field() -> None:
+def test_moderation_event_route_rejects_internal_status_field() -> None:
     product = _product()
     FakeProductRepository.product = product
 
@@ -425,8 +424,9 @@ def test_moderation_event_route_rejects_undeclared_event_type_field() -> None:
             headers={"X-Service-Key": "dev-service-key-change-in-production"},
             json={
                 "idempotency_key": str(uuid4()),
-                "event_type": "MODERATED",
+                "status": "MODERATED",
                 "product_id": str(product.id),
+                "occurred_at": "2026-09-18T12:00:00Z",
             },
         )
     finally:
@@ -450,13 +450,12 @@ def test_moderation_event_route_rejects_undeclared_field_report_fields() -> None
             headers={"X-Service-Key": "dev-service-key-change-in-production"},
             json={
                 "idempotency_key": str(uuid4()),
-                "status": "BLOCKED",
+                "event_type": "BLOCKED",
                 "product_id": str(product.id),
-                "blocking_reason": {
-                    "id": str(uuid4()),
-                    "title": "Moderation block",
-                    "comment": "Invalid field report shape",
-                },
+                "occurred_at": "2026-09-18T12:00:00Z",
+                "hard_block": False,
+                "blocking_reason_id": str(uuid4()),
+                "moderator_comment": "Invalid field report shape",
                 "field_reports": [
                     {
                         "field_name": "description",

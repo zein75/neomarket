@@ -12,13 +12,31 @@ from src.services.moderation_event_service import ModerationEventService
 router = APIRouter(tags=["moderation-events"])
 
 
+def _decision_event(event: ModerationEventRequest) -> ModerationDecisionEvent:
+    blocking_reason = None
+    if event.event_type.value == "BLOCKED" and event.blocking_reason_id:
+        blocking_reason = BlockingReason(
+            id=event.blocking_reason_id,
+            title="Moderation block",
+            comment=event.moderator_comment or "",
+        )
+    return ModerationDecisionEvent(
+        idempotency_key=event.idempotency_key,
+        product_id=event.product_id,
+        status=event.event_type,
+        hard_block=event.hard_block if event.event_type.value == "BLOCKED" else None,
+        blocking_reason=blocking_reason,
+        field_reports=event.field_reports if event.event_type.value == "BLOCKED" else None,
+    )
+
+
 @router.post("/api/v1/events/moderation", status_code=status.HTTP_204_NO_CONTENT)
 async def apply_moderation_event(
-    event: ModerationDecisionEvent,
+    event: ModerationEventRequest,
     _: None = Depends(verify_service_key),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    await ModerationEventService(db).apply(event)
+    await ModerationEventService(db).apply(_decision_event(event))
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -29,25 +47,6 @@ async def apply_moderation_event_alias(
     _: None = Depends(verify_service_key),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    blocking_reason = None
-    if event.event_type.value == "BLOCKED" and event.blocking_reason_id:
-        blocking_reason = BlockingReason(
-            id=event.blocking_reason_id,
-            title="Moderation block",
-            comment=event.moderator_comment or "",
-        )
-    decision = ModerationDecisionEvent(
-        idempotency_key=event.idempotency_key,
-        product_id=event.product_id,
-        status=event.event_type,
-        hard_block=event.hard_block,
-        blocking_reason=blocking_reason,
-        field_reports=event.field_reports or None,
-    ) if event.event_type.value == "BLOCKED" else ModerationDecisionEvent(
-        idempotency_key=event.idempotency_key,
-        product_id=event.product_id,
-        status=event.event_type,
-    )
-    await ModerationEventService(db).apply(decision)
+    await ModerationEventService(db).apply(_decision_event(event))
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
