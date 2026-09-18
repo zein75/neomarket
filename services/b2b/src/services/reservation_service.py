@@ -1,3 +1,5 @@
+import hashlib
+import json
 from datetime import datetime, timezone
 from uuid import NAMESPACE_URL, UUID, uuid5
 
@@ -12,6 +14,7 @@ from src.repositories.fulfilled_order_repo import FulfilledOrderRepository
 from src.repositories.reservation_operation_repo import ReservationOperationRepository
 from src.repositories.reservation_repo import ReservationRepository
 from src.repositories.outbox_event_repo import OutboxEventRepository
+from src.repositories.unreserve_operation_repo import UnreserveOperationRepository
 from src.repositories.sku_repo import SKURepository
 from src.schemas.reservation import (
     FulfillRequest,
@@ -29,6 +32,7 @@ class ReservationService:
         self.sku_repo = SKURepository(session)
         self.fulfilled_order_repo = FulfilledOrderRepository(session)
         self.outbox_repo = OutboxEventRepository(session)
+        self.unreserve_operation_repo = UnreserveOperationRepository(session)
 
     async def create(self, data: ReservationCreate) -> Reservation:
         sku = await self.sku_repo.get_by_id(data.sku_id)
@@ -54,7 +58,12 @@ class ReservationService:
             idempotency_key
         )
         if existing:
-            return await self._reservation_result(existing)
+            is_expired = getattr(existing, "is_expired", lambda: False)
+            if is_expired():
+                await self.reservation_operation_repo.session.delete(existing)
+                await self.reservation_operation_repo.session.flush()
+            else:
+                return await self._reservation_result(existing)
 
         sku_ids = [item.sku_id for item in data.items]
         if len(set(sku_ids)) != len(sku_ids):
@@ -91,19 +100,20 @@ class ReservationService:
             product = getattr(sku, "product", None)
             product_status = getattr(product, "status", None)
             available = self._active_quantity(sku)
-            if (
-                not sku.is_active
-                or product_status != ProductStatus.MODERATED
-                or getattr(product, "deleted", False)
-                or getattr(sku, "deleted", False)
-                or available < item.quantity
-            ):
+            reason = self._reservation_failure_reason(
+                sku=sku,
+                product=product,
+                product_status=product_status,
+                available=available,
+                requested=item.quantity,
+            )
+            if reason is not None:
                 failed_items.append(
                     {
                         "sku_id": str(item.sku_id),
                         "requested": item.quantity,
                         "available": available,
-                        "reason": "OUT_OF_STOCK" if available == 0 else "INSUFFICIENT_STOCK",
+                        "reason": reason,
                     }
                 )
 
@@ -227,13 +237,29 @@ class ReservationService:
         }
 
     async def unreserve(self, data: UnreserveRequest) -> dict[str, object]:
-        reservations = await self.reservation_repo.list_by_order(data.order_id)
-        if not reservations:
-            return {
-                "status": "UNRESERVED",
-                "order_id": data.order_id,
-                "processed_at": datetime.now(timezone.utc),
-            }
+        request_payload = {
+            "order_id": str(data.order_id),
+            "items": [
+                {"sku_id": str(item.sku_id), "quantity": item.quantity}
+                for item in data.items
+            ],
+        }
+        request_hash = hashlib.sha256(
+            json.dumps(request_payload, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        existing_operation = await self.unreserve_operation_repo.get_by_order_id(
+            data.order_id
+        )
+        if existing_operation:
+            if existing_operation.request_hash != request_hash:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail={
+                        "code": "IDEMPOTENCY_CONFLICT",
+                        "message": "order_id used with different payload",
+                    },
+                )
+            return existing_operation.response
 
         sku_ids = [item.sku_id for item in data.items]
         if len(set(sku_ids)) != len(sku_ids):
@@ -245,9 +271,24 @@ class ReservationService:
                 },
             )
 
-        skus = await self.sku_repo.list_for_update(
-            sku_ids
-        )
+        reservations = await self.reservation_repo.list_by_order(data.order_id)
+        if not reservations:
+            response = {
+                "status": "UNRESERVED",
+                "order_id": data.order_id,
+                "processed_at": datetime.now(timezone.utc),
+            }
+            await self.unreserve_operation_repo.create(
+                order_id=data.order_id,
+                request_hash=request_hash,
+                request_payload=request_payload,
+                response={
+                    **response,
+                    "processed_at": response["processed_at"].isoformat(),
+                },
+            )
+            return response
+        skus = await self.sku_repo.list_for_update(sku_ids)
         skus_by_id = {sku.id: sku for sku in skus}
         reservations_by_sku = {
             reservation.sku_id: reservation for reservation in reservations
@@ -272,6 +313,38 @@ class ReservationService:
                     },
                 )
 
+        response = {
+            "status": "UNRESERVED",
+            "order_id": data.order_id,
+            "processed_at": datetime.now(timezone.utc),
+        }
+        try:
+            await self.unreserve_operation_repo.create(
+                order_id=data.order_id,
+                request_hash=request_hash,
+                request_payload=request_payload,
+                response={
+                    **response,
+                    "processed_at": response["processed_at"].isoformat(),
+                },
+            )
+        except IntegrityError:
+            await self.unreserve_operation_repo.session.rollback()
+            existing_operation = await self.unreserve_operation_repo.get_by_order_id(
+                data.order_id
+            )
+            if existing_operation is None:
+                raise
+            if existing_operation.request_hash != request_hash:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail={
+                        "code": "IDEMPOTENCY_CONFLICT",
+                        "message": "order_id used with different payload",
+                    },
+                )
+            return existing_operation.response
+
         to_delete = []
         for item in data.items:
             sku = skus_by_id[item.sku_id]
@@ -283,11 +356,7 @@ class ReservationService:
 
         await self.reservation_repo.delete_many(to_delete)
         await self.reservation_repo.session.flush()
-        return {
-            "status": "UNRESERVED",
-            "order_id": data.order_id,
-            "processed_at": datetime.now(timezone.utc),
-        }
+        return response
 
     async def fulfill(self, data: FulfillRequest) -> dict[str, object]:
         if await self.fulfilled_order_repo.exists(data.order_id):
@@ -342,3 +411,22 @@ class ReservationService:
 
     def _active_quantity(self, sku: object) -> int:
         return max(sku.stock - getattr(sku, "reserved_quantity", 0), 0)
+
+    def _reservation_failure_reason(
+        self,
+        *,
+        sku: object,
+        product: object | None,
+        product_status: object,
+        available: int,
+        requested: int,
+    ) -> str | None:
+        if not getattr(sku, "is_active", True) or getattr(sku, "deleted", False):
+            return "SKU_NOT_FOUND"
+        if getattr(product, "deleted", False):
+            return "PRODUCT_DELETED"
+        if product_status != ProductStatus.MODERATED:
+            return "PRODUCT_BLOCKED"
+        if available < requested:
+            return "OUT_OF_STOCK" if available == 0 else "INSUFFICIENT_STOCK"
+        return None

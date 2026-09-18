@@ -9,6 +9,7 @@ from .invoice import Invoice, InvoiceItem
 from .processed_event import ProcessedEvent
 from .fulfilled_order import FulfilledOrder
 from .outbox_event import OutboxEvent
+from .unreserve_operation import UnreserveOperation
 
 __all__ = [
     "Base",
@@ -23,4 +24,5 @@ __all__ = [
     "ProcessedEvent",
     "FulfilledOrder",
     "OutboxEvent",
+    "UnreserveOperation",
 ]

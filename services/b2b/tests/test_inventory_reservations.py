@@ -222,6 +222,7 @@ async def test_unmoderated_product_cannot_be_reserved() -> None:
 
     assert exc_info.value.status_code == 409
     assert sku.reserved_quantity == 0
+    assert exc_info.value.detail["failed_items"][0]["reason"] == "PRODUCT_BLOCKED"
 
 
 @pytest.mark.asyncio
