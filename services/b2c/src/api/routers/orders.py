@@ -90,7 +90,11 @@ async def cancel_order(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> OrderResponse:
-    order = await OrderService(db).cancel_order(order_id, current_user.id)
+    order = await OrderService(db).cancel_order(
+        order_id,
+        current_user.id,
+        reason=cancel_request.reason if cancel_request else None,
+    )
     await db.commit()
     return order
 from uuid import UUID

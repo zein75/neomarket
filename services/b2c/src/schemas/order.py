@@ -78,6 +78,12 @@ class OrderAddressResponse(BaseModel):
     created_at: datetime | None = None
 
 
+class OrderStatusHistoryResponse(BaseModel):
+    status: OrderStatus
+    changed_at: datetime
+    reason: str | None = None
+
+
 class OrderResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -89,6 +95,8 @@ class OrderResponse(BaseModel):
     total_amount: int | None = None
     address: OrderAddressResponse | None = None
     delivery_address: str | None = None
+    cancel_reason: str | None = None
+    status_history: list[OrderStatusHistoryResponse] = []
     created_at: datetime
     currency: str
     items: list[OrderItemResponse]
@@ -108,6 +116,8 @@ class OrderResponse(BaseModel):
                 "total": total_amount,
                 "address": getattr(value, "address", {}),
                 "address_id": getattr(value, "address_id", None),
+                "cancel_reason": getattr(value, "cancel_reason", None),
+                "status_history": getattr(value, "status_history", []),
                 "created_at": getattr(value, "created_at", None),
                 "currency": getattr(value, "currency"),
                 "items": getattr(value, "items", []),

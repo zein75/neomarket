@@ -1,5 +1,6 @@
 import enum
 import uuid
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from sqlalchemy import JSON, Enum, ForeignKey, Integer, String
@@ -45,10 +46,15 @@ class Order(Base, TimestampMixin):
         String(128), unique=True, nullable=False
     )
     request_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     user: Mapped["User"] = relationship("User", back_populates="orders")
     items: Mapped[list["OrderItem"]] = relationship(
         "OrderItem", back_populates="order", cascade="all, delete-orphan"
+    )
+    status_history: Mapped[list["OrderStatusHistory"]] = relationship(
+        "OrderStatusHistory", back_populates="order", cascade="all, delete-orphan"
     )
 
 
@@ -72,6 +78,24 @@ class OrderItem(Base, TimestampMixin):
     line_total: Mapped[int] = mapped_column(Integer, nullable=False)
 
     order: Mapped["Order"] = relationship("Order", back_populates="items")
+
+
+class OrderStatusHistory(Base):
+    __tablename__ = "order_status_history"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    order_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("orders.id", ondelete="CASCADE"), nullable=False
+    )
+    status: Mapped[OrderStatus] = mapped_column(Enum(OrderStatus), nullable=False)
+    changed_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    order: Mapped["Order"] = relationship("Order", back_populates="status_history")
 
 
 class PendingFulfillment(Base, TimestampMixin):

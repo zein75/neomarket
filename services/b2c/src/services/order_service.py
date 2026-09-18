@@ -11,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 
 from src.clients.b2b_client import B2BClient
 from src.core.config import settings
-from src.models.order import Order, OrderItem, OrderStatus
+from src.models.order import Order, OrderItem, OrderStatus, OrderStatusHistory
 from src.repositories.cart_repo import CartRepository
 from src.repositories.address_repo import AddressRepository
 from src.repositories.order_repo import OrderRepository
@@ -182,7 +182,12 @@ class OrderService:
             )
         return order
 
-    async def cancel_order(self, order_id: UUID, user_id: UUID) -> Order:
+    async def cancel_order(
+        self,
+        order_id: UUID,
+        user_id: UUID,
+        reason: str | None = None,
+    ) -> Order:
         order = await self.order_repo.get_with_items_for_update(order_id)
         if not order or order.user_id != user_id:
             raise HTTPException(
@@ -205,16 +210,33 @@ class OrderService:
                 },
             )
 
+        order.cancel_reason = reason
+        order.cancelled_at = datetime.now(timezone.utc)
+
         try:
             await self._unreserve(order)
         except Exception:  # noqa: BLE001 - cancellation must remain accepted for async retry
             logger.exception("Failed to unreserve cancelled order %s", order.id)
             order.status = OrderStatus.CANCEL_PENDING
+            self.order_repo.session.add(
+                OrderStatusHistory(
+                    order_id=order.id,
+                    status=OrderStatus.CANCEL_PENDING,
+                    reason=reason,
+                )
+            )
             self._sync_order_address(order)
             await self.order_repo.session.flush()
             return order
 
         order.status = OrderStatus.CANCELLED
+        self.order_repo.session.add(
+            OrderStatusHistory(
+                order_id=order.id,
+                status=OrderStatus.CANCELLED,
+                reason=reason,
+            )
+        )
         self._sync_order_address(order)
         await self.order_repo.session.flush()
         return order
