@@ -54,15 +54,7 @@ class ReservationService:
             idempotency_key
         )
         if existing:
-            return {
-                "status": "RESERVED",
-                "order_id": existing.order_id,
-                "reserved_at": getattr(
-                    existing,
-                    "created_at",
-                    datetime.now(timezone.utc),
-                ),
-            }
+            return await self._reservation_result(existing)
 
         sku_ids = [item.sku_id for item in data.items]
         if len(set(sku_ids)) != len(sku_ids):
@@ -91,35 +83,53 @@ class ReservationService:
             idempotency_key
         )
         if existing:
-            return self._reservation_result(existing)
+            return await self._reservation_result(existing)
 
-        insufficient_skus = []
+        failed_items = []
         for item in data.items:
             sku = skus_by_id[item.sku_id]
             product = getattr(sku, "product", None)
             product_status = getattr(product, "status", None)
+            available = self._active_quantity(sku)
             if (
                 not sku.is_active
                 or product_status != ProductStatus.MODERATED
                 or getattr(product, "deleted", False)
                 or getattr(sku, "deleted", False)
-                or self._active_quantity(sku) < item.quantity
+                or available < item.quantity
             ):
-                insufficient_skus.append(str(item.sku_id))
+                failed_items.append(
+                    {
+                        "sku_id": str(item.sku_id),
+                        "requested": item.quantity,
+                        "available": available,
+                        "reason": "OUT_OF_STOCK" if available == 0 else "INSUFFICIENT_STOCK",
+                    }
+                )
 
-        if insufficient_skus:
+        if failed_items:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
                     "code": "INSUFFICIENT_STOCK",
                     "message": "Insufficient stock",
+                    "reserved": False,
+                    "failed_items": failed_items,
                 },
             )
 
         out_of_stock_skus = []
+        response_items = []
         for item in data.items:
             sku = skus_by_id[item.sku_id]
             sku.reserved_quantity += item.quantity
+            response_items.append(
+                {
+                    "sku_id": sku.id,
+                    "reserved_quantity": item.quantity,
+                    "remaining_stock": self._active_quantity(sku),
+                }
+            )
             if self._active_quantity(sku) == 0:
                 out_of_stock_skus.append(sku)
 
@@ -170,7 +180,7 @@ class ReservationService:
             )
             if not existing:
                 raise
-            return self._reservation_result(existing)
+            return await self._reservation_result(existing)
         for sku in out_of_stock_skus:
             try:
                 await B2CClient().send_sku_out_of_stock(sku)
@@ -184,9 +194,15 @@ class ReservationService:
                 "created_at",
                 datetime.now(timezone.utc),
             ),
+            "reserved": True,
+            "items": response_items,
         }
 
-    def _reservation_result(self, operation: object) -> dict[str, object]:
+    async def _reservation_result(self, operation: object) -> dict[str, object]:
+        reservations = await self.reservation_repo.list_by_order(operation.order_id)
+        sku_ids = [reservation.sku_id for reservation in reservations]
+        skus = await self.sku_repo.list_for_update(sku_ids) if sku_ids else []
+        skus_by_id = {sku.id: sku for sku in skus}
         return {
             "status": "RESERVED",
             "order_id": operation.order_id,
@@ -195,6 +211,19 @@ class ReservationService:
                 "created_at",
                 datetime.now(timezone.utc),
             ),
+            "reserved": True,
+            "items": [
+                {
+                    "sku_id": reservation.sku_id,
+                    "reserved_quantity": reservation.quantity,
+                    "remaining_stock": self._active_quantity(
+                        skus_by_id[reservation.sku_id]
+                    )
+                    if reservation.sku_id in skus_by_id
+                    else 0,
+                }
+                for reservation in reservations
+            ],
         }
 
     async def unreserve(self, data: UnreserveRequest) -> dict[str, object]:

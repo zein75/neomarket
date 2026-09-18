@@ -204,10 +204,9 @@ async def test_partial_insufficient_stock_returns_409_all_rollback() -> None:
         )
 
     assert exc_info.value.status_code == 409
-    assert exc_info.value.detail == {
-        "code": "INSUFFICIENT_STOCK",
-        "message": "Insufficient stock",
-    }
+    assert exc_info.value.detail["code"] == "INSUFFICIENT_STOCK"
+    assert exc_info.value.detail["reserved"] is False
+    assert exc_info.value.detail["failed_items"][0]["available"] == 1
     assert sku_a.reserved_quantity == 1
     assert sku_b.reserved_quantity == 4
 
@@ -638,7 +637,6 @@ def test_insufficient_stock_response_matches_error_contract() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 409
-    assert response.json() == {
-        "code": "INSUFFICIENT_STOCK",
-        "message": "Insufficient stock",
-    }
+    assert response.json()["code"] == "INSUFFICIENT_STOCK"
+    assert response.json()["reserved"] is False
+    assert response.json()["failed_items"][0]["available"] == 1

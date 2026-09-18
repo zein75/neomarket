@@ -45,12 +45,21 @@ class InventoryResponse(BaseModel):
     order_id: UUID
 
 
+class InventoryReserveItemResponse(BaseModel):
+    sku_id: UUID
+    reserved_quantity: int
+    remaining_stock: int
+
+
 class InventoryReserveResponse(InventoryResponse):
     reserved_at: datetime
+    reserved: bool = True
+    items: list[InventoryReserveItemResponse] = Field(default_factory=list)
 
 
 class InventoryUnreserveResponse(InventoryResponse):
     processed_at: datetime
+    ok: bool = True
 
 
 class InventoryFulfillResponse(InventoryResponse):
