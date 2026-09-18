@@ -4,12 +4,14 @@ from uuid import UUID, uuid4
 import pytest
 from fastapi.testclient import TestClient
 
+from src.api.routers import auth as auth_router
 from src.api.routers import cart as cart_router
 from src.clients import b2b_client as b2b_client_module
 from src.clients.b2b_client import B2BClient
 from src.main import app
 from src.services import cart_service as cart_service_module
 from src.services.cart_service import CartService
+from src.schemas.user import TokenResponse
 
 
 class FakeSession:
@@ -236,7 +238,7 @@ async def test_get_cart_enriched_with_b2b_data() -> None:
     assert response["subtotal"] == 25000
     assert response["summary"] == {
         "total_amount": 25000,
-        "total_items": 2,
+        "total_items": 1,
         "total_quantity": 2,
         "available_items": 1,
         "has_unavailable_items": False,
@@ -245,7 +247,15 @@ async def test_get_cart_enriched_with_b2b_data() -> None:
         "currency": "RUB",
     }
     assert response["checkout_payload"] == {
-        "items": [{"sku_id": sku_id, "quantity": 2}],
+        "items": [
+            {
+                "product_id": product_id,
+                "sku_id": sku_id,
+                "quantity": 2,
+                "unit_price": 12500,
+                "line_total": 25000,
+            }
+        ],
         "total_amount": 25000,
         "currency": "RUB",
     }
@@ -323,6 +333,43 @@ async def test_guest_cart_merged_on_login() -> None:
 
     assert merged.id == auth_cart.id
     assert auth_item.quantity == 5
+    assert FakeCartRepository.removed_carts == [guest_cart.id]
+
+
+@pytest.mark.asyncio
+async def test_login_automatically_merges_guest_cart(monkeypatch: pytest.MonkeyPatch) -> None:
+    user_id = uuid4()
+    product_id = uuid4()
+    sku_id = uuid4()
+    user = SimpleNamespace(id=user_id)
+    auth_cart = _cart(user_id=user_id)
+    guest_cart = _cart(session_id="guest-1")
+    auth_cart.items = [_item(cart_id=auth_cart.id, product_id=product_id, sku_id=sku_id, quantity=2)]
+    guest_cart.items = [_item(cart_id=guest_cart.id, product_id=product_id, sku_id=sku_id, quantity=5)]
+    FakeCartRepository.carts_by_user[user_id] = auth_cart
+    FakeCartRepository.carts_by_session["guest-1"] = guest_cart
+    FakeCartRepository.carts_by_id[auth_cart.id] = auth_cart
+    FakeCartRepository.carts_by_id[guest_cart.id] = guest_cart
+
+    class FakeAuthService:
+        def __init__(self, session):
+            pass
+
+        async def authenticate(self, email: str, password: str):
+            return user
+
+        def create_token(self, authenticated_user):
+            return TokenResponse(access_token="token")
+
+    monkeypatch.setattr(auth_router, "AuthService", FakeAuthService)
+    response = await auth_router.login(
+        SimpleNamespace(username="buyer@example.com", password="secret"),
+        "guest-1",
+        FakeSession(),
+    )
+
+    assert response.access_token == "token"
+    assert auth_cart.items[0].quantity == 5
     assert FakeCartRepository.removed_carts == [guest_cart.id]
 
 
@@ -501,8 +548,8 @@ def test_delete_cart_item_addresses_item_by_sku_id() -> None:
     finally:
         app.dependency_overrides.clear()
 
-    assert response.status_code == 200
-    assert response.json()["items"] == []
+    assert response.status_code == 204
+    assert response.content == b""
     assert cart.items == []
 
 
@@ -600,14 +647,17 @@ def test_cart_validate_returns_checkout_issues() -> None:
     payload = response.json()
     assert payload["is_valid"] is False
     assert payload["can_checkout"] is False
-    assert payload["issues"] == [
-        {
-            "sku_id": str(sku_id),
-            "issue_type": "OUT_OF_STOCK",
-            "severity": "critical",
-            "message": "Cart item is not available: OUT_OF_STOCK",
-        }
-    ]
+    assert payload["cart"]["items"][0]["sku_id"] == str(sku_id)
+    assert payload["total_items"] == 1
+    assert payload["validation_timestamp"]
+    assert payload["issues"][0] == {
+        "cart_item_id": str(cart.items[0].id),
+        "sku_id": str(sku_id),
+        "issue_type": "OUT_OF_STOCK",
+        "severity": "critical",
+        "message": "Cart item is not available: OUT_OF_STOCK",
+        "details": {"requested_quantity": 2, "available_quantity": 0},
+    }
 
 
 def test_cart_merge_endpoint_merges_guest_cart_on_login() -> None:

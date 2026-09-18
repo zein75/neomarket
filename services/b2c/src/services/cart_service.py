@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -120,6 +121,25 @@ class CartService:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Cart item not found"
             )
+        sku_data = await self._get_sku_data(item.sku_id)
+        product_status = str(sku_data.get("status", "MODERATED"))
+        if product_status in {"BLOCKED", "HARD_BLOCKED", "ON_MODERATION"}:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "PRODUCT_NOT_AVAILABLE",
+                    "message": "Product is not available",
+                },
+            )
+        available_quantity = int(sku_data.get("active_quantity", 0))
+        if data.quantity > available_quantity:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "INSUFFICIENT_STOCK",
+                    "message": "Requested quantity exceeds available stock",
+                },
+            )
         return await self.repo.update_item_quantity(item, data.quantity)
 
     async def remove_item(self, item_id: UUID, cart_id: UUID | None = None) -> None:
@@ -167,8 +187,11 @@ class CartService:
         )
         checkout_items = [
             {
+                "product_id": item["product_id"],
                 "sku_id": item["sku_id"],
                 "quantity": item["quantity"],
+                "unit_price": item["unit_price"],
+                "line_total": item["line_total"],
             }
             for item in response_items
             if item["is_available"]
@@ -184,7 +207,7 @@ class CartService:
             "is_valid": is_valid,
             "summary": {
                 "total_amount": subtotal,
-                "total_items": sum(item.quantity for item in cart.items),
+                "total_items": len(response_items),
                 "total_quantity": sum(item.quantity for item in cart.items),
                 "available_items": sum(
                     1 for response_item in response_items if response_item["is_available"]
@@ -207,18 +230,35 @@ class CartService:
         for item in cart["items"]:
             reason = item.get("unavailable_reason")
             if reason:
+                severity = (
+                    "warning"
+                    if reason in {"INSUFFICIENT_STOCK", "ON_MODERATION"}
+                    else "critical"
+                )
+                issue_type = {
+                    "PRODUCT_BLOCKED": "BLOCKED",
+                    "PRODUCT_DELISTED": "DELETED",
+                }.get(str(reason), str(reason))
                 issues.append(
                     {
+                        "cart_item_id": item["id"],
                         "sku_id": item["sku_id"],
-                        "issue_type": str(reason),
-                        "severity": "critical",
+                        "issue_type": issue_type,
+                        "severity": severity,
                         "message": f"Cart item is not available: {reason}",
+                        "details": {
+                            "requested_quantity": item["quantity"],
+                            "available_quantity": item["available_quantity"],
+                        },
                     }
                 )
         is_valid = not issues
         return {
             "is_valid": is_valid,
-            "can_checkout": is_valid,
+            "can_checkout": bool(cart["items"])
+            and not any(issue["severity"] == "critical" for issue in issues),
+            "total_items": len(cart["items"]),
+            "validation_timestamp": datetime.now(timezone.utc).isoformat(),
             "cart": cart,
             "issues": issues,
         }
@@ -303,11 +343,13 @@ class CartService:
         if stored_reason:
             return stored_reason
         if not product or not sku:
-            return "SKU_NOT_FOUND"
+            return "PRODUCT_DELISTED"
         if product.get("deleted") is True:
-            return "PRODUCT_DELETED"
+            return "PRODUCT_DELISTED"
         if product.get("status") in {"BLOCKED", "HARD_BLOCKED"}:
             return "PRODUCT_BLOCKED"
+        if product.get("status") == "ON_MODERATION":
+            return "ON_MODERATION"
         active_quantity = int(sku.get("active_quantity", 0))
         if active_quantity <= 0:
             return "OUT_OF_STOCK"

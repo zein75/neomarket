@@ -136,19 +136,19 @@ async def patch_item_by_sku(
     return await svc.get_enriched_cart(cart.id)
 
 
-@router.delete("/api/v1/cart/items/{item_id}", response_model=CartResponse)
-@router.delete("/cart/items/{item_id}", response_model=CartResponse, include_in_schema=False)
+@router.delete("/api/v1/cart/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/cart/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT, include_in_schema=False)
 async def remove_item(
     item_id: UUID,
     x_session_id: str | None = Header(default=None),
     current_user: User | None = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db),
-) -> dict[str, object]:
+) -> Response:
     svc = CartService(db)
     cart = await svc.get_or_create_cart(user=current_user, session_id=x_session_id)
     await svc.remove_item(item_id, cart_id=cart.id)
     await db.commit()
-    return await svc.get_enriched_cart(cart.id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.delete("/api/v1/cart", status_code=status.HTTP_204_NO_CONTENT)
