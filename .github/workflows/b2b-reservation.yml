@@ -38,8 +38,10 @@ jobs:
           uv run pytest -q tests/test_inventory_reservations.py
           -k "reserve_all_skus_succeeds or
           idempotent_reserve_returns_200_without_double_deduction or
+          idempotent_reserve_returns_original_remaining_stock_after_new_operation or
           partial_insufficient_stock_returns_409_all_rollback or
           sku_out_of_stock_event_emitted or
+          persisted_outbox_event_retries_after_b2c_recovers or
           unreserve_restores_quantities"
       - name: Run moderation decision scenarios
         working-directory: services/b2b
