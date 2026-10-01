@@ -336,7 +336,6 @@ async def test_checkout_creates_paid_order_with_fixed_prices() -> None:
     assert response["address"]["created_at"]
     assert response["created_at"]
     assert response["items"][0]["name"] == "Phone 128 GB"
-    assert response["total_amount"] == 300
     assert response["items"][0]["product_title"] == "Phone"
     assert response["items"][0]["sku_name"] == "128 GB"
     assert response["items"][0]["sku_name"] == "128 GB"
@@ -505,6 +504,31 @@ async def test_idempotency_with_different_body_returns_409() -> None:
     }
     assert FakeB2BClient.reserve_calls == []
     assert FakeOrderRepository.created_orders == []
+
+
+async def test_idempotency_key_does_not_return_another_users_order() -> None:
+    owner_id = uuid4()
+    existing = Order(
+        user_id=owner_id,
+        status=OrderStatus.PAID,
+        total_amount=500,
+        currency="RUB",
+        idempotency_key="checkout-owned",
+    )
+    existing.id = uuid4()
+    existing.items = []
+    FakeOrderRepository.orders_by_key["checkout-owned"] = existing
+
+    with pytest.raises(HTTPException) as exc:
+        await OrderService(FakeSession()).checkout(
+            user_id=uuid4(),
+            cart_id=uuid4(),
+            idempotency_key="checkout-owned",
+        )
+
+    assert exc.value.status_code == 404
+    assert exc.value.detail["code"] == "ORDER_NOT_FOUND"
+    assert FakeB2BClient.reserve_calls == []
 
 
 async def test_idempotency_with_different_body_returns_409_for_legacy_order() -> None:

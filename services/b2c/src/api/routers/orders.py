@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, Path, Query
+from fastapi import APIRouter, Depends, Header, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,7 +10,6 @@ from src.models.user import User
 from src.schemas.order import (
     OrderCreateRequest,
     CancelOrderRequest,
-    OrderDetailResponse,
     OrderPaginatedResponse,
     OrderResponse,
 )
@@ -38,7 +37,7 @@ async def list_orders(
     )
 
 
-@router.post("/api/v1/orders", response_model=OrderResponse)
+@router.post("/api/v1/orders", response_model=OrderResponse, status_code=201)
 @router.post("/orders", response_model=OrderResponse, status_code=201, include_in_schema=False)
 async def create_order(
     order_request: OrderCreateRequest,
@@ -68,24 +67,24 @@ async def create_order(
     )
 
 
-@router.get("/api/v1/orders/{id}", response_model=OrderDetailResponse)
-@router.get("/orders/{id}", response_model=OrderDetailResponse, include_in_schema=False)
+@router.get("/api/v1/orders/{order_id}", response_model=OrderResponse)
+@router.get("/orders/{order_id}", response_model=OrderResponse, include_in_schema=False)
 async def get_order(
-    order_id: UUID = Path(alias="id"),
+    order_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> OrderDetailResponse:
+) -> OrderResponse:
     return await OrderService(db).get_order(order_id, current_user.id)
 
 
-@router.post("/api/v1/orders/{id}/cancel", response_model=OrderResponse)
+@router.post("/api/v1/orders/{order_id}/cancel", response_model=OrderResponse)
 @router.post(
-    "/orders/{id}/cancel",
+    "/orders/{order_id}/cancel",
     response_model=OrderResponse,
     include_in_schema=False,
 )
 async def cancel_order(
-    order_id: UUID = Path(alias="id"),
+    order_id: UUID,
     cancel_request: CancelOrderRequest | None = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

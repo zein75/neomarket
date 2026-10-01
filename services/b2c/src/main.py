@@ -25,6 +25,8 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
         return JSONResponse(status_code=exc.status_code, content=exc.detail)
     if isinstance(exc.detail, dict) and {"error", "message"} <= set(exc.detail):
         return JSONResponse(status_code=exc.status_code, content=exc.detail)
+    if isinstance(exc.detail, dict) and {"is_valid", "cart", "issues"} <= set(exc.detail):
+        return JSONResponse(status_code=exc.status_code, content=exc.detail)
     return JSONResponse(
         status_code=exc.status_code,
         content={

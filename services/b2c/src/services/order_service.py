@@ -45,6 +45,11 @@ class OrderService:
             await lock_key(idempotency_key)
         existing = await self.order_repo.get_by_idempotency_key(idempotency_key)
         if existing:
+            if existing.user_id != user_id:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail={"code": "ORDER_NOT_FOUND", "message": "Order not found"},
+                )
             return self._return_idempotent_order(existing, request_fingerprint)
 
         cart = await self.cart_repo.get_with_items(cart_id) if cart_id else None
@@ -98,7 +103,19 @@ class OrderService:
                 await self._unreserve_items(order_id, items)
             except Exception:  # noqa: BLE001 - keep the winning order response stable
                 logger.exception("Failed to compensate duplicate checkout reserve %s", order_id)
+            if existing.user_id != user_id:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail={"code": "ORDER_NOT_FOUND", "message": "Order not found"},
+                )
             return self._return_idempotent_order(existing, request_fingerprint)
+        except Exception:
+            try:
+                await self._unreserve_items(order_id, items)
+            except Exception:  # noqa: BLE001 - preserve the original checkout error
+                logger.exception("Failed to compensate checkout reserve %s", order_id)
+            await self.order_repo.session.rollback()
+            raise
 
         for cart_item in items:
             snapshot = snapshots[str(cart_item.sku_id)]
@@ -373,9 +390,89 @@ class OrderService:
             for item in order_request.items_snapshot
         }
         if actual != expected:
+            issues = []
+            for sku_id, (quantity, price) in expected.items():
+                requested = actual.get(sku_id)
+                if requested is None:
+                    issues.append(
+                        {
+                            "sku_id": sku_id,
+                            "type": "QUANTITY_REDUCED",
+                            "message": "Cart item is missing from the checkout snapshot",
+                            "old_value": quantity,
+                            "new_value": 0,
+                        }
+                    )
+                    continue
+                if requested[0] != quantity:
+                    issues.append(
+                        {
+                            "sku_id": sku_id,
+                            "type": "QUANTITY_REDUCED",
+                            "message": "Cart item quantity has changed",
+                            "old_value": requested[0],
+                            "new_value": quantity,
+                        }
+                    )
+                if requested[1] != price:
+                    issues.append(
+                        {
+                            "sku_id": sku_id,
+                            "type": "PRICE_CHANGED",
+                            "message": "Cart item price has changed",
+                            "old_value": requested[1],
+                            "new_value": price,
+                        }
+                    )
+            cart_items = []
+            subtotal = 0
+            for item in items:
+                snapshot = snapshots[str(item.sku_id)]
+                unit_price = int(snapshot["price"])
+                line_total = item.quantity * unit_price
+                subtotal += line_total
+                cart_items.append(
+                    {
+                        "sku_id": item.sku_id,
+                        "product_id": item.product_id,
+                        "name": f'{snapshot["product_title"]} {snapshot["sku_name"]}'.strip(),
+                        "product_title": snapshot["product_title"],
+                        "sku_name": snapshot["sku_name"],
+                        "quantity": item.quantity,
+                        "unit_price": unit_price,
+                        "unit_price_at_add": item.unit_price,
+                        "line_total": line_total,
+                        "available_quantity": int(snapshot["active_quantity"]),
+                        "available_stock": int(snapshot["active_quantity"]),
+                        "is_available": int(snapshot["active_quantity"]) >= item.quantity,
+                        "available": int(snapshot["active_quantity"]) >= item.quantity,
+                    }
+                )
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail={"code": "ITEMS_SNAPSHOT_MISMATCH", "message": "Cart changed since snapshot"},
+                detail={
+                    "is_valid": False,
+                    "cart": {
+                        "id": items[0].cart_id,
+                        "items": cart_items,
+                        "items_count": sum(item.quantity for item in items),
+                        "subtotal": subtotal,
+                        "is_valid": False,
+                        "summary": {
+                            "total_amount": subtotal,
+                            "total_items": len(cart_items),
+                            "total_quantity": sum(item.quantity for item in items),
+                            "available_items": sum(
+                                1 for item in cart_items if item["is_available"]
+                            ),
+                            "has_unavailable_items": any(
+                                not item["is_available"] for item in cart_items
+                            ),
+                        },
+                        "checkout_payload": {"items": cart_items, "total_amount": subtotal},
+                    },
+                    "issues": issues,
+                },
             )
 
     async def _reserve(

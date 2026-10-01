@@ -26,7 +26,7 @@ class OrderRepository(BaseRepository[Order]):
         result = await self.session.execute(
             select(Order)
             .where(Order.id == order_id)
-            .options(selectinload(Order.items))
+            .options(selectinload(Order.items), selectinload(Order.status_history))
         )
         return result.scalar_one_or_none()
 
@@ -35,7 +35,7 @@ class OrderRepository(BaseRepository[Order]):
             select(Order)
             .where(Order.id == order_id)
             .with_for_update()
-            .options(selectinload(Order.items))
+            .options(selectinload(Order.items), selectinload(Order.status_history))
         )
         return result.scalar_one_or_none()
 
@@ -47,7 +47,7 @@ class OrderRepository(BaseRepository[Order]):
         result = await self.session.execute(
             select(Order)
             .where(Order.id == order_id, Order.user_id == user_id)
-            .options(selectinload(Order.items))
+            .options(selectinload(Order.items), selectinload(Order.status_history))
         )
         return result.scalar_one_or_none()
 
@@ -55,7 +55,7 @@ class OrderRepository(BaseRepository[Order]):
         result = await self.session.execute(
             select(Order)
             .where(Order.idempotency_key == idempotency_key)
-            .options(selectinload(Order.items))
+            .options(selectinload(Order.items), selectinload(Order.status_history))
         )
         return result.scalar_one_or_none()
 

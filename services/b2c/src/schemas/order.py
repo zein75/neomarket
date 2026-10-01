@@ -63,19 +63,19 @@ class OrderItemResponse(BaseModel):
 
 
 class OrderAddressResponse(BaseModel):
-    id: UUID | None = None
-    country: str | None = None
+    id: UUID
+    country: str
     region: str | None = None
-    city: str | None = None
-    street: str | None = None
-    building: str | None = None
+    city: str
+    street: str
+    building: str
     apartment: str | None = None
     postal_code: str | None = None
     recipient_name: str | None = None
     recipient_phone: str | None = None
     is_default: bool | None = None
     comment: str | None = None
-    created_at: datetime | None = None
+    created_at: datetime
 
 
 class OrderStatusHistoryResponse(BaseModel):
@@ -88,15 +88,14 @@ class OrderResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    buyer_id: UUID | None = None
+    buyer_id: UUID
     status: OrderStatus
-    subtotal: int | None = None
-    total: int | None = None
-    total_amount: int | None = None
-    address: OrderAddressResponse | None = None
+    subtotal: int
+    total: int
+    address: OrderAddressResponse
     delivery_address: str | None = None
     cancel_reason: str | None = None
-    status_history: list[OrderStatusHistoryResponse] = []
+    status_history: list[OrderStatusHistoryResponse] = Field(default_factory=list)
     created_at: datetime
     currency: str
     items: list[OrderItemResponse]
@@ -128,8 +127,6 @@ class OrderResponse(BaseModel):
             data["subtotal"] = data["total_amount"]
         if "total" not in data and "total_amount" in data:
             data["total"] = data["total_amount"]
-        if "total_amount" not in data:
-            data["total_amount"] = data.get("total") or data.get("subtotal")
         address = data.get("address") or {}
         if isinstance(address, dict):
             # The relational address_id is the selected address for the order;
