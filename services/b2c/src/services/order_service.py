@@ -136,10 +136,7 @@ class OrderService:
             # Response serialization includes status_history.  Return only the
             # explicitly eager-loaded aggregate; falling back to ``order`` can
             # trigger an async lazy load while FastAPI serializes the response.
-            loaded_order = await self.order_repo.get_with_items(order.id)
-            if loaded_order is None:
-                raise RuntimeError("Created order could not be reloaded")
-            return loaded_order
+            return await self._load_order_for_response(order.id)
         except Exception:
             if not reserve_compensated:
                 try:
@@ -265,7 +262,7 @@ class OrderService:
             self._schedule_cancel_retry(order)
             self._sync_order_address(order)
             await self.order_repo.session.flush()
-            return await self.order_repo.get_with_items(order.id) or order
+            return await self._load_order_for_response(order.id)
 
         order.status = OrderStatus.CANCELLED
         order.cancel_retry_at = None
@@ -279,7 +276,7 @@ class OrderService:
         )
         self._sync_order_address(order)
         await self.order_repo.session.flush()
-        return await self.order_repo.get_with_items(order.id) or order
+        return await self._load_order_for_response(order.id)
 
     async def mark_delivered(self, order_id: UUID) -> Order:
         order = await self.order_repo.get_with_items_for_update(order_id)
@@ -637,6 +634,13 @@ class OrderService:
         address = dict(getattr(order, "address", None) or {})
         address["id"] = str(address_id)
         order.address = address
+
+    async def _load_order_for_response(self, order_id: UUID) -> Order:
+        """Return the aggregate with every relationship read by OrderResponse."""
+        order = await self.order_repo.get_with_items(order_id)
+        if order is None:
+            raise RuntimeError("Updated order could not be reloaded")
+        return order
 
     def _request_fingerprint(
         self,

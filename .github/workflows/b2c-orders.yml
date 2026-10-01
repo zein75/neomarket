@@ -1,4 +1,4 @@
-name: B2C checkout
+name: B2C orders
 
 on:
   push:
@@ -19,7 +19,7 @@ on:
       - ".github/workflows/b2c-orders.yml"
 
 jobs:
-  checkout:
+  orders:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,7 +30,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv sync --dev
-      - name: Run canonical checkout scenarios and regression gates
+      - name: Run canonical checkout and cancellation scenarios
         working-directory: services/b2c
         run: >-
           uv run pytest -q tests/test_orders.py
@@ -41,4 +41,10 @@ jobs:
           concurrent_idempotency_race_returns_existing_order or
           idempotency_key_does_not_return_another_users_order or
           checkout_compensates_reserve_when_persistence_fails or
-          checkout_compensates_reserve_when_created_order_cannot_reload"
+          checkout_compensates_reserve_when_created_order_cannot_reload or
+          cancel_paid_order_transitions_to_cancelled or
+          unreserve_failure_transitions_to_cancel_pending or
+          cancel_assembling_order_transitions_to_cancelled or
+          cancel_delivering_order_transitions_to_cancelled or
+          cancel_delivered_order_returns_409 or
+          other_user_order_returns_404"
