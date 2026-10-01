@@ -1,10 +1,7 @@
-from types import SimpleNamespace
-from uuid import UUID, uuid4
-
-GUEST_SESSION_ID = "00000000-0000-0000-0000-000000000001"
-
 import pytest
 from fastapi.testclient import TestClient
+from types import SimpleNamespace
+from uuid import UUID, uuid4
 
 from src.api.routers import auth as auth_router
 from src.api.routers import cart as cart_router
@@ -14,6 +11,9 @@ from src.main import app
 from src.services import cart_service as cart_service_module
 from src.services.cart_service import CartService
 from src.schemas.user import LoginRequest, TokenResponse
+
+
+GUEST_SESSION_ID = "00000000-0000-0000-0000-000000000001"
 
 
 class FakeSession:
@@ -238,30 +238,13 @@ async def test_get_cart_enriched_with_b2b_data() -> None:
     assert response["items"][0]["unit_price"] == 12500
     assert response["items"][0]["line_total"] == 25000
     assert response["subtotal"] == 25000
-    assert response["summary"] == {
-        "total_amount": 25000,
-        "total_items": 1,
-        "total_quantity": 2,
-        "available_items": 1,
-        "has_unavailable_items": False,
-        "unavailable_count": 0,
-        "checkout_ready": True,
-        "currency": "RUB",
-    }
-    assert response["checkout_payload"] == {
-        "items": [
-            {
-                "product_id": product_id,
-                "sku_id": sku_id,
-                "quantity": 2,
-                "unit_price": 12500,
-                "line_total": 25000,
-            }
-        ],
-        "total_amount": 25000,
-        "currency": "RUB",
-    }
     assert response["is_valid"] is True
+    assert set(response) == {"id", "items", "items_count", "subtotal", "is_valid", "updated_at"}
+    assert set(response["items"][0]) == {
+        "sku_id", "product_id", "name", "quantity", "unit_price", "line_total",
+        "available_quantity", "is_available", "unavailable_reason", "unit_price_at_add",
+        "image",
+    }
 
 
 @pytest.mark.asyncio
@@ -293,14 +276,6 @@ async def test_unavailable_sku_shown_with_reason() -> None:
     assert response["items"][0]["unavailable_reason"] == "OUT_OF_STOCK"
     assert response["items"][0]["line_total"] == 0
     assert response["subtotal"] == 0
-    assert response["summary"]["total_amount"] == 0
-    assert response["summary"]["unavailable_count"] == 1
-    assert response["summary"]["checkout_ready"] is False
-    assert response["checkout_payload"] == {
-        "items": [],
-        "total_amount": 0,
-        "currency": "RUB",
-    }
     assert response["is_valid"] is False
 
 
@@ -450,7 +425,7 @@ def test_patch_cart_item_addresses_item_by_sku_id() -> None:
     assert response.json()["items"][0]["quantity"] == 4
 
 
-def test_put_cart_item_addresses_item_by_sku_id() -> None:
+def test_put_cart_item_is_not_an_undocumented_contract_method() -> None:
     cart = _cart(session_id=GUEST_SESSION_ID)
     product_id = uuid4()
     sku_id = uuid4()
@@ -483,12 +458,10 @@ def test_put_cart_item_addresses_item_by_sku_id() -> None:
     finally:
         app.dependency_overrides.clear()
 
-    assert response.status_code == 200
-    assert response.json()["items"][0]["sku_id"] == str(sku_id)
-    assert response.json()["items"][0]["quantity"] == 4
+    assert response.status_code == 405
 
 
-def test_get_cart_item_addresses_item_by_sku_id() -> None:
+def test_get_cart_item_is_not_an_undocumented_contract_method() -> None:
     cart = _cart(session_id=GUEST_SESSION_ID)
     product_id = uuid4()
     sku_id = uuid4()
@@ -520,8 +493,7 @@ def test_get_cart_item_addresses_item_by_sku_id() -> None:
     finally:
         app.dependency_overrides.clear()
 
-    assert response.status_code == 200
-    assert response.json()["sku_id"] == str(sku_id)
+    assert response.status_code == 405
 
 
 def test_delete_cart_item_addresses_item_by_sku_id() -> None:
@@ -549,8 +521,8 @@ def test_delete_cart_item_addresses_item_by_sku_id() -> None:
     finally:
         app.dependency_overrides.clear()
 
-    assert response.status_code == 200
-    assert response.json()["items"] == []
+    assert response.status_code == 204
+    assert response.content == b""
     assert cart.items == []
 
 
@@ -638,7 +610,7 @@ def test_cart_validate_returns_checkout_issues() -> None:
     app.dependency_overrides[cart_router.get_db] = fake_db
     app.dependency_overrides[cart_router.get_optional_user] = fake_optional_user
     try:
-        response = TestClient(app).get(
+        response = TestClient(app).post(
             "/api/v1/cart/validate",
             headers={"X-Session-Id": GUEST_SESSION_ID},
         )
@@ -654,6 +626,44 @@ def test_cart_validate_returns_checkout_issues() -> None:
         "type": "OUT_OF_STOCK",
         "message": "Cart item is not available: OUT_OF_STOCK",
     }
+
+
+@pytest.mark.asyncio
+async def test_cart_validate_reports_price_changed() -> None:
+    cart = _cart(session_id=GUEST_SESSION_ID)
+    product_id = uuid4()
+    sku_id = uuid4()
+    cart.items = [_item(cart_id=cart.id, product_id=product_id, sku_id=sku_id)]
+    cart.items[0].unit_price = 100
+    FakeCartRepository.carts_by_id[cart.id] = cart
+    FakeB2BClient.products = [
+        {
+            "id": str(product_id),
+            "title": "Keyboard",
+            "skus": [
+                {
+                    "id": str(sku_id),
+                    "name": "Black",
+                    "price": 125,
+                    "active_quantity": 5,
+                    "images": [],
+                }
+            ],
+        }
+    ]
+
+    result = await CartService(FakeSession()).validate_cart(cart.id)
+
+    assert result["is_valid"] is False
+    assert result["issues"] == [
+        {
+            "sku_id": sku_id,
+            "type": "PRICE_CHANGED",
+            "message": "Cart item price has changed",
+            "old_value": 100,
+            "new_value": 125,
+        }
+    ]
 
 
 def test_cart_merge_endpoint_merges_guest_cart_on_login() -> None:

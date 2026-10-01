@@ -108,7 +108,7 @@ def test_receive_b2b_event_without_service_key_returns_401() -> None:
     }
 
 
-async def test_product_blocked_marks_cart_items_unavailable() -> None:
+async def test_product_blocked_does_not_persist_cart_availability() -> None:
     sku_ids = [uuid4(), uuid4()]
     event = _product_event(sku_ids=sku_ids)
 
@@ -116,7 +116,7 @@ async def test_product_blocked_marks_cart_items_unavailable() -> None:
     processed = await B2BEventService(session).handle_product_event(event)
 
     assert processed is True
-    assert "unavailable_reason" in str(session.executed_statement)
+    assert not hasattr(session, "executed_statement")
 
 
 def test_product_blocked_endpoint_accepts_event() -> None:

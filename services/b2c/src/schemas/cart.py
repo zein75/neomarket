@@ -3,7 +3,7 @@ from uuid import UUID
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 
 class CartItemAdd(BaseModel):
@@ -16,46 +16,36 @@ class CartItemUpdate(BaseModel):
 
 
 class CartItemResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    item_id: UUID | None = None
     sku_id: UUID
     product_id: UUID
-    product_title: str
-    sku_name: str
-    image_url: str | None = None
+    name: str
     unit_price: int
     quantity: int
-    available_stock: int
     line_total: int
-    available: bool
+    available_quantity: int
+    is_available: bool
+    sku_code: str | None = None
+    unit_price_at_add: int | None = None
+    image: dict[str, Any] | None = None
+
+    # The published schema is missing this field, while the cart flow requires
+    # it for an unavailable line.  It is an enrichment-only value, never a
+    # persisted CartItem attribute.
     unavailable_reason: Literal[
         "OUT_OF_STOCK",
         "PRODUCT_BLOCKED",
         "PRODUCT_DELISTED",
-        "SKU_DISABLED",
         "ON_MODERATION",
-        "INSUFFICIENT_STOCK",
     ] | None = None
-
-    # Backward-compatible internal projections are not part of the contract.
-    id: UUID | None = None
-    name: str | None = None
-    unit_price_at_add: int | None = None
-    available_quantity: int | None = None
-    is_available: bool | None = None
-    image: dict[str, Any] | None = None
 
 
 class CartResponse(BaseModel):
-    id: UUID
+    id: UUID | None = None
     items: list[CartItemResponse]
     items_count: int
     subtotal: int
     is_valid: bool
     updated_at: datetime | None = None
-    summary: dict[str, Any]
-    checkout_payload: dict[str, Any]
 
 
 class CartValidationIssue(BaseModel):

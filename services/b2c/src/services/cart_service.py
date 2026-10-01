@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from fastapi import HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.clients.b2b_client import B2BClient
@@ -23,11 +24,11 @@ class CartService:
         if user:
             cart = await self.repo.get_by_user_id(user.id)
             if not cart:
-                cart = await self.repo.create(user_id=user.id)
+                cart = await self._create_cart_once(user_id=user.id)
         elif session_id:
             cart = await self.repo.get_by_session_id(session_id)
             if not cart:
-                cart = await self.repo.create(session_id=session_id)
+                cart = await self._create_cart_once(session_id=session_id)
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -37,6 +38,26 @@ class CartService:
                 },
             )
         return cart
+
+    async def _create_cart_once(
+        self,
+        *,
+        user_id: UUID | None = None,
+        session_id: str | None = None,
+    ) -> Cart:
+        """Return the cart created by this request or by a concurrent one."""
+        try:
+            return await self.repo.create(user_id=user_id, session_id=session_id)
+        except IntegrityError:
+            await self.repo.session.rollback()
+            cart = (
+                await self.repo.get_by_user_id(user_id)
+                if user_id is not None
+                else await self.repo.get_by_session_id(session_id or "")
+            )
+            if cart:
+                return cart
+            raise
 
     async def _merge_guest_cart(self, auth_cart: Cart, guest_cart: Cart) -> None:
         auth_by_sku = {item.sku_id: item for item in auth_cart.items}
@@ -60,7 +81,7 @@ class CartService:
     async def merge_guest_cart(self, user: User, session_id: str) -> Cart:
         auth_cart = await self.repo.get_by_user_id(user.id)
         if not auth_cart:
-            auth_cart = await self.repo.create(user_id=user.id)
+            auth_cart = await self._create_cart_once(user_id=user.id)
         guest_cart = await self.repo.get_by_session_id(session_id)
         if guest_cart and guest_cart.id != auth_cart.id:
             await self._merge_guest_cart(auth_cart, guest_cart)
@@ -118,7 +139,11 @@ class CartService:
         product_status = str(
             sku_data.get("product_status", sku_data.get("status", "MODERATED"))
         )
-        if sku_data.get("deleted") is True or product_status != "MODERATED":
+        if (
+            sku_data.get("deleted") is True
+            or sku_data.get("is_active") is False
+            or product_status != "MODERATED"
+        ):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
@@ -161,8 +186,10 @@ class CartService:
                 status_code=status.HTTP_404_NOT_FOUND, detail="Cart item not found"
             )
         sku_data = await self._get_sku_data(item.sku_id)
-        product_status = str(sku_data.get("status", "MODERATED"))
-        if product_status in {"BLOCKED", "HARD_BLOCKED", "ON_MODERATION"}:
+        product_status = str(
+            sku_data.get("product_status", sku_data.get("status", "MODERATED"))
+        )
+        if sku_data.get("is_active") is False or product_status != "MODERATED":
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
@@ -217,51 +244,20 @@ class CartService:
             enriched = self._enrich_item(item, product, sku_entry)
             if enriched["is_available"]:
                 subtotal += int(enriched["line_total"])
-            else:
+            if (
+                not enriched["is_available"]
+                or enriched["quantity"] > enriched["available_quantity"]
+            ):
                 is_valid = False
             response_items.append(enriched)
 
-        unavailable_count = sum(
-            1 for response_item in response_items if not response_item["is_available"]
-        )
-        checkout_items = [
-            {
-                "product_id": item["product_id"],
-                "sku_id": item["sku_id"],
-                "quantity": item["quantity"],
-                "unit_price": item["unit_price"],
-                "line_total": item["line_total"],
-            }
-            for item in response_items
-            if item["is_available"]
-        ]
         return {
             "id": cart.id,
-            "user_id": cart.user_id,
-            "session_id": cart.session_id,
-            "currency": cart.currency,
             "items": response_items,
             "items_count": sum(item.quantity for item in cart.items),
             "subtotal": subtotal,
             "is_valid": is_valid,
             "updated_at": getattr(cart, "updated_at", None),
-            "summary": {
-                "total_amount": subtotal,
-                "total_items": len(response_items),
-                "total_quantity": sum(item.quantity for item in cart.items),
-                "available_items": sum(
-                    1 for response_item in response_items if response_item["is_available"]
-                ),
-                "has_unavailable_items": unavailable_count > 0,
-                "unavailable_count": unavailable_count,
-                "checkout_ready": is_valid and bool(response_items),
-                "currency": cart.currency,
-            },
-            "checkout_payload": {
-                "items": checkout_items,
-                "total_amount": subtotal,
-                "currency": cart.currency,
-            },
         }
 
     async def validate_cart(self, cart_id: UUID) -> dict[str, object]:
@@ -286,7 +282,6 @@ class CartService:
                 issue_type = {
                     "PRODUCT_BLOCKED": "PRODUCT_BLOCKED",
                     "PRODUCT_DELISTED": "PRODUCT_DELETED",
-                    "INSUFFICIENT_STOCK": "QUANTITY_REDUCED",
                     "ON_MODERATION": "PRODUCT_BLOCKED",
                 }.get(str(reason), str(reason))
                 issue = {
@@ -298,6 +293,16 @@ class CartService:
                     issue["old_value"] = item["quantity"]
                     issue["new_value"] = item["available_quantity"]
                 issues.append(issue)
+            elif item["quantity"] > item["available_quantity"]:
+                issues.append(
+                    {
+                        "sku_id": item["sku_id"],
+                        "type": "QUANTITY_REDUCED",
+                        "message": "Only part of the requested quantity is available",
+                        "old_value": item["quantity"],
+                        "new_value": item["available_quantity"],
+                    }
+                )
         is_valid = not issues
         return {
             "is_valid": is_valid,
@@ -341,24 +346,17 @@ class CartService:
             str(sku.get("name", "") if sku else "").strip(),
         ]
         return {
-            "id": item.id,
-            "item_id": item.id,
             "sku_id": item.sku_id,
             "product_id": item.product_id,
             "name": " ".join(part for part in name_parts if part) or "Unavailable SKU",
-            "product_title": name_parts[0] if name_parts else "",
-            "sku_name": name_parts[1] if len(name_parts) > 1 else "",
             "quantity": item.quantity,
             "unit_price": unit_price,
             "unit_price_at_add": getattr(item, "unit_price", None),
             "line_total": item.quantity * unit_price if is_available else 0,
             "available_quantity": int(sku.get("active_quantity", 0)) if sku else 0,
-            "available_stock": int(sku.get("active_quantity", 0)) if sku else 0,
             "is_available": is_available,
-            "available": is_available,
             "unavailable_reason": unavailable_reason,
             "image": self._first_image(sku),
-            "image_url": self._image_url(sku),
         }
 
     def _unavailable_reason(
@@ -367,22 +365,17 @@ class CartService:
         product: dict[str, object] | None,
         sku: dict[str, object] | None,
     ) -> str | None:
-        persisted_reason = getattr(item, "unavailable_reason", None)
-        if persisted_reason:
-            return str(persisted_reason)
         if not product or not sku:
             return "PRODUCT_DELISTED"
         if product.get("deleted") is True:
             return "PRODUCT_DELISTED"
         if product.get("status") in {"BLOCKED", "HARD_BLOCKED"}:
             return "PRODUCT_BLOCKED"
-        if product.get("status") == "ON_MODERATION":
+        if product.get("status") in {"ON_MODERATION", "EDITED"}:
             return "ON_MODERATION"
         active_quantity = int(sku.get("active_quantity", 0))
         if active_quantity <= 0:
             return "OUT_OF_STOCK"
-        if item.quantity > active_quantity:
-            return "INSUFFICIENT_STOCK"
         return None
 
     def _first_image(self, sku: dict[str, object] | None) -> dict[str, object] | None:
@@ -395,9 +388,3 @@ class CartService:
         if isinstance(first, dict):
             return first
         return {"url": first}
-
-    def _image_url(self, sku: dict[str, object] | None) -> str | None:
-        image = self._first_image(sku)
-        if not image or image.get("url") is None:
-            return None
-        return str(image["url"])
