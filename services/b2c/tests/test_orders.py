@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from types import SimpleNamespace
 from uuid import UUID, uuid4
 
@@ -53,6 +54,15 @@ def _order(*, user_id: UUID, status: OrderStatus) -> Order:
         total_amount=500,
         currency="RUB",
         idempotency_key=f"order-{uuid4()}",
+        address_id=uuid4(),
+        address={
+            "id": str(uuid4()),
+            "country": "RU",
+            "city": "Yekaterinburg",
+            "street": "Mira",
+            "building": "19",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        },
     )
     order.id = uuid4()
     order.items = [item]
@@ -89,12 +99,15 @@ class FakeSession:
         self.added = []
         self.flushed = False
         self.rolled_back = False
+        self.fail_flush = False
 
     def add(self, obj) -> None:
         self.added.append(obj)
 
     async def flush(self) -> None:
         self.flushed = True
+        if self.fail_flush:
+            raise RuntimeError("database write failed")
 
     async def rollback(self) -> None:
         self.rolled_back = True
@@ -208,6 +221,32 @@ class FakeOrderRepository:
         self.pending_fulfillments.pop(pending.order_id, None)
 
 
+class FakeAddressRepository:
+    return_none = False
+    def __init__(self, session) -> None:
+        self.session = session
+
+    async def get_for_user(self, address_id: UUID, user_id: UUID):
+        if self.return_none:
+            return None
+        return SimpleNamespace(
+            id=address_id,
+            user_id=user_id,
+            country="RU",
+            region=None,
+            city="Yekaterinburg",
+            street="Mira",
+            building="19",
+            apartment=None,
+            postal_code=None,
+            recipient_name=None,
+            recipient_phone=None,
+            is_default=False,
+            comment=None,
+            created_at=datetime.now(timezone.utc),
+        )
+
+
 class FakeB2BClient:
     products: list[dict[str, object]] = []
     reserve_calls: list[dict[str, object]] = []
@@ -263,6 +302,7 @@ def patch_dependencies(monkeypatch):
     FakeOrderRepository.locked_gets = []
     FakeOrderRepository.race_order = None
     FakeOrderRepository.raise_integrity_error = False
+    FakeAddressRepository.return_none = False
     FakeB2BClient.products = []
     FakeB2BClient.reserve_calls = []
     FakeB2BClient.unreserve_calls = []
@@ -272,6 +312,7 @@ def patch_dependencies(monkeypatch):
     FakeB2BClient.fulfill_error = None
     monkeypatch.setattr(order_service_module, "CartRepository", FakeCartRepository)
     monkeypatch.setattr(order_service_module, "OrderRepository", FakeOrderRepository)
+    monkeypatch.setattr(order_service_module, "AddressRepository", FakeAddressRepository)
     monkeypatch.setattr(order_service_module, "B2BClient", FakeB2BClient, raising=False)
 
 
@@ -336,9 +377,6 @@ async def test_checkout_creates_paid_order_with_fixed_prices() -> None:
     assert response["address"]["created_at"]
     assert response["created_at"]
     assert response["items"][0]["name"] == "Phone 128 GB"
-    assert response["items"][0]["product_title"] == "Phone"
-    assert response["items"][0]["sku_name"] == "128 GB"
-    assert response["items"][0]["sku_name"] == "128 GB"
     assert FakeB2BClient.reserve_calls == [
         {
             "order_id": str(order.id),
@@ -346,7 +384,7 @@ async def test_checkout_creates_paid_order_with_fixed_prices() -> None:
             "items": [{"sku_id": str(sku_id), "quantity": 2}],
         }
     ]
-    assert FakeCartRepository.removed_items == [cart_item.id]
+    assert FakeCartRepository.removed_items == []
 
 
 async def test_partial_reserve_failure_returns_409() -> None:
@@ -382,6 +420,7 @@ async def test_partial_reserve_failure_returns_409() -> None:
             user_id=user_id,
             cart_id=cart.id,
             idempotency_key="checkout-2",
+            order_request=_order_request(),
         )
 
     assert exc.value.status_code == 409
@@ -422,6 +461,7 @@ async def test_concurrent_idempotency_race_returns_existing_order() -> None:
     user_id = uuid4()
     product_id = uuid4()
     sku_id = uuid4()
+    order_request = _order_request()
     cart = _cart(
         user_id=user_id,
         items=[_cart_item(product_id=product_id, sku_id=sku_id)],
@@ -447,6 +487,8 @@ async def test_concurrent_idempotency_race_returns_existing_order() -> None:
         total_amount=150,
         currency="RUB",
         idempotency_key="checkout-race",
+        address_id=order_request.address_id,
+        payment_method_id=order_request.payment_method_id,
     )
     existing.id = uuid4()
     existing.items = []
@@ -454,11 +496,13 @@ async def test_concurrent_idempotency_race_returns_existing_order() -> None:
     FakeOrderRepository.raise_integrity_error = True
     session = FakeSession()
     service = OrderService(session)
+    existing.request_fingerprint = service._request_fingerprint(order_request)
 
     order = await service.checkout(
         user_id=user_id,
         cart_id=cart.id,
         idempotency_key="checkout-race",
+        order_request=order_request,
     )
 
     assert order is existing
@@ -595,10 +639,74 @@ async def test_b2b_unavailable_returns_503() -> None:
             user_id=user_id,
             cart_id=cart.id,
             idempotency_key="checkout-4",
+            order_request=_order_request(),
         )
 
     assert exc.value.status_code == 503
+    assert exc.value.detail["code"] == "B2B_UNAVAILABLE"
     assert FakeOrderRepository.created_orders == []
+
+
+async def test_checkout_rejects_address_not_owned_by_buyer() -> None:
+    user_id = uuid4()
+    product_id = uuid4()
+    sku_id = uuid4()
+    cart = _cart(
+        user_id=user_id,
+        items=[_cart_item(product_id=product_id, sku_id=sku_id)],
+    )
+    FakeCartRepository.cart = cart
+    FakeAddressRepository.return_none = True
+
+    with pytest.raises(HTTPException) as exc:
+        await OrderService(FakeSession()).checkout(
+            user_id=user_id,
+            cart_id=cart.id,
+            idempotency_key="checkout-address-missing",
+            order_request=_order_request(),
+        )
+
+    assert exc.value.status_code == 404
+    assert exc.value.detail["code"] == "ADDRESS_NOT_FOUND"
+    assert FakeB2BClient.reserve_calls == []
+
+
+async def test_checkout_compensates_reserve_when_persistence_fails() -> None:
+    user_id = uuid4()
+    product_id = uuid4()
+    sku_id = uuid4()
+    cart = _cart(
+        user_id=user_id,
+        items=[_cart_item(product_id=product_id, sku_id=sku_id, quantity=2)],
+    )
+    FakeCartRepository.cart = cart
+    FakeB2BClient.products = [
+        {
+            "id": str(product_id),
+            "title": "Phone",
+            "skus": [
+                {"id": str(sku_id), "name": "128 GB", "price": 150, "active_quantity": 5}
+            ],
+        }
+    ]
+    session = FakeSession()
+    session.fail_flush = True
+
+    with pytest.raises(RuntimeError, match="database write failed"):
+        await OrderService(session).checkout(
+            user_id=user_id,
+            cart_id=cart.id,
+            idempotency_key="checkout-compensate",
+            order_request=_order_request(),
+        )
+
+    assert session.rolled_back is True
+    assert FakeB2BClient.unreserve_calls == [
+        {
+            "order_id": FakeB2BClient.reserve_calls[0]["order_id"],
+            "items": [{"sku_id": str(sku_id), "quantity": 2}],
+        }
+    ]
 
 
 async def test_orders_list_returns_own_orders_paginated() -> None:
@@ -638,8 +746,10 @@ async def test_orders_list_returns_own_orders_paginated() -> None:
     assert len(payload["items"]) == 1
     assert payload["items"][0]["id"] == str(own_paid.id)
     assert payload["items"][0]["status"] == "PAID"
-    assert payload["items"][0]["total_amount"] == 300
-    assert payload["items"][0]["items_count"] == 1
+    assert payload["items"][0]["buyer_id"] == str(user_id)
+    assert payload["items"][0]["subtotal"] == 300
+    assert payload["items"][0]["total"] == 300
+    assert payload["items"][0]["address"]["country"] == "RU"
 
 
 async def test_order_detail_shows_fixed_prices() -> None:
@@ -774,8 +884,7 @@ async def test_cancelled_order_delivery_does_not_fulfill() -> None:
 async def test_cancel_paid_order_transitions_to_cancelled() -> None:
     user_id = uuid4()
     order = _order(user_id=user_id, status=OrderStatus.PAID)
-    order.address_id = uuid4()
-    order.address = {"id": str(order.address_id)}
+    order.address_id = UUID(order.address["id"])
     FakeOrderRepository.orders_by_id[order.id] = order
 
     cancelled = await OrderService(FakeSession()).cancel_order(
@@ -799,8 +908,7 @@ async def test_cancel_paid_order_transitions_to_cancelled() -> None:
 async def test_unreserve_failure_transitions_to_cancel_pending() -> None:
     user_id = uuid4()
     order = _order(user_id=user_id, status=OrderStatus.PAID)
-    order.address_id = uuid4()
-    order.address = {"id": str(order.address_id)}
+    order.address_id = UUID(order.address["id"])
     FakeOrderRepository.orders_by_id[order.id] = order
     FakeB2BClient.unreserve_error = HTTPException(
         status_code=503,

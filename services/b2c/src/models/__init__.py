@@ -1,4 +1,5 @@
 from .base import Base, TimestampMixin
+from .address import Address
 from .user import User
 from .cart import Cart, CartItem
 from .favorite import Favorite, ProductSubscription
@@ -9,6 +10,7 @@ from .processed_event import ProcessedB2BEvent
 __all__ = [
     "Base",
     "TimestampMixin",
+    "Address",
     "User",
     "Cart",
     "CartItem",
@@ -25,4 +27,3 @@ __all__ = [
     "PendingFulfillment",
     "ProcessedB2BEvent",
 ]
-from .address import Address

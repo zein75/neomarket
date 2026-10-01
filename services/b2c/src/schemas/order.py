@@ -30,8 +30,6 @@ class OrderItemResponse(BaseModel):
     sku_id: UUID
     product_id: UUID
     name: str
-    product_title: str | None = None
-    sku_name: str | None = None
     sku_code: str | None = None
     image_url: str | None = None
     quantity: int
@@ -95,11 +93,9 @@ class OrderResponse(BaseModel):
     subtotal: int
     total: int
     address: OrderAddressResponse
-    delivery_address: str | None = None
     cancel_reason: str | None = None
     status_history: list[OrderStatusHistoryResponse] = Field(default_factory=list)
     created_at: datetime
-    currency: str
     items: list[OrderItemResponse]
 
     @model_validator(mode="before")
@@ -120,7 +116,6 @@ class OrderResponse(BaseModel):
                 "cancel_reason": getattr(value, "cancel_reason", None),
                 "status_history": getattr(value, "status_history", []),
                 "created_at": getattr(value, "created_at", None),
-                "currency": getattr(value, "currency"),
                 "items": getattr(value, "items", []),
             }
         if "buyer_id" not in data and "user_id" in data:
@@ -129,66 +124,16 @@ class OrderResponse(BaseModel):
             data["subtotal"] = data["total_amount"]
         if "total" not in data and "total_amount" in data:
             data["total"] = data["total_amount"]
-        address = data.get("address") or {}
-        if isinstance(address, dict):
-            # The relational address_id is the selected address for the order;
-            # never let a stale embedded snapshot replace it in the response.
-            address_id = data.get("address_id") or address.get("id")
-            if address_id is None and not isinstance(value, dict):
-                address_id = getattr(value, "address_id", None)
-            if address_id is not None:
-                address.setdefault("id", address_id)
-            if "created_at" not in address:
-                created_at = data.get("created_at")
-                if created_at is None and not isinstance(value, dict):
-                    created_at = getattr(value, "created_at", None)
-                address["created_at"] = created_at or datetime.now(timezone.utc)
-            address.setdefault("country", "RU")
-            address.setdefault("city", "Yekaterinburg")
-            address.setdefault("street", "Mira")
-            address.setdefault("building", "19")
-            data["address"] = address
-            data.setdefault("delivery_address", address.get("delivery_address"))
+        # Checkout stores a full address snapshot.  Never manufacture address
+        # fields here: it could show a buyer an address unrelated to the order.
+        data["address"] = data.get("address") or {}
         if data.get("created_at") is None:
             data["created_at"] = datetime.now(timezone.utc)
         return data
 
 
-class OrderListItemResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: UUID
-    status: OrderStatus
-    total_amount: int
-    items_count: int
-    created_at: datetime
-    updated_at: datetime
-
-    @model_validator(mode="before")
-    @classmethod
-    def from_order_model(cls, value: Any) -> Any:
-        if isinstance(value, dict):
-            data = dict(value)
-        else:
-            data = {
-                "id": getattr(value, "id"),
-                "status": getattr(value, "status"),
-                "total_amount": getattr(value, "total_amount"),
-                "items_count": len(getattr(value, "items", []) or []),
-                "created_at": getattr(value, "created_at", None),
-                "updated_at": getattr(value, "updated_at", None),
-            }
-        now = datetime.now(timezone.utc)
-        data.setdefault("items_count", 0)
-        if data.get("created_at") is None:
-            data["created_at"] = now
-        if data.get("updated_at") is None:
-            data["updated_at"] = data["created_at"]
-        return data
-
-
 class OrderPaginatedResponse(BaseModel):
-    items: list[OrderListItemResponse]
+    items: list[OrderResponse]
     total_count: int
     limit: int
     offset: int

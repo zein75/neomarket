@@ -98,7 +98,7 @@ class OrderRepository(BaseRepository[Order]):
         result = await self.session.execute(
             select(Order)
             .where(*filters)
-            .options(selectinload(Order.items))
+            .options(selectinload(Order.items), selectinload(Order.status_history))
             .order_by(Order.created_at.desc())
             .limit(limit)
             .offset(offset)

@@ -15,7 +15,6 @@ from src.schemas.order import (
 )
 from src.services.cart_service import CartService
 from src.services.order_service import OrderService
-from src.repositories.order_repo import OrderRepository
 
 router = APIRouter(tags=["orders"])
 
@@ -37,17 +36,28 @@ async def list_orders(
     )
 
 
-@router.post("/api/v1/orders", response_model=OrderResponse, status_code=201)
+@router.post(
+    "/api/v1/orders",
+    response_model=OrderResponse,
+    status_code=201,
+    responses={
+        200: {"model": OrderResponse, "description": "Idempotent replay"},
+        400: {"description": "Invalid checkout request"},
+        401: {"description": "Unauthorized"},
+        409: {"description": "Reserve or idempotency conflict"},
+        422: {"description": "Cart validation failed"},
+        503: {"description": "B2B unavailable"},
+    },
+)
 @router.post("/orders", response_model=OrderResponse, status_code=201, include_in_schema=False)
 async def create_order(
     order_request: OrderCreateRequest,
-    idempotency_key: str = Header(alias="Idempotency-Key"),
+    idempotency_key: UUID = Header(alias="Idempotency-Key"),
     x_session_id: UUID | None = Header(default=None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> OrderResponse:
-    key = idempotency_key
-    existing = await OrderRepository(db).get_by_idempotency_key(key)
+    key = str(idempotency_key)
     cart = await CartService(db).get_or_create_cart(
         user=current_user,
         session_id=str(x_session_id) if x_session_id else None,
@@ -62,7 +72,7 @@ async def create_order(
     await db.commit()
     payload = OrderResponse.model_validate(order).model_dump(mode="json")
     return JSONResponse(
-        status_code=200 if existing or service.last_checkout_replayed else 201,
+        status_code=200 if service.last_checkout_replayed else 201,
         content=payload,
     )
 
@@ -96,4 +106,3 @@ async def cancel_order(
     )
     await db.commit()
     return order
-from uuid import UUID
