@@ -228,11 +228,8 @@ async def test_hard_block_transitions_to_terminal_and_emits_event() -> None:
     assert event["product_id"] == str(card.product_id)
     assert event["occurred_at"]
     assert event["hard_block"] is True
-    assert event["blocking_reason"] == {
-        "id": str(reason_id),
-        "title": "Counterfeit product",
-        "comment": "Moderator confirmed counterfeit goods",
-    }
+    assert event["blocking_reason_id"] == str(reason_id)
+    assert event["moderator_comment"] == "Moderator confirmed counterfeit goods"
     assert "PRODUCT_MODERATION_DECIDED" not in event.values()
 
 
@@ -273,11 +270,11 @@ def test_block_ticket_route_returns_contract_response_and_emits_event() -> None:
     assert body["status"] == "HARD_BLOCKED"
     assert body["created_at"]
     assert FakeB2BClient.events[0]["event_type"] == "BLOCKED"
-    assert FakeB2BClient.events[0]["blocking_reason"] == {
-        "id": str(reason_id),
-        "title": "Description mismatch",
-        "comment": "Photos and description contradict each other",
-    }
+    assert FakeB2BClient.events[0]["blocking_reason_id"] == str(reason_id)
+    assert (
+        FakeB2BClient.events[0]["moderator_comment"]
+        == "Photos and description contradict each other"
+    )
 
 
 def test_blocking_reasons_route_returns_hard_block_catalog() -> None:

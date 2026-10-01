@@ -38,3 +38,12 @@ class OutboxEventRepository(BaseRepository[OutboxEvent]):
         self.session.add(event)
         await self.session.flush()
         return event
+
+    async def list_pending(self, limit: int = 100) -> list[OutboxEvent]:
+        result = await self.session.execute(
+            select(OutboxEvent)
+            .where(OutboxEvent.status != "SENT")
+            .order_by(OutboxEvent.created_at)
+            .limit(limit)
+        )
+        return list(result.scalars().all())

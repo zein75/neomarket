@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from collections.abc import AsyncGenerator
 
@@ -16,11 +17,30 @@ from src.api.routers import (
     sellers,
     skus,
 )
+from src.core.database import AsyncSessionLocal
+from src.core.config import settings
+from src.services.reservation_service import ReservationService
+
+
+async def _outbox_worker() -> None:
+    while True:
+        try:
+            async with AsyncSessionLocal() as session:
+                await ReservationService(session).retry_pending_outbox()
+                await session.commit()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            pass
+        await asyncio.sleep(settings.outbox_poll_interval_seconds)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    worker = asyncio.create_task(_outbox_worker())
     yield
+    worker.cancel()
+    await asyncio.gather(worker, return_exceptions=True)
 
 
 app = FastAPI(

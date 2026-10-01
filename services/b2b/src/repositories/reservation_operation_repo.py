@@ -26,10 +26,12 @@ class ReservationOperationRepository(BaseRepository[ReservationOperation]):
         *,
         idempotency_key: str,
         order_id: UUID,
+        response: dict | None = None,
     ) -> ReservationOperation:
         operation = ReservationOperation(
             idempotency_key=idempotency_key,
             order_id=order_id,
+            response=response,
         )
         self.session.add(operation)
         await self.session.flush()

@@ -52,6 +52,9 @@ class FakeSession:
         self.rolled_back = False
         self.committed = False
 
+    async def execute(self, statement) -> None:
+        self.executed_statement = statement
+
     def add(self, obj) -> None:
         self.added.append(obj)
 
@@ -109,9 +112,11 @@ async def test_product_blocked_marks_cart_items_unavailable() -> None:
     sku_ids = [uuid4(), uuid4()]
     event = _product_event(sku_ids=sku_ids)
 
-    processed = await B2BEventService(FakeSession()).handle_product_event(event)
+    session = FakeSession()
+    processed = await B2BEventService(session).handle_product_event(event)
 
     assert processed is True
+    assert "unavailable_reason" in str(session.executed_statement)
 
 
 def test_product_blocked_endpoint_accepts_event() -> None:

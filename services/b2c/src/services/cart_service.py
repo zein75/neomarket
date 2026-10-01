@@ -367,6 +367,9 @@ class CartService:
         product: dict[str, object] | None,
         sku: dict[str, object] | None,
     ) -> str | None:
+        persisted_reason = getattr(item, "unavailable_reason", None)
+        if persisted_reason:
+            return str(persisted_reason)
         if not product or not sku:
             return "PRODUCT_DELISTED"
         if product.get("deleted") is True:

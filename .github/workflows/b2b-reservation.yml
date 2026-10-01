@@ -1,0 +1,49 @@
+name: B2B reservation
+
+on:
+  push:
+    paths:
+      - "services/b2b/**"
+      - "services/b2c/**"
+      - "services/admin/**"
+      - "shared/**"
+      - "docs/canon/flows/b2b-flows.md"
+      - "docs/protocols/b2b/openapi.yaml"
+      - ".github/workflows/b2b-reservation.yml"
+  pull_request:
+    paths:
+      - "services/b2b/**"
+      - "services/b2c/**"
+      - "services/admin/**"
+      - "shared/**"
+      - "docs/canon/flows/b2b-flows.md"
+      - "docs/protocols/b2b/openapi.yaml"
+      - ".github/workflows/b2b-reservation.yml"
+
+jobs:
+  reservation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: latest
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --dev
+      - name: Run canonical reservation scenarios
+        working-directory: services/b2b
+        run: >-
+          uv run pytest -q tests/test_inventory_reservations.py
+          -k "reserve_all_skus_succeeds or
+          idempotent_reserve_returns_200_without_double_deduction or
+          partial_insufficient_stock_returns_409_all_rollback or
+          sku_out_of_stock_event_emitted or
+          unreserve_restores_quantities"
+      - name: Run moderation decision scenarios
+        working-directory: services/b2b
+        run: uv run pytest -q tests/test_apply_moderation.py
+      - name: Run B2C event cascade scenarios
+        working-directory: services/b2c
+        run: uv run pytest -q tests/test_b2b_events.py

@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     service_key: str = "dev-service-key-change-in-production"
     moderation_timeout_seconds: float = 3.0
     b2c_timeout_seconds: float = 3.0
+    outbox_poll_interval_seconds: float = 1.0
 
 
 settings = Settings()

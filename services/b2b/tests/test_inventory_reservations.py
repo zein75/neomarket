@@ -144,6 +144,20 @@ class FakeB2CClient:
             }
         )
 
+    async def send_outbox_event(self, payload) -> None:
+        if self.fail_delivery:
+            raise RuntimeError("B2C unavailable")
+        self.out_of_stock_events.append(payload)
+
+
+class FakeOutboxRepository:
+    def __init__(self, session: FakeSession, event: object) -> None:
+        self.session = session
+        self.event = event
+
+    async def list_pending(self, limit: int = 100) -> list[object]:
+        return [self.event]
+
 
 @pytest.fixture(autouse=True)
 def patch_dependencies(monkeypatch: pytest.MonkeyPatch):
@@ -264,6 +278,21 @@ async def test_idempotent_reserve_returns_original_order_id() -> None:
 
 
 @pytest.mark.asyncio
+async def test_idempotent_reserve_returns_original_remaining_stock_after_new_operation() -> None:
+    sku = _sku(stock=10, reserved_quantity=0)
+    FakeSKURepository.skus = {sku.id: sku}
+    key = str(uuid4())
+    service = ReservationService(FakeSession())
+
+    first = await service.reserve(_reserve_request((sku.id, 3), idempotency_key=key))
+    await service.reserve(_reserve_request((sku.id, 2)))
+    repeated = await service.reserve(_reserve_request((sku.id, 3), idempotency_key=key))
+
+    assert repeated == first
+    assert repeated["items"][0]["remaining_stock"] == 7
+
+
+@pytest.mark.asyncio
 async def test_sku_out_of_stock_event_emitted() -> None:
     sku = _sku(stock=3, reserved_quantity=0)
     FakeSKURepository.skus = {sku.id: sku}
@@ -290,6 +319,33 @@ async def test_sku_out_of_stock_delivery_failure_does_not_rollback_reservation()
 
     assert response["status"] == "RESERVED"
     assert sku.reserved_quantity == 3
+
+
+@pytest.mark.asyncio
+async def test_saved_outbox_event_retries_after_b2c_recovers() -> None:
+    event = SimpleNamespace(
+        destination="B2C",
+        status="PENDING",
+        attempts=0,
+        payload={
+            "event_type": "SKU_OUT_OF_STOCK",
+            "idempotency_key": str(uuid4()),
+            "occurred_at": "2026-10-01T00:00:00+00:00",
+            "payload": {"sku_id": str(uuid4()), "product_id": str(uuid4())},
+        },
+    )
+    service = ReservationService(FakeSession())
+    service.outbox_repo = FakeOutboxRepository(service.outbox_repo.session, event)
+    FakeB2CClient.fail_delivery = True
+
+    assert await service.retry_pending_outbox() == 0
+    assert event.status == "PENDING"
+    assert event.attempts == 1
+
+    FakeB2CClient.fail_delivery = False
+    assert await service.retry_pending_outbox() == 1
+    assert event.status == "SENT"
+    assert event.attempts == 2
 
 
 @pytest.mark.asyncio

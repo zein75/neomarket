@@ -165,7 +165,7 @@ class ModerationService:
         product_id = str(card.product_id)
         return {
             "idempotency_key": str(
-                uuid5(NAMESPACE_URL, f"moderation:approved:{product_id}")
+                uuid5(NAMESPACE_URL, f"moderation:approved:{card.id}")
             ),
             "event_type": "MODERATED",
             "product_id": product_id,
@@ -185,17 +185,18 @@ class ModerationService:
         key_part = "hard-blocked" if hard_block else "blocked"
         return {
             "idempotency_key": str(
-                uuid5(NAMESPACE_URL, f"moderation:{key_part}:{product_id}")
+                uuid5(NAMESPACE_URL, f"moderation:{key_part}:{card.id}")
             ),
             "event_type": "BLOCKED",
             "product_id": product_id,
             "occurred_at": datetime.now(timezone.utc).isoformat(),
             "hard_block": hard_block,
-            "blocking_reason": self._blocking_reason_payload(
-                blocking_reason,
-                comment=comment,
-                field_reports=field_reports,
-            ),
+            "blocking_reason_id": str(blocking_reason.id)
+            if blocking_reason is not None
+            else None,
+            "moderator_comment": comment
+            or getattr(blocking_reason, "description", None)
+            or self._first_field_report_comment(field_reports),
             "field_reports": field_reports,
         }
 

@@ -50,6 +50,16 @@ class B2CClient:
                 return
             response.raise_for_status()
 
+    async def send_outbox_event(self, payload: dict[str, Any]) -> None:
+        async with httpx.AsyncClient(timeout=settings.b2c_timeout_seconds) as client:
+            response = await client.post(
+                f"{self.base_url}/api/v1/b2b/events",
+                json=payload,
+                headers={"X-Service-Key": self.service_key},
+            )
+            if response.status_code != 409:
+                response.raise_for_status()
+
     def build_product_deleted_event(self, product: Any) -> dict[str, Any]:
         return {
             "event": "PRODUCT_DELETED",

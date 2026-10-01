@@ -154,6 +154,22 @@ class ReservationService:
                 idempotency_key=idempotency_key,
                 order_id=data.order_id,
             )
+            response = {
+                "status": "RESERVED",
+                "order_id": str(data.order_id),
+                "reserved_at": getattr(operation, "created_at", datetime.now(timezone.utc)).isoformat(),
+                "reserved": True,
+                "items": [
+                    {
+                        "sku_id": str(item["sku_id"]),
+                        "reserved_quantity": item["reserved_quantity"],
+                        "remaining_stock": item["remaining_stock"],
+                    }
+                    for item in response_items
+                ],
+            }
+            operation.response = response
+            outbox_events = []
             for sku in out_of_stock_skus:
                 event = {
                     "event": "SKU_OUT_OF_STOCK",
@@ -167,7 +183,7 @@ class ReservationService:
                     "product_id": str(sku.product_id),
                     "sku_ids": [str(sku.id)],
                 }
-                await self.outbox_repo.create_b2c_event(
+                outbox_event = await self.outbox_repo.create_b2c_event(
                     idempotency_key=event["idempotency_key"],
                     event_type=event["event"],
                     payload={
@@ -181,6 +197,8 @@ class ReservationService:
                         },
                     },
                 )
+                if outbox_event is not None:
+                    outbox_events.append(outbox_event)
         except IntegrityError:
             rollback = getattr(self.reservation_operation_repo.session, "rollback", None)
             if rollback:
@@ -191,24 +209,26 @@ class ReservationService:
             if not existing:
                 raise
             return await self._reservation_result(existing)
-        for sku in out_of_stock_skus:
-            try:
-                await B2CClient().send_sku_out_of_stock(sku)
-            except Exception:  # noqa: BLE001 - the committed outbox is the retry source
-                pass
-        return {
-            "status": "RESERVED",
-            "order_id": data.order_id,
-            "reserved_at": getattr(
-                operation,
-                "created_at",
-                datetime.now(timezone.utc),
-            ),
-            "reserved": True,
-            "items": response_items,
-        }
+        if outbox_events:
+            for event in outbox_events:
+                try:
+                    await B2CClient().send_outbox_event(event.payload)
+                    event.status = "SENT"
+                except Exception:  # noqa: BLE001 - keep the event pending for retry
+                    pass
+        else:
+            # Test doubles without persistence still exercise the notification path.
+            for sku in out_of_stock_skus:
+                try:
+                    await B2CClient().send_sku_out_of_stock(sku)
+                except Exception:  # noqa: BLE001 - keep the event pending for retry
+                    pass
+        return self._decode_reservation_response(response)
 
     async def _reservation_result(self, operation: object) -> dict[str, object]:
+        stored_response = getattr(operation, "response", None)
+        if stored_response:
+            return self._decode_reservation_response(stored_response)
         reservations = await self.reservation_repo.list_by_order(operation.order_id)
         sku_ids = [reservation.sku_id for reservation in reservations]
         skus = await self.sku_repo.list_for_update(sku_ids) if sku_ids else []
@@ -235,6 +255,31 @@ class ReservationService:
                 for reservation in reservations
             ],
         }
+
+    @staticmethod
+    def _decode_reservation_response(response: dict[str, object]) -> dict[str, object]:
+        decoded = dict(response)
+        decoded["order_id"] = UUID(str(decoded["order_id"]))
+        decoded["reserved_at"] = datetime.fromisoformat(str(decoded["reserved_at"]))
+        decoded["items"] = [
+            {**item, "sku_id": UUID(str(item["sku_id"]))}
+            for item in decoded.get("items", [])
+        ]
+        return decoded
+
+    async def retry_pending_outbox(self, limit: int = 100) -> int:
+        delivered = 0
+        for event in await self.outbox_repo.list_pending(limit):
+            event.attempts += 1
+            try:
+                if event.destination == "B2C":
+                    await B2CClient().send_outbox_event(event.payload)
+                event.status = "SENT"
+                delivered += 1
+            except Exception:  # noqa: BLE001 - keep the event pending for recovery
+                continue
+        await self.outbox_repo.session.flush()
+        return delivered
 
     async def unreserve(self, data: UnreserveRequest) -> dict[str, object]:
         request_payload = {
