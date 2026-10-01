@@ -1,7 +1,7 @@
 import hashlib
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 from uuid import uuid4
 
@@ -19,6 +19,8 @@ from src.schemas.order import OrderCreateRequest, OrderPaginatedResponse
 
 
 logger = logging.getLogger(__name__)
+CANCEL_RETRY_BASE_SECONDS = 30
+CANCEL_RETRY_MAX_SECONDS = 3600
 
 
 class OrderService:
@@ -216,7 +218,7 @@ class OrderService:
         if not order or order.user_id != user_id:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Order not found",
+                detail={"code": "ORDER_NOT_FOUND", "message": "Order not found"},
             )
         cancellable_statuses = {
             OrderStatus.CREATED,
@@ -236,25 +238,31 @@ class OrderService:
 
         order.cancel_reason = reason
         order.cancelled_at = datetime.now(timezone.utc)
+        # Record the accepted cancellation intent before contacting B2B. The
+        # request transaction persists it even when unreserve fails, so retry
+        # can safely continue after a restart.
+        order.status = OrderStatus.CANCEL_PENDING
+        order.status_history.append(
+            OrderStatusHistory(
+                order_id=order.id,
+                status=OrderStatus.CANCEL_PENDING,
+                changed_at=datetime.now(timezone.utc),
+                reason=reason,
+            )
+        )
+        await self.order_repo.session.flush()
 
         try:
             await self._unreserve(order)
         except Exception:  # noqa: BLE001 - cancellation must remain accepted for async retry
             logger.exception("Failed to unreserve cancelled order %s", order.id)
-            order.status = OrderStatus.CANCEL_PENDING
-            order.status_history.append(
-                OrderStatusHistory(
-                    order_id=order.id,
-                    status=OrderStatus.CANCEL_PENDING,
-                    changed_at=datetime.now(timezone.utc),
-                    reason=reason,
-                )
-            )
+            self._schedule_cancel_retry(order)
             self._sync_order_address(order)
             await self.order_repo.session.flush()
             return await self.order_repo.get_with_items(order.id) or order
 
         order.status = OrderStatus.CANCELLED
+        order.cancel_retry_at = None
         order.status_history.append(
             OrderStatusHistory(
                 order_id=order.id,
@@ -317,17 +325,39 @@ class OrderService:
 
     async def retry_pending_cancellations(self, limit: int = 100) -> int:
         retried = 0
-        orders = await self.order_repo.list_by_status(OrderStatus.CANCEL_PENDING, limit)
+        orders = await self.order_repo.list_due_cancellation_retries(
+            datetime.now(timezone.utc), limit
+        )
         for order in orders:
             try:
                 await self._unreserve(order)
             except Exception:  # noqa: BLE001 - keep retrying other pending cancellations
                 logger.exception("Failed to retry cancellation for order %s", order.id)
+                self._schedule_cancel_retry(order)
+                await self.order_repo.session.flush()
                 continue
             order.status = OrderStatus.CANCELLED
+            order.cancel_retry_at = None
+            order.status_history.append(
+                OrderStatusHistory(
+                    order_id=order.id,
+                    status=OrderStatus.CANCELLED,
+                    changed_at=datetime.now(timezone.utc),
+                    reason=order.cancel_reason,
+                )
+            )
             await self.order_repo.session.flush()
             retried += 1
         return retried
+
+    @staticmethod
+    def _schedule_cancel_retry(order: Order) -> None:
+        order.cancel_retry_attempts = (order.cancel_retry_attempts or 0) + 1
+        delay = min(
+            CANCEL_RETRY_BASE_SECONDS * (2 ** (order.cancel_retry_attempts - 1)),
+            CANCEL_RETRY_MAX_SECONDS,
+        )
+        order.cancel_retry_at = datetime.now(timezone.utc) + timedelta(seconds=delay)
 
     async def _build_item_snapshots(
         self,

@@ -87,7 +87,15 @@ async def get_order(
     return await OrderService(db).get_order(order_id, current_user.id)
 
 
-@router.post("/api/v1/orders/{order_id}/cancel", response_model=OrderResponse)
+@router.post(
+    "/api/v1/orders/{order_id}/cancel",
+    response_model=OrderResponse,
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Order not found"},
+        409: {"description": "Order status does not allow cancellation"},
+    },
+)
 @router.post(
     "/orders/{order_id}/cancel",
     response_model=OrderResponse,

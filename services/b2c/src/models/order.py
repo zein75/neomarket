@@ -48,6 +48,8 @@ class Order(Base, TimestampMixin):
     request_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True)
     cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     cancelled_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    cancel_retry_attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    cancel_retry_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     user: Mapped["User"] = relationship("User", back_populates="orders")
     items: Mapped[list["OrderItem"]] = relationship(

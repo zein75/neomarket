@@ -99,6 +99,7 @@ class FakeSession:
         self.added = []
         self.flushed = False
         self.rolled_back = False
+        self.committed = False
         self.fail_flush = False
 
     def add(self, obj) -> None:
@@ -111,6 +112,9 @@ class FakeSession:
 
     async def rollback(self) -> None:
         self.rolled_back = True
+
+    async def commit(self) -> None:
+        self.committed = True
 
     async def delete(self, obj) -> None:
         return None
@@ -164,6 +168,24 @@ class FakeOrderRepository:
         if order and order.user_id == user_id:
             return order
         return None
+
+    async def list_by_status(self, status: OrderStatus, limit: int = 100):
+        return [
+            order
+            for order in self.orders_by_id.values()
+            if order.status == status
+        ][:limit]
+
+    async def list_due_cancellation_retries(self, now, limit: int = 100):
+        return [
+            order
+            for order in self.orders_by_id.values()
+            if order.status == OrderStatus.CANCEL_PENDING
+            and (
+                getattr(order, "cancel_retry_at", None) is None
+                or order.cancel_retry_at <= now
+            )
+        ][:limit]
 
     async def list_for_user(
         self,
@@ -921,6 +943,8 @@ async def test_unreserve_failure_transitions_to_cancel_pending() -> None:
     )
 
     assert pending.status == OrderStatus.CANCEL_PENDING
+    assert pending.cancel_retry_attempts == 1
+    assert pending.cancel_retry_at is not None
     assert FakeB2BClient.unreserve_calls == [_unreserve_payload(order)]
     response = OrderResponse.model_validate(pending).model_dump(mode="json")
     assert response["address"]["id"] == str(order.address_id)
@@ -930,6 +954,21 @@ async def test_unreserve_failure_transitions_to_cancel_pending() -> None:
     assert response["address"]["building"] == "19"
     assert response["address"]["created_at"]
     assert response["status_history"][-1]["status"] == "CANCEL_PENDING"
+
+
+async def test_pending_cancellation_is_retried_to_cancelled() -> None:
+    user_id = uuid4()
+    order = _order(user_id=user_id, status=OrderStatus.CANCEL_PENDING)
+    order.cancel_reason = "Changed my mind"
+    FakeOrderRepository.orders_by_id[order.id] = order
+
+    retried = await OrderService(FakeSession()).retry_pending_cancellations()
+
+    assert retried == 1
+    assert order.status == OrderStatus.CANCELLED
+    assert order.cancel_retry_at is None
+    assert FakeB2BClient.unreserve_calls == [_unreserve_payload(order)]
+    assert order.status_history[-1].status == OrderStatus.CANCELLED
 
 
 async def test_cancel_assembling_order_transitions_to_cancelled() -> None:

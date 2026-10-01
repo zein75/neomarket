@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import func, select, text
@@ -17,7 +18,24 @@ class OrderRepository(BaseRepository[Order]):
         result = await self.session.execute(
             select(Order)
             .where(Order.status == status)
-            .options(selectinload(Order.items))
+            .options(selectinload(Order.items), selectinload(Order.status_history))
+            .limit(limit)
+        )
+        return list(result.scalars().all())
+
+    async def list_due_cancellation_retries(
+        self,
+        now: datetime,
+        limit: int = 100,
+    ) -> list[Order]:
+        result = await self.session.execute(
+            select(Order)
+            .where(
+                Order.status == OrderStatus.CANCEL_PENDING,
+                (Order.cancel_retry_at.is_(None)) | (Order.cancel_retry_at <= now),
+            )
+            .options(selectinload(Order.items), selectinload(Order.status_history))
+            .order_by(Order.cancel_retry_at.asc().nullsfirst())
             .limit(limit)
         )
         return list(result.scalars().all())
