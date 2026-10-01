@@ -731,6 +731,47 @@ async def test_checkout_compensates_reserve_when_persistence_fails() -> None:
     ]
 
 
+async def test_checkout_compensates_reserve_when_created_order_cannot_reload() -> None:
+    user_id = uuid4()
+    product_id = uuid4()
+    sku_id = uuid4()
+    cart = _cart(
+        user_id=user_id,
+        items=[_cart_item(product_id=product_id, sku_id=sku_id, quantity=2)],
+    )
+    FakeCartRepository.cart = cart
+    FakeB2BClient.products = [
+        {
+            "id": str(product_id),
+            "title": "Phone",
+            "skus": [
+                {"id": str(sku_id), "name": "128 GB", "price": 150, "active_quantity": 5}
+            ],
+        }
+    ]
+    service = OrderService(FakeSession())
+
+    async def missing_reloaded_order(order_id: UUID):
+        return None
+
+    service.order_repo.get_with_items = missing_reloaded_order
+
+    with pytest.raises(RuntimeError, match="could not be reloaded"):
+        await service.checkout(
+            user_id=user_id,
+            cart_id=cart.id,
+            idempotency_key="checkout-reload-failure",
+            order_request=_order_request(),
+        )
+
+    assert FakeB2BClient.unreserve_calls == [
+        {
+            "order_id": FakeB2BClient.reserve_calls[0]["order_id"],
+            "items": [{"sku_id": str(sku_id), "quantity": 2}],
+        }
+    ]
+
+
 async def test_orders_list_returns_own_orders_paginated() -> None:
     user_id = uuid4()
     own_paid = _order_with_total(

@@ -133,7 +133,13 @@ class OrderService:
                 order.items.append(order_item)
 
             await self.order_repo.session.flush()
-            return await self.order_repo.get_with_items(order.id) or order
+            # Response serialization includes status_history.  Return only the
+            # explicitly eager-loaded aggregate; falling back to ``order`` can
+            # trigger an async lazy load while FastAPI serializes the response.
+            loaded_order = await self.order_repo.get_with_items(order.id)
+            if loaded_order is None:
+                raise RuntimeError("Created order could not be reloaded")
+            return loaded_order
         except Exception:
             if not reserve_compensated:
                 try:
