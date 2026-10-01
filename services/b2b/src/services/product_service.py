@@ -67,15 +67,27 @@ class ProductService:
             )
         return self._public_product_detail(product)
 
-    async def get_public_batch(self, product_ids: list[UUID]) -> list[dict[str, object]]:
-        products = await self.repo.list_public_catalog(product_ids)
+    async def get_public_batch(
+        self,
+        product_ids: list[UUID],
+        *,
+        include_unavailable: bool = False,
+    ) -> list[dict[str, object]]:
+        products = (
+            await self.repo.list_cart_products(product_ids)
+            if include_unavailable
+            else await self.repo.list_public_catalog(product_ids)
+        )
         visible_by_id = {
             product.id: product
             for product in products
-            if self._is_publicly_visible(product)
+            if include_unavailable or self._is_publicly_visible(product)
         }
         return [
-            self._public_product_detail(visible_by_id[product_id])
+            self._public_product_detail(
+                visible_by_id[product_id],
+                include_unavailable_skus=include_unavailable,
+            )
             for product_id in product_ids
             if product_id in visible_by_id
         ]
@@ -331,7 +343,12 @@ class ProductService:
             "created_at": getattr(product, "created_at", datetime.now(timezone.utc)),
         }
 
-    def _public_product_detail(self, product: Product) -> dict[str, object]:
+    def _public_product_detail(
+        self,
+        product: Product,
+        *,
+        include_unavailable_skus: bool = False,
+    ) -> dict[str, object]:
         images = ProductResponse._normalize_images(product.images, product.id)
         return {
             "id": str(product.id),
@@ -363,7 +380,7 @@ class ProductService:
             "skus": [
                 self._public_sku_detail(sku)
                 for sku in product.skus
-                if self._active_quantity(sku) > 0
+                if include_unavailable_skus or self._active_quantity(sku) > 0
             ],
         }
 

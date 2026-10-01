@@ -181,7 +181,10 @@ async def get_public_products_batch(
     db: AsyncSession = Depends(get_db),
 ) -> Any:
     svc = ProductService(db)
-    return await svc.get_public_batch(data.product_ids)
+    return await svc.get_public_batch(
+        data.product_ids,
+        include_unavailable=data.include_unavailable,
+    )
 
 
 @router.get(

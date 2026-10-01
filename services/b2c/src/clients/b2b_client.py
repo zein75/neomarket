@@ -134,7 +134,9 @@ class B2BClient:
         try:
             response = await self._client.post(
                 "/api/v1/public/products/batch",
-                json={"product_ids": product_ids},
+                # The service-only batch mode includes blocked and zero-stock
+                # records so CartService can calculate an accurate reason.
+                json={"product_ids": product_ids, "include_unavailable": True},
                 headers={"X-Service-Key": settings.service_key},
             )
             response.raise_for_status()

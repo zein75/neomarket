@@ -97,6 +97,13 @@ class FakeProductRepository:
             return list(self.products)
         return [product for product in self.products if product.id in product_ids]
 
+    async def list_cart_products(self, product_ids):
+        return [
+            product
+            for product in self.products
+            if product.id in product_ids and not product.deleted
+        ]
+
     async def get_with_skus(self, product_id):
         return next((product for product in self.products if product.id == product_id), None)
 
@@ -408,6 +415,40 @@ def test_public_products_batch_route_returns_visible_public_details() -> None:
     assert sku["characteristics"] == [{"name": "color", "value": "Black"}]
     assert "cost_price" not in sku
     assert "reserved_quantity" not in sku
+
+
+def test_cart_batch_includes_blocked_and_zero_stock_records() -> None:
+    blocked = _product(status=ProductStatus.BLOCKED, deleted=False, stock=5, reserved=0)
+    out_of_stock = _product(
+        status=ProductStatus.MODERATED,
+        deleted=False,
+        stock=3,
+        reserved=3,
+    )
+    deleted = _product(status=ProductStatus.MODERATED, deleted=True, stock=5, reserved=0)
+    FakeProductRepository.products = [blocked, out_of_stock, deleted]
+
+    async def fake_db():
+        yield SimpleNamespace()
+
+    app.dependency_overrides[products_router.get_db] = fake_db
+    try:
+        response = TestClient(app).post(
+            "/api/v1/public/products/batch",
+            json={
+                "product_ids": [str(blocked.id), str(out_of_stock.id), str(deleted.id)],
+                "include_unavailable": True,
+            },
+            headers={"X-Service-Key": "dev-service-key-change-in-production"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [item["id"] for item in body] == [str(blocked.id), str(out_of_stock.id)]
+    assert body[0]["status"] == "BLOCKED"
+    assert body[1]["skus"][0]["active_quantity"] == 0
 
 
 @pytest.mark.asyncio

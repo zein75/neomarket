@@ -139,6 +139,22 @@ class ProductRepository(BaseRepository[Product]):
         result = await self.session.execute(query)
         return list(result.scalars().all())
 
+    async def list_cart_products(self, product_ids: list[UUID]) -> list[Product]:
+        """Load requested non-deleted products for B2C cart enrichment.
+
+        Unlike the public catalog, a cart must also see a blocked product or a
+        zero-stock SKU in order to display the correct unavailable reason.
+        """
+        result = await self.session.execute(
+            select(Product)
+            .where(
+                Product.id.in_(product_ids),
+                Product.deleted == False,  # noqa: E712
+            )
+            .options(selectinload(Product.skus))
+        )
+        return list(result.scalars().all())
+
     async def category_exists(self, category_id: UUID) -> bool:
         result = await self.session.execute(
             select(Category.id).where(

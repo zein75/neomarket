@@ -263,6 +263,10 @@ class ProductPublicPaginatedResponse(BaseModel):
 
 class ProductPublicBatchRequest(BaseModel):
     product_ids: list[UUID] = Field(min_length=1)
+    # This endpoint is called with X-Service-Key by B2C when rendering a cart.
+    # The cart has to retain unavailable lines and therefore needs their current
+    # status/stock too.  The default retains the public-catalog behaviour.
+    include_unavailable: bool = False
 
 
 class BlockingReasonResponse(BaseModel):
