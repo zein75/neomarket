@@ -24,6 +24,7 @@ def _decision_event(event: ModerationEventRequest) -> ModerationDecisionEvent:
         idempotency_key=event.idempotency_key,
         product_id=event.product_id,
         status=event.event_type,
+        occurred_at=event.occurred_at,
         hard_block=event.hard_block if event.event_type.value == "BLOCKED" else None,
         blocking_reason=blocking_reason,
         field_reports=event.field_reports if event.event_type.value == "BLOCKED" else None,

@@ -10,16 +10,6 @@ class ModerationEventType(StrEnum):
     BLOCKED = "BLOCKED"
 
 
-class ModerationField(StrEnum):
-    TITLE = "title"
-    DESCRIPTION = "description"
-    PRODUCT_IMAGES = "product_images"
-    CATEGORY = "category"
-    SKU_NAME = "sku_name"
-    SKU_IMAGE = "sku_image"
-    SKU_PRICE = "sku_price"
-
-
 class BlockingReason(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -31,7 +21,9 @@ class BlockingReason(BaseModel):
 class FieldReport(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    field_name: ModerationField
+    # The protocol accepts concrete paths such as "images[0]" as well as
+    # common field names.
+    field_name: str
     sku_id: UUID | None = None
     comment: str
 
@@ -42,6 +34,7 @@ class ModerationDecisionEvent(BaseModel):
     idempotency_key: UUID
     product_id: UUID
     status: ModerationEventType
+    occurred_at: datetime
     hard_block: bool | None = None
     blocking_reason: BlockingReason | None = None
     field_reports: list[FieldReport] | None = None
@@ -75,5 +68,5 @@ class ModerationEventRequest(BaseModel):
     moderator_id: UUID | None = None
     moderator_comment: str | None = None
     blocking_reason_id: UUID | None = None
-    hard_block: bool | None = None
+    hard_block: bool = False
     field_reports: list[FieldReport] = Field(default_factory=list)

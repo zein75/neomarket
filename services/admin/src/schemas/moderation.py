@@ -8,7 +8,15 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 class BlockDecisionRequest(BaseModel):
     blocking_reason_ids: list[UUID] = Field(min_length=1)
     comment: str | None = Field(default=None, max_length=2000)
-    field_reports: list[dict[str, object]] = []
+    field_reports: list["FieldReport"] = Field(default_factory=list)
+
+
+class FieldReport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    field_name: str
+    sku_id: UUID | None = None
+    comment: str
 
 
 class BlockingReasonResponse(BaseModel):

@@ -25,8 +25,13 @@ class B2CClient:
         event = self.build_sku_out_of_stock_event(sku)
         await self._post_event(event)
 
-    async def send_product_blocked(self, product: Any) -> None:
-        event = self.build_product_blocked_event(product)
+    async def send_product_blocked(
+        self,
+        product: Any,
+        *,
+        idempotency_key: str | None = None,
+    ) -> None:
+        event = self.build_product_blocked_event(product, idempotency_key=idempotency_key)
         await self._post_event(event)
 
     async def _post_event(self, event: dict[str, Any]) -> None:
@@ -79,10 +84,16 @@ class B2CClient:
             "sku_ids": [str(sku.id)],
         }
 
-    def build_product_blocked_event(self, product: Any) -> dict[str, Any]:
+    def build_product_blocked_event(
+        self,
+        product: Any,
+        *,
+        idempotency_key: str | None = None,
+    ) -> dict[str, Any]:
         return {
             "event": "PRODUCT_BLOCKED",
-            "idempotency_key": str(uuid5(NAMESPACE_URL, f"product-blocked:{product.id}")),
+            "idempotency_key": idempotency_key
+            or str(uuid5(NAMESPACE_URL, f"product-blocked:{product.id}")),
             "date": datetime.now(timezone.utc).isoformat(),
             "product_id": str(product.id),
             "sku_ids": [str(sku.id) for sku in getattr(product, "skus", [])],

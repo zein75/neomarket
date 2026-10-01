@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from uuid import UUID
-from uuid import NAMESPACE_URL, uuid5
+from uuid import uuid4
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.clients.b2b_client import B2BClient
 from src.models.moderation import ModerationStatus
 from src.repositories.moderation_repo import ModerationRepository
+from src.schemas.moderation import FieldReport
 
 
 class ModerationService:
@@ -49,7 +50,7 @@ class ModerationService:
         *,
         blocking_reason_ids: list[UUID],
         comment: str | None = None,
-        field_reports: list[dict[str, object]] | None = None,
+        field_reports: list[FieldReport] | None = None,
     ):
         card = await self._get_mutable_card(card_id, moderator_id)
         if card.status != ModerationStatus.IN_REVIEW:
@@ -98,7 +99,7 @@ class ModerationService:
         hard_block: bool,
         blocking_reason: object | None,
         comment: str | None,
-        field_reports: list[dict[str, object]],
+        field_reports: list[FieldReport],
     ):
         card.status = (
             ModerationStatus.HARD_BLOCKED if hard_block else ModerationStatus.BLOCKED
@@ -164,9 +165,7 @@ class ModerationService:
     def _moderated_event(self, card: object) -> dict[str, object]:
         product_id = str(card.product_id)
         return {
-            "idempotency_key": str(
-                uuid5(NAMESPACE_URL, f"moderation:approved:{card.id}")
-            ),
+            "idempotency_key": str(uuid4()),
             "event_type": "MODERATED",
             "product_id": product_id,
             "occurred_at": datetime.now(timezone.utc).isoformat(),
@@ -179,14 +178,14 @@ class ModerationService:
         hard_block: bool,
         blocking_reason: object | None,
         comment: str | None,
-        field_reports: list[dict[str, object]],
+        field_reports: list[FieldReport],
     ) -> dict[str, object]:
         product_id = str(card.product_id)
-        key_part = "hard-blocked" if hard_block else "blocked"
+        serialized_reports = [report.model_dump(mode="json") for report in field_reports]
         return {
-            "idempotency_key": str(
-                uuid5(NAMESPACE_URL, f"moderation:{key_part}:{card.id}")
-            ),
+            # Retries reuse the same payload/key; a later decision gets a new
+            # key even when it targets the same product.
+            "idempotency_key": str(uuid4()),
             "event_type": "BLOCKED",
             "product_id": product_id,
             "occurred_at": datetime.now(timezone.utc).isoformat(),
@@ -196,8 +195,8 @@ class ModerationService:
             else None,
             "moderator_comment": comment
             or getattr(blocking_reason, "description", None)
-            or self._first_field_report_comment(field_reports),
-            "field_reports": field_reports,
+            or self._first_field_report_comment(serialized_reports),
+            "field_reports": serialized_reports,
         }
 
     def _blocking_reason_payload(

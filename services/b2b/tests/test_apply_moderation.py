@@ -72,26 +72,22 @@ class FakeProcessedEventRepository:
         self.keys.add(idempotency_key)
 
 
-class FakeB2CClient:
-    blocked_events: list[dict[str, object]] = []
+class FakeOutboxEventRepository:
+    events: list[dict[str, object]] = []
 
-    async def send_product_blocked(self, product) -> None:
-        self.blocked_events.append(
-            {
-                "event_type": "PRODUCT_BLOCKED",
-                "payload": {
-                    "product_id": str(product.id),
-                    "status": product.status,
-                },
-            }
-        )
+    def __init__(self, session: object) -> None:
+        self.session = session
+
+    async def create_b2c_event(self, **event: object) -> object:
+        self.events.append(event)
+        return event
 
 
 @pytest.fixture(autouse=True)
 def patch_dependencies(monkeypatch: pytest.MonkeyPatch):
     FakeProductRepository.product = None
     FakeProcessedEventRepository.keys = set()
-    FakeB2CClient.blocked_events = []
+    FakeOutboxEventRepository.events = []
     monkeypatch.setattr(
         moderation_service_module, "ProductRepository", FakeProductRepository
     )
@@ -101,9 +97,7 @@ def patch_dependencies(monkeypatch: pytest.MonkeyPatch):
         "ProcessedEventRepository",
         FakeProcessedEventRepository,
     )
-    monkeypatch.setattr(
-        moderation_service_module, "B2CClient", FakeB2CClient, raising=False
-    )
+    monkeypatch.setattr(moderation_service_module, "OutboxEventRepository", FakeOutboxEventRepository)
 
 
 def _event(
@@ -135,6 +129,7 @@ def _event(
         idempotency_key=key or str(uuid4()),
         product_id=product_id,
         status=status,
+        occurred_at="2026-09-18T12:00:00Z",
         **kwargs,
     )
 
@@ -168,7 +163,41 @@ async def test_blocked_soft_saves_field_reports() -> None:
     assert product.is_active is False
     assert product.blocking_reason["id"]
     assert product.field_reports[0]["field_name"] == "product_images"
-    assert len(FakeB2CClient.blocked_events) == 1
+    assert len(FakeOutboxEventRepository.events) == 1
+
+
+def test_soft_block_accepts_protocol_field_path_and_default_hard_block() -> None:
+    product = _product()
+    FakeProductRepository.product = product
+
+    async def fake_db():
+        yield FakeSession()
+
+    app.dependency_overrides[moderation_router.get_db] = fake_db
+    try:
+        response = TestClient(app).post(
+            "/api/v1/events/moderation",
+            headers={"X-Service-Key": "dev-service-key-change-in-production"},
+            json={
+                "idempotency_key": str(uuid4()),
+                "event_type": "BLOCKED",
+                "product_id": str(product.id),
+                "occurred_at": "2026-09-18T12:00:00Z",
+                "blocking_reason_id": str(uuid4()),
+                "field_reports": [
+                    {
+                        "field_name": "images[0]",
+                        "comment": "Image is blurry",
+                    }
+                ],
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 204
+    assert product.status == ProductStatus.BLOCKED
+    assert product.field_reports[0]["field_name"] == "images[0]"
 
 
 @pytest.mark.asyncio
@@ -305,7 +334,7 @@ async def test_blocked_hard_sets_terminal_status() -> None:
     )
 
     assert product.status == ProductStatus.HARD_BLOCKED
-    assert len(FakeB2CClient.blocked_events) == 1
+    assert len(FakeOutboxEventRepository.events) == 1
 
 
 @pytest.mark.asyncio
@@ -335,12 +364,24 @@ async def test_duplicate_event_same_idempotency_key_no_side_effects() -> None:
     assert first == {"status": "APPLIED"}
     assert second == {"status": "DUPLICATE"}
     assert product.status == ProductStatus.ON_MODERATION
-    assert FakeB2CClient.blocked_events == [
-        {
-            "event_type": "PRODUCT_BLOCKED",
-            "payload": {"product_id": str(product.id), "status": "BLOCKED"},
-        }
-    ]
+    assert len(FakeOutboxEventRepository.events) == 1
+    assert FakeOutboxEventRepository.events[0]["idempotency_key"] == key
+
+
+@pytest.mark.asyncio
+async def test_new_block_decision_has_a_distinct_b2c_idempotency_key() -> None:
+    product = _product()
+    FakeProductRepository.product = product
+
+    await ModerationEventService(FakeSession()).apply(
+        _event(product.id, status="BLOCKED", key=str(uuid4()))
+    )
+    await ModerationEventService(FakeSession()).apply(
+        _event(product.id, status="BLOCKED", key=str(uuid4()))
+    )
+
+    assert len(FakeOutboxEventRepository.events) == 2
+    assert len({event["idempotency_key"] for event in FakeOutboxEventRepository.events}) == 2
 
 
 @pytest.mark.asyncio
@@ -368,7 +409,7 @@ async def test_parallel_duplicate_event_no_side_effects(
 
     assert response == {"status": "DUPLICATE"}
     assert product.status == ProductStatus.ON_MODERATION
-    assert FakeB2CClient.blocked_events == []
+    assert FakeOutboxEventRepository.events == []
 
 
 def test_missing_service_key_returns_401() -> None:

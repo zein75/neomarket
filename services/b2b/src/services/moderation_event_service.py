@@ -1,10 +1,9 @@
 from fastapi import HTTPException, status
-import httpx
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.clients.b2c import B2CClient
 from src.models.product import ProductStatus
+from src.repositories.outbox_event_repo import OutboxEventRepository
 from src.repositories.processed_event_repo import ProcessedEventRepository
 from src.repositories.product_repo import ProductRepository
 from src.schemas.moderation_event import ModerationDecisionEvent
@@ -14,6 +13,7 @@ class ModerationEventService:
     def __init__(self, session: AsyncSession) -> None:
         self.product_repo = ProductRepository(session)
         self.processed_event_repo = ProcessedEventRepository(session)
+        self.outbox_repo = OutboxEventRepository(session)
 
     async def apply(self, event: ModerationDecisionEvent) -> dict[str, str]:
         idempotency_key = str(event.idempotency_key)
@@ -54,10 +54,20 @@ class ModerationEventService:
             self._apply_moderated(product)
         else:
             self._apply_blocked(product, event)
-            try:
-                await B2CClient().send_product_blocked(product)
-            except httpx.HTTPError:
-                pass
+            await self.outbox_repo.create_b2c_event(
+                idempotency_key=idempotency_key,
+                event_type="PRODUCT_BLOCKED",
+                payload={
+                    "event_type": "PRODUCT_BLOCKED",
+                    "idempotency_key": idempotency_key,
+                    "occurred_at": event.occurred_at.isoformat(),
+                    "payload": {
+                        "product_id": str(product.id),
+                        "sku_ids": [str(sku.id) for sku in product.skus],
+                        "reason": product.status.value,
+                    },
+                },
+            )
 
         await self.product_repo.session.flush()
         return {"status": "APPLIED"}

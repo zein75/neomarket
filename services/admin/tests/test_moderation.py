@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from uuid import UUID, uuid4
 
 import pytest
+from pydantic import ValidationError
 from fastapi.testclient import TestClient
 from fastapi import HTTPException
 
@@ -11,6 +12,7 @@ from src.models.moderation import ModerationStatus
 from src.schemas.moderation import ModerationCardResponse
 from src.services import moderation_service as moderation_service_module
 from src.services.moderation_service import ModerationService
+from src.schemas.moderation import BlockDecisionRequest
 
 
 pytestmark = pytest.mark.anyio
@@ -84,6 +86,22 @@ class FakeB2BClient:
 
     async def send_moderation_decision(self, event: dict[str, object]) -> None:
         self.events.append(event)
+
+
+def test_block_decision_rejects_undeclared_field_report_fields() -> None:
+    with pytest.raises(ValidationError):
+        BlockDecisionRequest.model_validate(
+            {
+                "blocking_reason_ids": [str(uuid4())],
+                "field_reports": [
+                    {
+                        "field_name": "description",
+                        "comment": "Rewrite this text",
+                        "unexpected": "not in the B2B contract",
+                    }
+                ],
+            }
+        )
 
 
 @pytest.fixture(autouse=True)
