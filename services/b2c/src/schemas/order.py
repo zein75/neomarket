@@ -79,6 +79,8 @@ class OrderAddressResponse(BaseModel):
 
 
 class OrderStatusHistoryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     status: OrderStatus
     changed_at: datetime
     reason: str | None = None

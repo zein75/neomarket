@@ -793,6 +793,7 @@ async def test_cancel_paid_order_transitions_to_cancelled() -> None:
     assert response["address"]["street"] == "Mira"
     assert response["address"]["building"] == "19"
     assert response["address"]["created_at"]
+    assert response["status_history"][-1]["status"] == "CANCELLED"
 
 
 async def test_unreserve_failure_transitions_to_cancel_pending() -> None:
@@ -820,6 +821,7 @@ async def test_unreserve_failure_transitions_to_cancel_pending() -> None:
     assert response["address"]["street"] == "Mira"
     assert response["address"]["building"] == "19"
     assert response["address"]["created_at"]
+    assert response["status_history"][-1]["status"] == "CANCEL_PENDING"
 
 
 async def test_cancel_assembling_order_transitions_to_cancelled() -> None:

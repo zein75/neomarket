@@ -239,10 +239,11 @@ class OrderService:
         except Exception:  # noqa: BLE001 - cancellation must remain accepted for async retry
             logger.exception("Failed to unreserve cancelled order %s", order.id)
             order.status = OrderStatus.CANCEL_PENDING
-            self.order_repo.session.add(
+            order.status_history.append(
                 OrderStatusHistory(
                     order_id=order.id,
                     status=OrderStatus.CANCEL_PENDING,
+                    changed_at=datetime.now(timezone.utc),
                     reason=reason,
                 )
             )
@@ -251,10 +252,11 @@ class OrderService:
             return order
 
         order.status = OrderStatus.CANCELLED
-        self.order_repo.session.add(
+        order.status_history.append(
             OrderStatusHistory(
                 order_id=order.id,
                 status=OrderStatus.CANCELLED,
+                changed_at=datetime.now(timezone.utc),
                 reason=reason,
             )
         )
