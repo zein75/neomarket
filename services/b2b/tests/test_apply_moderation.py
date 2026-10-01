@@ -200,6 +200,34 @@ def test_soft_block_accepts_protocol_field_path_and_default_hard_block() -> None
     assert product.field_reports[0]["field_name"] == "images[0]"
 
 
+def test_soft_block_accepts_openapi_optional_blocking_data() -> None:
+    product = _product()
+    FakeProductRepository.product = product
+
+    async def fake_db():
+        yield FakeSession()
+
+    app.dependency_overrides[moderation_router.get_db] = fake_db
+    try:
+        response = TestClient(app).post(
+            "/api/v1/moderation/events",
+            headers={"X-Service-Key": "dev-service-key-change-in-production"},
+            json={
+                "idempotency_key": str(uuid4()),
+                "event_type": "BLOCKED",
+                "product_id": str(product.id),
+                "occurred_at": "2026-09-18T12:00:00Z",
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 204
+    assert product.status == ProductStatus.BLOCKED
+    assert product.blocking_reason is None
+    assert product.field_reports == []
+
+
 @pytest.mark.asyncio
 async def test_blocked_event_saves_blocking_reason_id() -> None:
     product = _product()

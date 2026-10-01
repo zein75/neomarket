@@ -44,8 +44,6 @@ class ModerationDecisionEvent(BaseModel):
         if self.status is ModerationEventType.BLOCKED:
             if self.hard_block is None:
                 raise ValueError("hard_block is required when status is BLOCKED")
-            if self.blocking_reason is None:
-                raise ValueError("blocking_reason is required when status is BLOCKED")
             if self.field_reports is None:
                 raise ValueError("field_reports is required when status is BLOCKED")
         elif any(
