@@ -137,8 +137,8 @@ class CartService:
                 },
             )
 
-    async def get_item(self, item_id: UUID, *, cart_id: UUID) -> CartItem:
-        item = await self._get_item_by_id_or_sku(cart_id, item_id)
+    async def get_item(self, sku_id: UUID, *, cart_id: UUID) -> CartItem:
+        item = await self.repo.get_item_by_sku(cart_id, sku_id)
         if not item:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Cart item not found"
@@ -147,7 +147,7 @@ class CartService:
 
     async def update_item(
         self,
-        item_id: UUID,
+        sku_id: UUID,
         data: CartItemUpdate,
         cart_id: UUID | None = None,
     ) -> CartItem:
@@ -155,7 +155,7 @@ class CartService:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Cart item not found"
             )
-        item = await self._get_item_by_id_or_sku(cart_id, item_id)
+        item = await self.repo.get_item_by_sku(cart_id, sku_id)
         if not item:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Cart item not found"
@@ -181,12 +181,12 @@ class CartService:
             )
         return await self.repo.update_item_quantity(item, data.quantity)
 
-    async def remove_item(self, item_id: UUID, cart_id: UUID | None = None) -> None:
+    async def remove_item(self, sku_id: UUID, cart_id: UUID | None = None) -> None:
         if cart_id is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Cart item not found"
             )
-        item = await self._get_item_by_id_or_sku(cart_id, item_id)
+        item = await self.repo.get_item_by_sku(cart_id, sku_id)
         if not item:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Cart item not found"
@@ -244,6 +244,7 @@ class CartService:
             "items_count": sum(item.quantity for item in cart.items),
             "subtotal": subtotal,
             "is_valid": is_valid,
+            "updated_at": getattr(cart, "updated_at", None),
             "summary": {
                 "total_amount": subtotal,
                 "total_items": len(response_items),
@@ -267,6 +268,19 @@ class CartService:
         cart = await self.get_enriched_cart(cart_id)
         issues = []
         for item in cart["items"]:
+            if (
+                item.get("unit_price_at_add") is not None
+                and item["unit_price_at_add"] != item["unit_price"]
+            ):
+                issues.append(
+                    {
+                        "sku_id": item["sku_id"],
+                        "type": "PRICE_CHANGED",
+                        "message": "Cart item price has changed",
+                        "old_value": item["unit_price_at_add"],
+                        "new_value": item["unit_price"],
+                    }
+                )
             reason = item.get("unavailable_reason")
             if reason:
                 issue_type = {
@@ -300,20 +314,6 @@ class CartService:
     async def _get_sku_data(self, sku_id: UUID) -> dict[str, object]:
         async with B2BClient(settings.b2b_base_url) as client:
             return await client.get_sku(str(sku_id))
-
-    async def _get_item_by_id_or_sku(
-        self,
-        cart_id: UUID,
-        item_id: UUID | None,
-    ) -> CartItem | None:
-        if item_id is None:
-            return None
-        get_item_by_id = getattr(self.repo, "get_item_by_id", None)
-        if get_item_by_id:
-            item = await get_item_by_id(cart_id, item_id)
-            if item:
-                return item
-        return await self.repo.get_item_by_sku(cart_id, item_id)
 
     def _build_sku_index(
         self,

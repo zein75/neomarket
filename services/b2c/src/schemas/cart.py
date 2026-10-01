@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID
 
 from typing import Any, Literal
@@ -17,7 +18,7 @@ class CartItemUpdate(BaseModel):
 class CartItemResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    item_id: UUID
+    item_id: UUID | None = None
     sku_id: UUID
     product_id: UUID
     product_title: str
@@ -47,7 +48,12 @@ class CartItemResponse(BaseModel):
 
 
 class CartResponse(BaseModel):
+    id: UUID
     items: list[CartItemResponse]
+    items_count: int
+    subtotal: int
+    is_valid: bool
+    updated_at: datetime | None = None
     summary: dict[str, Any]
     checkout_payload: dict[str, Any]
 

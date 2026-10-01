@@ -103,12 +103,6 @@ class FakeCartRepository:
             return None
         return next((item for item in cart.items if item.sku_id == sku_id), None)
 
-    async def get_item_by_id(self, cart_id: UUID, item_id: UUID):
-        cart = self.carts_by_id.get(cart_id)
-        if not cart:
-            return None
-        return next((item for item in cart.items if item.id == item_id), None)
-
     async def remove_item(self, item) -> None:
         cart = self.carts_by_id.get(item.cart_id)
         if cart:
@@ -456,7 +450,7 @@ def test_patch_cart_item_addresses_item_by_sku_id() -> None:
     assert response.json()["items"][0]["quantity"] == 4
 
 
-def test_put_cart_item_addresses_item_by_item_id() -> None:
+def test_put_cart_item_addresses_item_by_sku_id() -> None:
     cart = _cart(session_id=GUEST_SESSION_ID)
     product_id = uuid4()
     sku_id = uuid4()
@@ -482,7 +476,7 @@ def test_put_cart_item_addresses_item_by_item_id() -> None:
     app.dependency_overrides[cart_router.get_optional_user] = fake_optional_user
     try:
         response = TestClient(app).put(
-            f"/api/v1/cart/items/{item.id}",
+            f"/api/v1/cart/items/{sku_id}",
             json={"quantity": 4},
             headers={"X-Session-Id": GUEST_SESSION_ID},
         )
@@ -490,11 +484,11 @@ def test_put_cart_item_addresses_item_by_item_id() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 200
-    assert response.json()["items"][0]["id"] == str(item.id)
+    assert response.json()["items"][0]["sku_id"] == str(sku_id)
     assert response.json()["items"][0]["quantity"] == 4
 
 
-def test_get_cart_item_addresses_item_by_item_id() -> None:
+def test_get_cart_item_addresses_item_by_sku_id() -> None:
     cart = _cart(session_id=GUEST_SESSION_ID)
     product_id = uuid4()
     sku_id = uuid4()
@@ -520,14 +514,13 @@ def test_get_cart_item_addresses_item_by_item_id() -> None:
     app.dependency_overrides[cart_router.get_optional_user] = fake_optional_user
     try:
         response = TestClient(app).get(
-            f"/api/v1/cart/items/{item.id}",
+            f"/api/v1/cart/items/{sku_id}",
             headers={"X-Session-Id": GUEST_SESSION_ID},
         )
     finally:
         app.dependency_overrides.clear()
 
     assert response.status_code == 200
-    assert response.json()["id"] == str(item.id)
     assert response.json()["sku_id"] == str(sku_id)
 
 
@@ -556,8 +549,8 @@ def test_delete_cart_item_addresses_item_by_sku_id() -> None:
     finally:
         app.dependency_overrides.clear()
 
-    assert response.status_code == 204
-    assert response.content == b""
+    assert response.status_code == 200
+    assert response.json()["items"] == []
     assert cart.items == []
 
 
@@ -617,6 +610,7 @@ def test_cart_validate_returns_checkout_issues() -> None:
     product_id = uuid4()
     sku_id = uuid4()
     cart.items = [_item(cart_id=cart.id, product_id=product_id, sku_id=sku_id, quantity=2)]
+    cart.items[0].unit_price = 12500
     FakeCartRepository.carts_by_id[cart.id] = cart
     FakeCartRepository.carts_by_session[GUEST_SESSION_ID] = cart
     FakeB2BClient.products = [
