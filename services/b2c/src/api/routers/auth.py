@@ -9,10 +9,11 @@ from src.schemas.user import LoginRequest, TokenResponse, UserCreate, UserRespon
 from src.services.auth_service import AuthService
 from src.services.cart_service import CartService
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(tags=["auth"])
 
 
-@router.post("/register", response_model=UserResponse, status_code=201)
+@router.post("/auth/register", response_model=UserResponse, status_code=201)
+@router.post("/api/v1/auth/register", response_model=UserResponse, status_code=201)
 async def register(
     data: UserCreate,
     db: AsyncSession = Depends(get_db),
@@ -24,7 +25,8 @@ async def register(
     return user
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/auth/login", response_model=TokenResponse)
+@router.post("/api/v1/auth/login", response_model=TokenResponse)
 async def login(
     data: LoginRequest,
     x_session_id: UUID | None = Header(default=None),
@@ -38,6 +40,7 @@ async def login(
     return svc.create_token(user)
 
 
-@router.get("/me", response_model=UserResponse)
+@router.get("/auth/me", response_model=UserResponse)
+@router.get("/api/v1/auth/me", response_model=UserResponse)
 async def me(current_user: User = Depends(get_current_user)) -> User:
     return current_user
