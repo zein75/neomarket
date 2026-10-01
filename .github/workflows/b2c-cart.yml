@@ -1,0 +1,45 @@
+name: B2C cart
+
+on:
+  push:
+    paths:
+      - "services/b2c/**"
+      - "services/b2b/**"
+      - "shared/**"
+      - "docs/canon/flows/b2c-cart-flows.md"
+      - "docs/protocols/b2c/openapi.yaml"
+      - ".github/workflows/b2c-cart.yml"
+  pull_request:
+    paths:
+      - "services/b2c/**"
+      - "services/b2b/**"
+      - "shared/**"
+      - "docs/canon/flows/b2c-cart-flows.md"
+      - "docs/protocols/b2c/openapi.yaml"
+      - ".github/workflows/b2c-cart.yml"
+
+jobs:
+  cart:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: latest
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --dev
+      - name: Run canonical cart scenarios
+        working-directory: services/b2c
+        run: >-
+          uv run pytest -q tests/test_cart.py
+          -k "add_sku_increments_quantity_if_already_in_cart or
+          get_cart_enriched_with_b2b_data or
+          unavailable_sku_shown_with_reason or
+          guest_cart_merged_on_login or
+          login_automatically_merges_guest_cart or
+          cart_validate_reports_price_changed or
+          patch_cart_item_addresses_item_by_sku_id or
+          delete_cart_item_addresses_item_by_sku_id or
+          clear_cart_returns_204_and_removes_all_items"
