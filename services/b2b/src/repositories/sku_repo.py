@@ -31,6 +31,9 @@ class SKURepository(BaseRepository[SKU]):
             select(SKU)
             .where(SKU.id.in_(sku_ids))
             .options(joinedload(SKU.product))
+            # Acquire overlapping SKU locks in one stable order so two carts
+            # containing the same SKUs in a different order cannot deadlock.
+            .order_by(SKU.id)
             .with_for_update()
         )
         return list(result.scalars().all())

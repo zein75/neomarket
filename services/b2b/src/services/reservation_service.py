@@ -1,7 +1,7 @@
 import hashlib
 import json
 from datetime import datetime, timezone
-from uuid import NAMESPACE_URL, UUID, uuid5
+from uuid import UUID, uuid4
 
 from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
@@ -58,12 +58,12 @@ class ReservationService:
             idempotency_key
         )
         if existing:
-            is_expired = getattr(existing, "is_expired", lambda: False)
-            if is_expired():
-                await self.reservation_operation_repo.session.delete(existing)
-                await self.reservation_operation_repo.session.flush()
-            else:
+            if not getattr(existing, "is_expired", lambda: False)():
+                # The first response belongs to the key. Reusing a key after a
+                # later reservation must never recalculate remaining stock.
                 return await self._reservation_result(existing)
+            await self.reservation_operation_repo.session.delete(existing)
+            await self.reservation_operation_repo.session.flush()
 
         sku_ids = [item.sku_id for item in data.items]
         if len(set(sku_ids)) != len(sku_ids):
@@ -92,7 +92,10 @@ class ReservationService:
             idempotency_key
         )
         if existing:
-            return await self._reservation_result(existing)
+            if not getattr(existing, "is_expired", lambda: False)():
+                return await self._reservation_result(existing)
+            await self.reservation_operation_repo.session.delete(existing)
+            await self.reservation_operation_repo.session.flush()
 
         failed_items = []
         for item in data.items:
@@ -150,14 +153,11 @@ class ReservationService:
                 idempotency_key=idempotency_key,
                 items=data.items,
             )
-            operation = await self.reservation_operation_repo.create(
-                idempotency_key=idempotency_key,
-                order_id=data.order_id,
-            )
+            reserved_at = datetime.now(timezone.utc)
             response = {
                 "status": "RESERVED",
                 "order_id": str(data.order_id),
-                "reserved_at": getattr(operation, "created_at", datetime.now(timezone.utc)).isoformat(),
+                "reserved_at": reserved_at.isoformat(),
                 "reserved": True,
                 "items": [
                     {
@@ -168,17 +168,22 @@ class ReservationService:
                     for item in response_items
                 ],
             }
-            operation.response = response
+            # Persist the exact first response in the same transaction as the
+            # inventory mutation. Retries must not derive remaining_stock from
+            # the current SKU state.
+            await self.reservation_operation_repo.create(
+                idempotency_key=idempotency_key,
+                order_id=data.order_id,
+                response=response,
+            )
             outbox_events = []
             for sku in out_of_stock_skus:
                 event = {
                     "event": "SKU_OUT_OF_STOCK",
-                    "idempotency_key": str(
-                        uuid5(
-                            NAMESPACE_URL,
-                            f"sku-out-of-stock:{idempotency_key}:{sku.id}",
-                        )
-                    ),
+                    # The outbox row is the delivery identity. A fresh UUID
+                    # also keeps a legitimate key reuse after the one-hour
+                    # reserve-operation TTL from colliding with an old event.
+                    "idempotency_key": str(uuid4()),
                     "date": datetime.now(timezone.utc).isoformat(),
                     "product_id": str(sku.product_id),
                     "sku_ids": [str(sku.id)],
@@ -209,15 +214,10 @@ class ReservationService:
             if not existing:
                 raise
             return await self._reservation_result(existing)
-        if outbox_events:
-            for event in outbox_events:
-                try:
-                    await B2CClient().send_outbox_event(event.payload)
-                    event.status = "SENT"
-                except Exception:  # noqa: BLE001 - keep the event pending for retry
-                    pass
-        else:
+        if not outbox_events:
             # Test doubles without persistence still exercise the notification path.
+            # With a real DB the outbox worker delivers only after the request
+            # transaction commits, avoiding notifications for rolled-back work.
             for sku in out_of_stock_skus:
                 try:
                     await B2CClient().send_sku_out_of_stock(sku)

@@ -120,11 +120,12 @@ class FakeReservationOperationRepository:
     async def get_by_idempotency_key(self, idempotency_key: str):
         return self.operations_by_key.get(idempotency_key)
 
-    async def create(self, *, idempotency_key: str, order_id):
+    async def create(self, *, idempotency_key: str, order_id, response=None):
         operation = SimpleNamespace(
             idempotency_key=idempotency_key,
             order_id=order_id,
             created_at=datetime.now(timezone.utc),
+            response=response,
         )
         self.operations_by_key[idempotency_key] = operation
         return operation
@@ -293,6 +294,73 @@ async def test_idempotent_reserve_returns_original_remaining_stock_after_new_ope
 
 
 @pytest.mark.asyncio
+async def test_persisted_idempotent_response_survives_a_later_reservation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(reservation_service_module, "SKURepository", SKURepository)
+    monkeypatch.setattr(
+        reservation_service_module, "ReservationRepository", ReservationRepository
+    )
+    monkeypatch.setattr(
+        reservation_service_module,
+        "ReservationOperationRepository",
+        ReservationOperationRepository,
+    )
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    seller_id, product_id, sku_id = uuid4(), uuid4(), uuid4()
+    first_key = str(uuid4())
+
+    with Session(engine) as session:
+        session.add(
+            Seller(
+                id=seller_id,
+                email="seller@example.test",
+                hashed_password="hash",
+                company_name="Seller",
+            )
+        )
+        session.add(
+            Product(
+                id=product_id,
+                seller_id=seller_id,
+                title="Phone",
+                description="Last phone",
+                category="electronics",
+                status=ProductStatus.MODERATED,
+            )
+        )
+        session.add(
+            SKU(
+                id=sku_id,
+                product_id=product_id,
+                name="Phone",
+                price=100,
+                stock=10,
+                reserved_quantity=0,
+                images=[],
+            )
+        )
+        session.commit()
+
+        adapter = SyncSessionAdapter(session)
+        first_request = _reserve_request((sku_id, 3), idempotency_key=first_key)
+        first = await ReservationService(adapter).reserve(first_request)
+        session.commit()
+        session.expire_all()
+
+        await ReservationService(adapter).reserve(_reserve_request((sku_id, 2)))
+        session.commit()
+        session.expire_all()
+
+        repeated = await ReservationService(adapter).reserve(first_request)
+        assert repeated == first
+        assert repeated["items"][0]["remaining_stock"] == 7
+
+    Base.metadata.drop_all(engine)
+
+
+@pytest.mark.asyncio
 async def test_sku_out_of_stock_event_emitted() -> None:
     sku = _sku(stock=3, reserved_quantity=0)
     FakeSKURepository.skus = {sku.id: sku}
@@ -346,6 +414,80 @@ async def test_saved_outbox_event_retries_after_b2c_recovers() -> None:
     assert await service.retry_pending_outbox() == 1
     assert event.status == "SENT"
     assert event.attempts == 2
+
+
+@pytest.mark.asyncio
+async def test_persisted_outbox_event_retries_after_b2c_recovers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(reservation_service_module, "SKURepository", SKURepository)
+    monkeypatch.setattr(
+        reservation_service_module, "ReservationRepository", ReservationRepository
+    )
+    monkeypatch.setattr(
+        reservation_service_module,
+        "ReservationOperationRepository",
+        ReservationOperationRepository,
+    )
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    seller_id, product_id, sku_id = uuid4(), uuid4(), uuid4()
+
+    with Session(engine) as session:
+        session.add(
+            Seller(
+                id=seller_id,
+                email="seller@example.test",
+                hashed_password="hash",
+                company_name="Seller",
+            )
+        )
+        session.add(
+            Product(
+                id=product_id,
+                seller_id=seller_id,
+                title="Phone",
+                description="Last phone",
+                category="electronics",
+                status=ProductStatus.MODERATED,
+            )
+        )
+        session.add(
+            SKU(
+                id=sku_id,
+                product_id=product_id,
+                name="Phone",
+                price=100,
+                stock=1,
+                reserved_quantity=0,
+                images=[],
+            )
+        )
+        session.commit()
+        adapter = SyncSessionAdapter(session)
+
+        await ReservationService(adapter).reserve(_reserve_request((sku_id, 1)))
+        session.commit()
+        assert session.query(OutboxEvent).one().status == "PENDING"
+
+        FakeB2CClient.fail_delivery = True
+        assert await ReservationService(adapter).retry_pending_outbox() == 0
+        session.commit()
+        session.expire_all()
+        event = session.query(OutboxEvent).one()
+        assert event.status == "PENDING"
+        assert event.attempts == 1
+
+        FakeB2CClient.fail_delivery = False
+        assert await ReservationService(adapter).retry_pending_outbox() == 1
+        session.commit()
+        session.expire_all()
+        event = session.query(OutboxEvent).one()
+        assert event.status == "SENT"
+        assert event.attempts == 2
+        assert FakeB2CClient.out_of_stock_events == [event.payload]
+
+    Base.metadata.drop_all(engine)
 
 
 @pytest.mark.asyncio
@@ -576,6 +718,7 @@ async def test_reserve_all_skus_succeeds_on_real_schema(
         }
         assert len(outbox_events) == 1
         assert outbox_events[0].event_type == "SKU_OUT_OF_STOCK"
+        assert outbox_events[0].status == "PENDING"
         assert outbox_events[0].payload["payload"]["sku_id"] == str(sku_b_id)
         assert session.get(ReservationOperation, idempotency_key) is not None
 
