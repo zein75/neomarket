@@ -123,11 +123,12 @@ class FakeReservationOperationRepository:
     async def get_by_idempotency_key(self, idempotency_key: str):
         return self.operations_by_key.get(idempotency_key)
 
-    async def create(self, *, idempotency_key: str, order_id, response=None):
+    async def create(self, *, idempotency_key: str, order_id, request_hash, response=None):
         operation = SimpleNamespace(
             idempotency_key=idempotency_key,
             order_id=order_id,
             created_at=datetime.now(timezone.utc),
+            request_hash=request_hash,
             response=response,
         )
         self.operations_by_key[idempotency_key] = operation
@@ -229,6 +230,27 @@ async def test_partial_insufficient_stock_returns_409_all_rollback() -> None:
 
 
 @pytest.mark.asyncio
+async def test_reserve_same_key_different_payload_returns_conflict_without_mutation() -> None:
+    sku = _sku(stock=10)
+    FakeSKURepository.skus = {sku.id: sku}
+    key = str(uuid4())
+    order_id = uuid4()
+    service = ReservationService(FakeSession())
+
+    await service.reserve(
+        _reserve_request((sku.id, 2), idempotency_key=key, order_id=order_id)
+    )
+    with pytest.raises(Exception) as exc_info:
+        await service.reserve(
+            _reserve_request((sku.id, 3), idempotency_key=key, order_id=order_id)
+        )
+
+    assert exc_info.value.status_code == 409
+    assert exc_info.value.detail["code"] == "IDEMPOTENCY_CONFLICT"
+    assert sku.reserved_quantity == 2
+
+
+@pytest.mark.asyncio
 async def test_unmoderated_product_cannot_be_reserved() -> None:
     sku = _sku(stock=3, reserved_quantity=0)
     sku.product.status = ProductStatus.ON_MODERATION
@@ -273,7 +295,11 @@ async def test_idempotent_reserve_returns_original_order_id() -> None:
         )
     )
     second = await service.reserve(
-        _reserve_request((sku.id, 3), idempotency_key=idempotency_key)
+        _reserve_request(
+            (sku.id, 3),
+            idempotency_key=idempotency_key,
+            order_id=original_order_id,
+        )
     )
 
     assert first == second
@@ -287,9 +313,14 @@ async def test_idempotent_reserve_returns_original_remaining_stock_after_new_ope
     key = str(uuid4())
     service = ReservationService(FakeSession())
 
-    first = await service.reserve(_reserve_request((sku.id, 3), idempotency_key=key))
+    order_id = uuid4()
+    first = await service.reserve(
+        _reserve_request((sku.id, 3), idempotency_key=key, order_id=order_id)
+    )
     await service.reserve(_reserve_request((sku.id, 2)))
-    repeated = await service.reserve(_reserve_request((sku.id, 3), idempotency_key=key))
+    repeated = await service.reserve(
+        _reserve_request((sku.id, 3), idempotency_key=key, order_id=order_id)
+    )
 
     assert repeated == first
     assert repeated["items"][0]["remaining_stock"] == 7
@@ -410,6 +441,47 @@ async def test_postgres_multi_sku_reserve_and_replay(
         assert second == first
         assert session.query(Reservation).filter_by(order_id=order_id).count() == 3
         assert [sku.reserved_quantity for sku in session.query(SKU).order_by(SKU.id)] == [1, 1, 1]
+
+
+@pytest.mark.asyncio
+async def test_postgres_same_key_different_payload_returns_conflict(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database_url = os.getenv("NEOMARKET_POSTGRES_TEST_URL")
+    if not database_url:
+        pytest.skip("set NEOMARKET_POSTGRES_TEST_URL to run PostgreSQL integration tests")
+
+    monkeypatch.setattr(reservation_service_module, "SKURepository", SKURepository)
+    monkeypatch.setattr(reservation_service_module, "ReservationRepository", ReservationRepository)
+    monkeypatch.setattr(
+        reservation_service_module,
+        "ReservationOperationRepository",
+        ReservationOperationRepository,
+    )
+    engine = create_engine(database_url)
+    seller_id, product_id, sku_id, order_id = uuid4(), uuid4(), uuid4(), uuid4()
+    key = str(uuid4())
+
+    with Session(engine) as session:
+        session.query(Reservation).delete()
+        session.query(ReservationOperation).delete()
+        session.query(SKU).delete()
+        session.query(Product).delete()
+        session.query(Seller).delete()
+        session.add(Seller(id=seller_id, email=f"{seller_id}@test", hashed_password="h", company_name="Seller"))
+        session.add(Product(id=product_id, seller_id=seller_id, title="Phone", description="Phone", category="electronics", status=ProductStatus.MODERATED))
+        session.add(SKU(id=sku_id, product_id=product_id, name="SKU", price=100, stock=5, reserved_quantity=0, images=[]))
+        session.commit()
+
+        service = ReservationService(SyncSessionAdapter(session))
+        await service.reserve(_reserve_request((sku_id, 2), idempotency_key=key, order_id=order_id))
+        session.commit()
+        with pytest.raises(Exception) as exc_info:
+            await service.reserve(_reserve_request((sku_id, 3), idempotency_key=key, order_id=order_id))
+
+        assert exc_info.value.status_code == 409
+        assert exc_info.value.detail["code"] == "IDEMPOTENCY_CONFLICT"
+        assert session.get(SKU, sku_id).reserved_quantity == 2
 
 
 @pytest.mark.asyncio

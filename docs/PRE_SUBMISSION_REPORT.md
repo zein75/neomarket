@@ -2,7 +2,7 @@
 
 ## Sources
 
-Project baseline SHA: `33b7c4231d69738e2ed768d092374cf4cc2f9e10`
+Project baseline SHA: `07137f7efc83317d9373107a215c90b3c0e9f501`
 Canon SHA: `2ff93a4cebc119e860385b318ebd8753fda1d801`  
 Protocols SHA: `3b405c6844f26d2d7c4ea32a44ea2f419723e8d0`
 
@@ -18,13 +18,13 @@ The real PostgreSQL migration and behavioural concurrency gates passed on Docker
 ## Task 1 — Reserve / Unreserve
 
 - Canonical inventory routes, typed reserve/unreserve requests, response timestamps and root-level errors are covered.
-- Multi-SKU reserve, replay preserving the original response, parent moderation status, transactional outbox and retry regressions are in the B2B suite.
-- Historical arbiter blockers: `[x]` response timestamps, `[x]` `Error.details.failed_items` envelope, `[x]` multi-SKU idempotency scope, `[x]` persisted outbox, `[x]` retry.
+- Multi-SKU reserve, exact replay preserving the original response, same-key/different-payload rejection, parent moderation status, transactional outbox and retry regressions are in the B2B suite.
+- Historical arbiter blockers: `[x]` response timestamps, `[x]` `Error.details.failed_items` envelope, `[x]` multi-SKU idempotency scope, `[x]` request fingerprint, `[x]` persisted outbox, `[x]` retry.
 
 ## Task 2 — Moderation
 
 - Canonical route is `/api/v1/moderation/events`; the historical route is hidden from the generated schema.
-- Current `event_type` request model and typed field reports are enforced; Admin emits that exact shape.
+- Current `event_type` request model, required `blocking_reason_id` for BLOCKED, and typed field reports are enforced; Admin emits that exact shape.
 - Blocking creates a durable B2C outbox event; hard blocks emit `PRODUCT_HARD_BLOCKED`.
 
 ## Task 3 — Cart
@@ -37,7 +37,7 @@ The real PostgreSQL migration and behavioural concurrency gates passed on Docker
 
 - Checkout validates address ownership and cart, snapshots address/prices, uses canonical B2B reserve, scopes idempotency by buyer and durably compensates a failed local write even when immediate unreserve is unavailable.
 - All Order response relationships are eagerly loaded before serialization.
-- Replays return the original order as protocol status 201 without a second reserve.
+- Replays return the original order as protocol status 200 without a second reserve.
 
 ## Task 5 — Cancel
 
@@ -58,14 +58,14 @@ See [INTERNAL_API_COMPATIBILITY.md](INTERNAL_API_COMPATIBILITY.md) for method/he
 
 | Suite | Result |
 |---|---:|
-| B2B unit/regression | 129 passed |
-| B2C unit/regression | 105 passed |
+| B2B unit/regression | 131 passed, 3 skipped (PostgreSQL targets selected separately) |
+| B2C unit/regression | 106 passed, 2 skipped (PostgreSQL targets selected separately) |
 | Admin unit/regression | 16 passed |
-| PostgreSQL B2B migrations | PASS: head `0016_reservation_response` |
+| PostgreSQL B2B migrations | PASS: head `0017_reserve_request_hash` |
 | PostgreSQL B2C migrations | PASS: head `0019_reserve_compensation` |
-| PostgreSQL B2B behavioural concurrency | PASS: 2 passed |
+| PostgreSQL B2B behavioural concurrency | PASS: 3 passed |
 | PostgreSQL B2C behavioural concurrency | PASS: 2 passed |
-| Current-code HTTP E2E | PASS: cart → checkout → idempotent replay → cancel; B2B reserve 409 envelope |
+| HTTP service E2E at frozen baseline | PASS: cart → checkout → idempotent replay → cancel; B2B reserve 409 envelope. The final source changes are additionally covered by current-source FastAPI, unit/regression, contract-export, and real-PostgreSQL suites above. |
 
 ## OpenAPI contract check
 
@@ -73,7 +73,7 @@ Generated application schemas were checked for the changed canonical paths:
 
 - B2B moderation: POST `/api/v1/moderation/events` -> 204; old route excluded.
 - B2C cart item DELETE: 204 empty response.
-- B2C checkout: 201 `OrderResponse`.
+- B2C checkout: 201 `OrderResponse` for creation; 200 `OrderResponse` for idempotent replay.
 - B2C B2B-event receiver: 202.
 
 ## Remaining risks

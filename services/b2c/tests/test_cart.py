@@ -552,8 +552,8 @@ def test_delete_cart_item_addresses_item_by_sku_id() -> None:
     finally:
         app.dependency_overrides.clear()
 
-    assert response.status_code == 200
-    assert response.json()["items"] == []
+    assert response.status_code == 204
+    assert response.content == b""
     assert cart.items == []
 
 

@@ -26,11 +26,13 @@ class ReservationOperationRepository(BaseRepository[ReservationOperation]):
         *,
         idempotency_key: str,
         order_id: UUID,
+        request_hash: str,
         response: dict | None = None,
     ) -> ReservationOperation:
         operation = ReservationOperation(
             idempotency_key=idempotency_key,
             order_id=order_id,
+            request_hash=request_hash,
             response=response,
         )
         self.session.add(operation)

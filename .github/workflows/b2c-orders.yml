@@ -58,6 +58,7 @@ jobs:
           idempotency_returns_existing_order or
           b2b_unavailable_returns_503 or
           concurrent_idempotency_race_returns_existing_order or
+          duplicate_checkout_unreserve_failure_persists_compensation or
           idempotency_key_does_not_return_another_users_order or
           checkout_compensates_reserve_when_persistence_fails or
           checkout_compensates_reserve_when_created_order_cannot_reload or

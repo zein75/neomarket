@@ -41,6 +41,7 @@ async def list_orders(
     response_model=OrderResponse,
     status_code=201,
     responses={
+        200: {"model": OrderResponse, "description": "Idempotent replay"},
         400: {"description": "Invalid checkout request"},
         401: {"description": "Unauthorized"},
         409: {"description": "Reserve or idempotency conflict"},
@@ -71,9 +72,8 @@ async def create_order(
     await db.commit()
     payload = OrderResponse.model_validate(order).model_dump(mode="json")
     return JSONResponse(
-        # The current public contract exposes one successful response (201).
-        # A replay returns the original order body without creating a second one.
-        status_code=201,
+        # OpenAPI distinguishes a newly-created order from an idempotent replay.
+        status_code=200 if service.last_checkout_replayed else 201,
         content=payload,
     )
 

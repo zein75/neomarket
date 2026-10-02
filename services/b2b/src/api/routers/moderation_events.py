@@ -15,10 +15,17 @@ router = APIRouter(tags=["moderation-events"])
 def _decision_event(event: ModerationEventRequest) -> ModerationDecisionEvent:
     blocking_reason = None
     if event.event_type.value == "BLOCKED" and event.blocking_reason_id:
+        # The wire contract intentionally sends the reason id, not a parallel
+        # reason object. Preserve the actual moderator explanation rather
+        # than manufacturing a misleading catalogue title in B2B.
+        seller_reason = event.moderator_comment or next(
+            (report.comment for report in event.field_reports if report.comment),
+            str(event.blocking_reason_id),
+        )
         blocking_reason = BlockingReason(
             id=event.blocking_reason_id,
-            title="Moderation block",
-            comment=event.moderator_comment or "",
+            title=seller_reason,
+            comment=event.moderator_comment or seller_reason,
         )
     return ModerationDecisionEvent(
         idempotency_key=event.idempotency_key,

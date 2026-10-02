@@ -58,6 +58,7 @@ jobs:
           -k "reserve_all_skus_succeeds or
           idempotent_reserve_returns_200_without_double_deduction or
           idempotent_reserve_returns_original_remaining_stock_after_new_operation or
+          reserve_same_key_different_payload_returns_conflict_without_mutation or
           partial_insufficient_stock_returns_409_all_rollback or
           sku_out_of_stock_event_emitted or
           persisted_outbox_event_retries_after_b2c_recovers or
@@ -68,7 +69,7 @@ jobs:
           NEOMARKET_POSTGRES_TEST_URL: postgresql://postgres:postgres@127.0.0.1:5432/b2b
         run: >-
           uv run pytest -q tests/test_inventory_reservations.py
-          -k "postgres_multi_sku_reserve_and_replay or postgres_concurrent_same_key_reserves_once"
+          -k "postgres_multi_sku_reserve_and_replay or postgres_same_key_different_payload_returns_conflict or postgres_concurrent_same_key_reserves_once"
       - name: Run moderation decision scenarios
         working-directory: services/b2b
         run: uv run pytest -q tests/test_apply_moderation.py

@@ -106,10 +106,19 @@ class OrderService:
                 try:
                     await self._unreserve_items(order_id, items)
                     reserve_compensated = True
-                except Exception:  # noqa: BLE001 - keep the winning response stable
+                except Exception as unreserve_error:  # noqa: BLE001 - preserve the winning response and durable recovery
                     logger.exception(
                         "Failed to compensate duplicate checkout reserve %s", order_id
                     )
+                    await self._queue_reservation_compensation(
+                        order_id=order_id,
+                        items=items,
+                        error=(
+                            "duplicate checkout reserve; unreserve: "
+                            f"{type(unreserve_error).__name__}: {unreserve_error}"
+                        ),
+                    )
+                    await self.order_repo.session.commit()
                 if existing.user_id != user_id:
                     raise HTTPException(
                         status_code=status.HTTP_404_NOT_FOUND,

@@ -54,14 +54,13 @@ class ReservationService:
 
     async def reserve(self, data: ReserveRequest) -> dict[str, object]:
         idempotency_key = str(data.idempotency_key)
+        request_hash = self._reserve_request_hash(data)
         existing = await self.reservation_operation_repo.get_by_idempotency_key(
             idempotency_key
         )
         if existing:
             if not getattr(existing, "is_expired", lambda: False)():
-                # The first response belongs to the key. Reusing a key after a
-                # later reservation must never recalculate remaining stock.
-                return await self._reservation_result(existing)
+                return await self._existing_reservation_result(existing, request_hash)
             await self.reservation_operation_repo.session.delete(existing)
             await self.reservation_operation_repo.session.flush()
 
@@ -93,7 +92,7 @@ class ReservationService:
         )
         if existing:
             if not getattr(existing, "is_expired", lambda: False)():
-                return await self._reservation_result(existing)
+                return await self._existing_reservation_result(existing, request_hash)
             await self.reservation_operation_repo.session.delete(existing)
             await self.reservation_operation_repo.session.flush()
 
@@ -176,6 +175,7 @@ class ReservationService:
             await self.reservation_operation_repo.create(
                 idempotency_key=idempotency_key,
                 order_id=data.order_id,
+                request_hash=request_hash,
                 response=response,
             )
             outbox_events = []
@@ -215,7 +215,7 @@ class ReservationService:
             )
             if not existing:
                 raise
-            return await self._reservation_result(existing)
+            return await self._existing_reservation_result(existing, request_hash)
         if not outbox_events:
             # Test doubles without persistence still exercise the notification path.
             # With a real DB the outbox worker delivers only after the request
@@ -226,6 +226,37 @@ class ReservationService:
                 except Exception:  # noqa: BLE001 - keep the event pending for retry
                     pass
         return self._decode_reservation_response(response)
+
+    async def _existing_reservation_result(
+        self, operation: object, request_hash: str
+    ) -> dict[str, object]:
+        """Return a replay only for the exact request that created the key."""
+        if getattr(operation, "request_hash", None) != request_hash:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "IDEMPOTENCY_CONFLICT",
+                    "message": "idempotency_key used with different payload",
+                },
+            )
+        # The first response belongs to the key. Reusing a key after a later
+        # reservation must never recalculate remaining stock.
+        return await self._reservation_result(operation)
+
+    @staticmethod
+    def _reserve_request_hash(data: ReserveRequest) -> str:
+        payload = {
+            "order_id": str(data.order_id),
+            # Request-item ordering has no inventory meaning, so canonicalise
+            # it before hashing to preserve legitimate retries.
+            "items": sorted(
+                ({"sku_id": str(item.sku_id), "quantity": item.quantity} for item in data.items),
+                key=lambda item: item["sku_id"],
+            ),
+        }
+        return hashlib.sha256(
+            json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
 
     async def _reservation_result(self, operation: object) -> dict[str, object]:
         stored_response = getattr(operation, "response", None)

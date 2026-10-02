@@ -571,6 +571,39 @@ async def test_concurrent_idempotency_race_returns_existing_order() -> None:
     ]
 
 
+async def test_duplicate_checkout_unreserve_failure_persists_compensation() -> None:
+    user_id, product_id, sku_id = uuid4(), uuid4(), uuid4()
+    request = _order_request()
+    FakeCartRepository.cart = _cart(
+        user_id=user_id,
+        items=[_cart_item(product_id=product_id, sku_id=sku_id)],
+    )
+    FakeB2BClient.products = [{
+        "id": str(product_id),
+        "title": "Phone",
+        "skus": [{"id": str(sku_id), "name": "128 GB", "price": 150, "active_quantity": 5}],
+    }]
+    existing = _order(user_id=user_id, status=OrderStatus.PAID)
+    existing.idempotency_key = "checkout-race-compensation"
+    existing.request_fingerprint = OrderService(FakeSession())._request_fingerprint(request)
+    FakeOrderRepository.race_order = existing
+    FakeOrderRepository.raise_integrity_error = True
+    FakeB2BClient.unreserve_error = HTTPException(status_code=503, detail="down")
+    session = FakeSession()
+
+    order = await OrderService(session).checkout(
+        user_id=user_id,
+        cart_id=FakeCartRepository.cart.id,
+        idempotency_key="checkout-race-compensation",
+        order_request=request,
+    )
+
+    leaked_reserve_id = UUID(FakeB2BClient.reserve_calls[0]["order_id"])
+    assert order is existing
+    assert leaked_reserve_id in FakeOrderRepository.pending_reservation_compensations
+    assert session.committed is True
+
+
 async def test_idempotency_with_different_body_returns_409() -> None:
     user_id = uuid4()
     service = OrderService(FakeSession())

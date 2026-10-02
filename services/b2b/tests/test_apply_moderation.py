@@ -151,6 +151,17 @@ async def test_moderated_event_clears_blocking_data() -> None:
 
 
 @pytest.mark.asyncio
+async def test_unknown_product_returns_declared_bad_request() -> None:
+    with pytest.raises(Exception) as exc_info:
+        await ModerationEventService(FakeSession()).apply(
+            _event(uuid4(), status="MODERATED")
+        )
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail["code"] == "PRODUCT_NOT_FOUND"
+
+
+@pytest.mark.asyncio
 async def test_blocked_soft_saves_field_reports() -> None:
     product = _product()
     FakeProductRepository.product = product
@@ -200,7 +211,7 @@ def test_soft_block_accepts_protocol_field_path_and_default_hard_block() -> None
     assert product.field_reports[0]["field_name"] == "images[0]"
 
 
-def test_soft_block_accepts_openapi_optional_blocking_data() -> None:
+def test_blocked_without_reason_is_rejected_by_contract_validator() -> None:
     product = _product()
     FakeProductRepository.product = product
 
@@ -222,10 +233,9 @@ def test_soft_block_accepts_openapi_optional_blocking_data() -> None:
     finally:
         app.dependency_overrides.clear()
 
-    assert response.status_code == 204
-    assert product.status == ProductStatus.BLOCKED
-    assert product.blocking_reason is None
-    assert product.field_reports == []
+    assert response.status_code == 400
+    assert response.json()["code"] == "VALIDATION_ERROR"
+    assert product.status == ProductStatus.ON_MODERATION
 
 
 @pytest.mark.asyncio
@@ -290,7 +300,7 @@ def test_blocked_event_then_seller_view_returns_blocking_reason() -> None:
     assert body["status"] == "BLOCKED"
     assert body["blocking_reason"] == {
         "id": str(reason_id),
-        "title": "Moderation block",
+        "title": "Image is blurry",
         "comment": "Image is blurry",
     }
     assert body["field_reports"] == [
@@ -346,7 +356,7 @@ def test_blocked_event_saves_full_top_level_blocking_reason_for_seller_view() ->
     body = product_response.json()
     assert body["blocking_reason"] == {
         "id": str(reason_id),
-        "title": "Moderation block",
+        "title": "Photos and description contradict each other",
         "comment": "Photos and description contradict each other",
     }
     assert body["moderator_comment"] == "Photos and description contradict each other"

@@ -15,6 +15,10 @@ class ReservationOperation(Base, TimestampMixin):
 
     idempotency_key: Mapped[str] = mapped_column(String(128), primary_key=True)
     order_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    # A key identifies one semantic request, not merely an order.  Keeping the
+    # digest with the persisted response makes a conflicting retry safe even
+    # after inventory has changed.
+    request_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     response: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
 
     def is_expired(self, ttl_seconds: int = 3600) -> bool:

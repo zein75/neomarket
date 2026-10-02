@@ -68,3 +68,13 @@ class ModerationEventRequest(BaseModel):
     blocking_reason_id: UUID | None = None
     hard_block: bool = False
     field_reports: list[FieldReport] = Field(default_factory=list)
+
+
+    @model_validator(mode="after")
+    def validate_blocked_reason(self) -> "ModerationEventRequest":
+        if (
+            self.event_type is ModerationEventType.BLOCKED
+            and self.blocking_reason_id is None
+        ):
+            raise ValueError("blocking_reason_id is required when event_type is BLOCKED")
+        return self
