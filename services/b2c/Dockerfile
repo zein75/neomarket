@@ -6,6 +6,9 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 WORKDIR /app
 
+# Docker Desktop's NAT can stall uv's default 50 parallel downloads.
+ENV UV_CONCURRENT_DOWNLOADS=4
+
 # Copy workspace-level files needed for dependency resolution
 COPY pyproject.toml uv.lock ./
 
@@ -14,7 +17,7 @@ COPY shared/ ./shared/
 COPY services/b2c/ ./services/b2c/
 
 # Install b2c and all its dependencies (skip dev deps)
-RUN uv sync --frozen --no-dev --package b2c
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev --package b2c
 
 WORKDIR /app/services/b2c
 

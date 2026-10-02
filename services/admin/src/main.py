@@ -8,6 +8,11 @@ from src.api.routers import moderation
 app = FastAPI(title="NeoMarket Moderation API", version="0.1.0")
 
 
+@app.get("/health", tags=["health"])
+async def health() -> dict[str, str]:
+    return {"status": "ok"}
+
+
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
     if isinstance(exc.detail, dict):
