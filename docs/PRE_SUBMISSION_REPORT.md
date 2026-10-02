@@ -2,7 +2,7 @@
 
 ## Sources
 
-Project verified SHA: `a3fe60b9dc686bfdb75919dbe730cfbca5339b41`
+Project verified SHA: `b26cee243031266c4e7ad300afe6a5d785518214`
 Canon SHA: `2ff93a4cebc119e860385b318ebd8753fda1d801`  
 Protocols SHA: `3b405c6844f26d2d7c4ea32a44ea2f419723e8d0`
 
@@ -24,7 +24,7 @@ The real PostgreSQL migration and behavioural concurrency gates passed on Docker
 ## Task 2 — Moderation
 
 - Canonical route is `/api/v1/moderation/events`; the historical route is hidden from the generated schema.
-- Current `event_type` request model, required `blocking_reason_id` for BLOCKED, and typed field reports are enforced; Admin emits that exact shape.
+- Current `event_type` request model, required `blocking_reason_id` for BLOCKED, and typed field reports are enforced; Admin emits that shape plus optional reason metadata, preserving the real seller-facing title without changing required OpenAPI fields.
 - Blocking creates a durable B2C outbox event; both soft `BLOCKED` and internal terminal `HARD_BLOCKED` emit canonical `PRODUCT_BLOCKED`.
 
 ## Task 3 — Cart

@@ -1,6 +1,6 @@
 # Arbiter regression matrix
 
-Checked against project commit `a3fe60b9dc686bfdb75919dbe730cfbca5339b41` and authoritative canon/protocols SHAs recorded in the pre-submission report.
+Checked against project commit `b26cee243031266c4e7ad300afe6a5d785518214` and authoritative canon/protocols SHAs recorded in the pre-submission report.
 
 | Task | Historical arbiter issue | Code fix | Regression test | Test type | Result |
 |---|---|---|---|---|---|
