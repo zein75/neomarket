@@ -1,6 +1,6 @@
 """remove persisted cart availability reason
 
-Revision ID: 0014_remove_cart_unavailable_reason
+Revision ID: 0014_cart_unavailable
 Revises: 0013_order_status_history
 """
 
@@ -10,7 +10,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision: str = "0014_remove_cart_unavailable_reason"
+revision: str = "0014_cart_unavailable"
 down_revision: Union[str, None] = "0013_order_status_history"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None

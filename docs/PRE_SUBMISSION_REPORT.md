@@ -2,7 +2,7 @@
 
 ## Sources
 
-Project baseline SHA: `7ce62cb9cbe7e0d130bbf39df3d42578a7927dfc`  
+Project baseline SHA: `7d08cc7`  
 Canon SHA: `2ff93a4cebc119e860385b318ebd8753fda1d801`  
 Protocols SHA: `3b405c6844f26d2d7c4ea32a44ea2f419723e8d0`
 
@@ -13,7 +13,7 @@ High: 0
 Medium: 0  
 Low: 0
 
-The only unverified gate is the required real-PostgreSQL concurrency run: Docker Desktop was unavailable in this audit environment. This is an environment limitation, not a suppressed test result.
+The real PostgreSQL migration gate passed. The repository currently has no behavioural PostgreSQL concurrency test target: its pytest suites use in-memory repositories for these flows. This is an explicit test-coverage limitation, not a suppressed test result.
 
 ## Task 1 — Reserve / Unreserve
 
@@ -61,7 +61,9 @@ See [INTERNAL_API_COMPATIBILITY.md](INTERNAL_API_COMPATIBILITY.md) for method/he
 | B2B unit/regression | 129 passed |
 | B2C unit/regression | 103 passed |
 | Admin unit/regression | 16 passed |
-| PostgreSQL concurrency | not run — Docker Desktop engine unavailable |
+| PostgreSQL B2B migrations | PASS: head `0016_reservation_response` |
+| PostgreSQL B2C migrations | PASS: head `0017_cancel_retry` |
+| PostgreSQL behavioural concurrency | no repository test target exists |
 
 ## OpenAPI contract check
 
@@ -74,7 +76,7 @@ Generated application schemas were checked for the changed canonical paths:
 
 ## Remaining risks
 
-No code-level critical or high finding remains. Before submission, run the PostgreSQL gate below after Docker Desktop is started; do not claim that its concurrency semantics were executed until then.
+No code-level critical or high finding remains. PostgreSQL migrations were executed against a clean Docker PostgreSQL 16 instance. The repository still needs dedicated behavioural concurrency tests before that part can be claimed as executed.
 
 ## Reproduction
 

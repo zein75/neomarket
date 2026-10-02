@@ -1,7 +1,7 @@
 """persist unavailable cart state received from B2B events
 
 Revision ID: 0015_cart_event_availability
-Revises: 0014_remove_cart_unavailable_reason
+Revises: 0014_cart_unavailable
 """
 
 from typing import Sequence, Union
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 
 revision: str = "0015_cart_event_availability"
-down_revision: Union[str, None] = "0014_remove_cart_unavailable_reason"
+down_revision: Union[str, None] = "0014_cart_unavailable"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

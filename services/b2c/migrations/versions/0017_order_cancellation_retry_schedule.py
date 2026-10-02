@@ -1,7 +1,7 @@
 """store durable cancellation retry scheduling data
 
-Revision ID: 0017_order_cancellation_retry_schedule
-Revises: 0016_cart_identity_constraints_and_dynamic_availability
+Revision ID: 0017_cancel_retry
+Revises: 0016_cart_identity
 """
 
 from typing import Sequence, Union
@@ -10,8 +10,8 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision: str = "0017_order_cancellation_retry_schedule"
-down_revision: Union[str, None] = "0016_cart_identity_constraints_and_dynamic_availability"
+revision: str = "0017_cancel_retry"
+down_revision: Union[str, None] = "0016_cart_identity"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

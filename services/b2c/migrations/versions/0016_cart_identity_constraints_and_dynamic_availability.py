@@ -1,6 +1,6 @@
 """make cart ownership unique and remove stale availability state
 
-Revision ID: 0016_cart_identity_constraints_and_dynamic_availability
+Revision ID: 0016_cart_identity
 Revises: 0015_cart_event_availability
 """
 
@@ -10,7 +10,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision: str = "0016_cart_identity_constraints_and_dynamic_availability"
+revision: str = "0016_cart_identity"
 down_revision: Union[str, None] = "0015_cart_event_availability"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
