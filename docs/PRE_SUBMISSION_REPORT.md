@@ -2,7 +2,7 @@
 
 ## Sources
 
-Project baseline SHA: `07137f7efc83317d9373107a215c90b3c0e9f501`
+Project verified SHA: `a3fe60b9dc686bfdb75919dbe730cfbca5339b41`
 Canon SHA: `2ff93a4cebc119e860385b318ebd8753fda1d801`  
 Protocols SHA: `3b405c6844f26d2d7c4ea32a44ea2f419723e8d0`
 
