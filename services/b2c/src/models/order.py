@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, Enum, ForeignKey, Integer, String
+from sqlalchemy import JSON, DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 
@@ -47,9 +47,9 @@ class Order(Base, TimestampMixin):
     )
     request_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True)
     cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    cancelled_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     cancel_retry_attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    cancel_retry_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    cancel_retry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     user: Mapped["User"] = relationship("User", back_populates="orders")
     items: Mapped[list["OrderItem"]] = relationship(
@@ -92,7 +92,7 @@ class OrderStatusHistory(Base):
         UUID(as_uuid=True), ForeignKey("orders.id", ondelete="CASCADE"), nullable=False
     )
     status: Mapped[OrderStatus] = mapped_column(Enum(OrderStatus), nullable=False)
-    changed_at: Mapped[datetime] = mapped_column(
+    changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc), nullable=False
     )
     reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
