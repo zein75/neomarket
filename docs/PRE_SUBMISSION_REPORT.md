@@ -2,7 +2,7 @@
 
 ## Sources
 
-Project verified SHA: `e3238cb36991a606184fc3961668cc87576f1f02`
+Application code verified SHA: `bc941b6` (`fix: make checkout and cancellation recovery durable`)
 Canon SHA: `2ff93a4cebc119e860385b318ebd8753fda1d801`  
 Protocols SHA: `3b405c6844f26d2d7c4ea32a44ea2f419723e8d0`
 
@@ -13,7 +13,7 @@ High: 0
 Medium: 0  
 Low: 0
 
-The real PostgreSQL migration and behavioural concurrency gates passed on Docker PostgreSQL 16. Checkout has a durable unreserve-compensation queue for the failure window after B2B reserve and before local order persistence.
+The real PostgreSQL migration and behavioural concurrency gates passed on Docker PostgreSQL 16. Checkout now persists a pre-reserve intent and commits the Order inside the saga; cancellation commits `CANCEL_PENDING` before unreserve. Both recovery paths are safe across a final DB-commit failure.
 
 ## Task 1 — Reserve / Unreserve
 
@@ -35,14 +35,14 @@ The real PostgreSQL migration and behavioural concurrency gates passed on Docker
 
 ## Task 4 — Checkout
 
-- Checkout validates address ownership and cart, snapshots address/prices, uses canonical B2B reserve, scopes idempotency by buyer and durably compensates a failed local write even when immediate unreserve is unavailable.
+- Checkout validates address ownership and cart, snapshots address/prices, uses canonical B2B reserve, scopes idempotency by buyer and commits a durable intent before reserve. A committed order deletes the intent; recovery checks for that order before any unreserve, while an orphaned reservation is compensated durably.
 - All Order response relationships are eagerly loaded before serialization.
 - Replays return the original order as protocol status 200 without a second reserve.
 
 ## Task 5 — Cancel
 
 - CREATED, PAID, ASSEMBLING and DELIVERING are cancellable; terminal statuses return contract error.
-- Ownership uses 404, cancellation locks the row, sends typed unreserve payload, persists CANCEL_PENDING and retries durably.
+- Ownership uses 404, cancellation locks the row, sends typed unreserve payload, commits CANCEL_PENDING before B2B unreserve and retries durably if either unreserve or the final CANCELLED commit fails.
 - Response relationships are loaded before serialization.
 
 ## Internal integration matrix
@@ -58,11 +58,11 @@ See [INTERNAL_API_COMPATIBILITY.md](INTERNAL_API_COMPATIBILITY.md) for method/he
 
 | Suite | Result |
 |---|---:|
-| B2B unit/regression | 136 passed with PostgreSQL URL (no skips) |
-| B2C unit/regression | 109 passed with PostgreSQL URL (no skips) |
+| B2B unit/regression | 134 passed; 3 PostgreSQL-gated cases run separately inside Docker |
+| B2C unit/regression | 112 passed; 2 PostgreSQL-gated cases run separately inside Docker |
 | Admin unit/regression | 16 passed |
 | PostgreSQL B2B migrations | PASS: head `0017_reserve_request_hash` |
-| PostgreSQL B2C migrations | PASS: head `0019_reserve_compensation` |
+| PostgreSQL B2C migrations | PASS: head `0020_checkout_reserve_intent` |
 | PostgreSQL B2B behavioural concurrency | PASS: 3 passed |
 | PostgreSQL B2C behavioural concurrency | PASS: 2 passed |
 | Docker runtime E2E | PASS: healthy Admin/B2B/B2C/PostgreSQL/Redis stack; cart → checkout → replay → cancel → clear; soft/hard moderation cascades; seller hard-block 403; durable outbox and CANCEL_PENDING recovery after dependent-service restart. |
@@ -78,7 +78,7 @@ Generated application schemas were checked for the changed canonical paths:
 
 ## Remaining risks
 
-No code-level critical or high finding remains. PostgreSQL migrations and dedicated behavioural concurrency tests were executed against Docker PostgreSQL 16; CI provisions PostgreSQL and runs those targets without skip.
+No code-level critical or high finding remains. PostgreSQL migrations and dedicated behavioural concurrency tests were executed inside Docker PostgreSQL 16 without skips. The older Windows-host test command may be slow because Docker Desktop connection setup exceeds the host watchdog; the container command below is the authoritative reproducible gate.
 
 ## Reproduction
 
@@ -87,4 +87,6 @@ cd services/b2b; uv run pytest tests/ -q
 cd ../b2c; uv run pytest tests/ -q
 cd ../admin; uv run pytest tests/ -q
 cd ../..; docker compose up -d postgres
+docker compose exec -T -e NEOMARKET_POSTGRES_TEST_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/b2b b2c sh -lc "cd /app/services/b2c && uv run --group dev pytest tests/test_postgres_order_concurrency.py -q -rs"
+docker compose exec -T -e NEOMARKET_POSTGRES_TEST_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/b2b b2b sh -lc "cd /app/services/b2b && uv run --group dev pytest tests/test_inventory_reservations.py -k 'postgres_' -q -rs"
 ```

@@ -4,7 +4,7 @@ Sources frozen for this audit:
 
 - Canon: `2ff93a4cebc119e860385b318ebd8753fda1d801`
 - Protocols: `3b405c6844f26d2d7c4ea32a44ea2f419723e8d0` (`master`)
-- Project verified commit: `e3238cb36991a606184fc3961668cc87576f1f02`
+- Application code verified commit: `bc941b6` (the durable-checkout remediation)
 
 | Task | Endpoint | Method | Auth/Header | Request | Success | Errors | OpenAPI | Canon |
 |---|---|---|---|---|---|---|---|---|
@@ -16,8 +16,8 @@ Sources frozen for this audit:
 | Cart items | `/api/v1/cart/items`, `/api/v1/cart/items/{sku_id}` | POST/PATCH/DELETE | JWT or `X-Session-Id` | add/update models; path is SKU UUID | POST/PATCH 200 `CartResponse`; DELETE 204 empty | root `Error` | b2c | b2c-8-cart |
 | Clear cart | `/api/v1/cart` | DELETE | JWT or `X-Session-Id` | — | 204 empty | root `Error` | b2c | b2c-8-cart |
 | Validate/merge | `/api/v1/cart/validate`, `/api/v1/cart/merge` | POST | JWT or session; merge needs session | — | 200 validation/cart | root `Error` | b2c | b2c-8-cart |
-| Checkout | `/api/v1/orders` | POST | JWT + `Idempotency-Key` | `OrderCreateRequest` | 201 created / 200 exact idempotent replay `OrderResponse` | 400/401/409/422/503 root schema | b2c | b2c-9-checkout |
-| Cancel | `/api/v1/orders/{order_id}/cancel` | POST | JWT | optional cancellation reason | 200 `OrderResponse` | 401/404/409 root `Error` | b2c | b2c-11-cancel-order |
+| Checkout | `/api/v1/orders` | POST | JWT + `Idempotency-Key` | `OrderCreateRequest` | 201 created / 200 exact idempotent replay `OrderResponse` | 400/401/409/422/503 root schema | b2c | b2c-9-checkout: durable pre-reserve intent; committed order is saga confirmation |
+| Cancel | `/api/v1/orders/{order_id}/cancel` | POST | JWT | optional cancellation reason | 200 `OrderResponse` | 401/404/409 root `Error` | b2c | b2c-11-cancel-order: commit `CANCEL_PENDING` before unreserve; retry after final-commit failure |
 
 ## Resolved source conflicts
 
