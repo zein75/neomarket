@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, Response, status
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_db, verify_service_key
+from src.clients.moderation import ModerationClient
 from src.schemas.moderation_event import (
     BlockingReason,
     ModerationDecisionEvent,
@@ -12,22 +14,32 @@ from src.services.moderation_event_service import ModerationEventService
 router = APIRouter(tags=["moderation-events"])
 
 
-def _decision_event(event: ModerationEventRequest) -> ModerationDecisionEvent:
+async def _decision_event(event: ModerationEventRequest) -> ModerationDecisionEvent:
     blocking_reason = None
     if event.event_type.value == "BLOCKED" and event.blocking_reason_id:
-        reason_metadata = (event.model_extra or {}).get("blocking_reason")
-        if isinstance(reason_metadata, dict):
-            blocking_reason = BlockingReason.model_validate(reason_metadata)
-        else:
-            seller_reason = event.moderator_comment or next(
-                (report.comment for report in event.field_reports if report.comment),
-                "Reason details unavailable",
+        try:
+            reason_metadata = await ModerationClient().get_blocking_reason(
+                str(event.blocking_reason_id)
             )
-            blocking_reason = BlockingReason(
-                id=event.blocking_reason_id,
-                title=seller_reason,
-                comment=event.moderator_comment or seller_reason,
+        except httpx.HTTPError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "code": "MODERATION_UNAVAILABLE",
+                    "message": "Blocking reason service is unavailable",
+                },
+            ) from exc
+        if not reason_metadata or not reason_metadata.get("title"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "code": "BLOCKING_REASON_NOT_FOUND",
+                    "message": "Blocking reason not found",
+                },
             )
+        if event.moderator_comment:
+            reason_metadata["comment"] = event.moderator_comment
+        blocking_reason = BlockingReason.model_validate(reason_metadata)
     return ModerationDecisionEvent(
         idempotency_key=event.idempotency_key,
         product_id=event.product_id,
@@ -50,6 +62,6 @@ async def apply_moderation_event(
     _: None = Depends(verify_service_key),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    await ModerationEventService(db).apply(_decision_event(event))
+    await ModerationEventService(db).apply(await _decision_event(event))
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -46,6 +46,23 @@ class ModerationClient:
                 return
             response.raise_for_status()
 
+    async def get_blocking_reason(self, reason_id: str) -> dict[str, str] | None:
+        """Resolve the seller-visible reason from moderation's source of truth."""
+        async with httpx.AsyncClient(timeout=settings.moderation_timeout_seconds) as client:
+            response = await client.get(
+                f"{self.base_url}/api/v1/blocking-reasons",
+                headers={"X-Service-Key": self.service_key},
+            )
+            response.raise_for_status()
+        for reason in response.json():
+            if str(reason.get("id")) == reason_id:
+                return {
+                    "id": reason_id,
+                    "title": str(reason.get("title") or ""),
+                    "comment": str(reason.get("description") or ""),
+                }
+        return None
+
     def build_product_created_event(self, product: Any) -> dict[str, Any]:
         return {
             "event_type": "PRODUCT_CREATED",

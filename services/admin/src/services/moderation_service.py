@@ -196,35 +196,7 @@ class ModerationService:
             "moderator_comment": comment
             or getattr(blocking_reason, "description", None)
             or self._first_field_report_comment(serialized_reports),
-            "blocking_reason": self._blocking_reason_payload(
-                blocking_reason,
-                comment=comment,
-                field_reports=serialized_reports,
-            ),
             "field_reports": serialized_reports,
-        }
-
-    def _blocking_reason_payload(
-        self,
-        blocking_reason: object | None,
-        *,
-        comment: str | None,
-        field_reports: list[dict[str, object]],
-    ) -> dict[str, str] | None:
-        reason_id = getattr(blocking_reason, "id", None)
-        if not reason_id:
-            return None
-        title = getattr(blocking_reason, "title", None) or "Moderation block"
-        reason_comment = (
-            comment
-            or getattr(blocking_reason, "description", None)
-            or self._first_field_report_comment(field_reports)
-            or "Product blocked by moderation"
-        )
-        return {
-            "id": str(reason_id),
-            "title": str(title),
-            "comment": str(reason_comment),
         }
 
     def _first_field_report_comment(

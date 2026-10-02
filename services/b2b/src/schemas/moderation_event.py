@@ -11,10 +11,7 @@ class ModerationEventType(StrEnum):
 
 
 class BlockingReason(BaseModel):
-    # The canonical fields remain explicit.  Moderation may additionally send
-    # the already-known reason snapshot so B2B can preserve its real title;
-    # this is optional metadata and does not change any required OpenAPI field.
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="forbid")
 
     id: UUID
     title: str
@@ -60,10 +57,7 @@ class ModerationDecisionEvent(BaseModel):
 class ModerationEventRequest(BaseModel):
     """Public request schema from the unified B2B Swagger contract."""
 
-    # Optional reason metadata is emitted by the moderation service so B2B can
-    # preserve the authoritative seller-facing title without changing any
-    # required OpenAPI field.
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="forbid")
 
     idempotency_key: UUID
     product_id: UUID

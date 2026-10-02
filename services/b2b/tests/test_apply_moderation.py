@@ -177,12 +177,17 @@ async def test_blocked_soft_saves_field_reports() -> None:
     assert len(FakeOutboxEventRepository.events) == 1
 
 
-def test_soft_block_accepts_protocol_field_path_and_default_hard_block() -> None:
+def test_soft_block_accepts_protocol_field_path_and_default_hard_block(monkeypatch) -> None:
     product = _product()
     FakeProductRepository.product = product
 
     async def fake_db():
         yield FakeSession()
+
+    async def fake_reason(_client, reason_id: str):
+        return {"id": reason_id, "title": "Image is blurry", "comment": "Image is blurry"}
+
+    monkeypatch.setattr(moderation_router.ModerationClient, "get_blocking_reason", fake_reason)
 
     app.dependency_overrides[moderation_router.get_db] = fake_db
     try:
@@ -255,7 +260,7 @@ async def test_blocked_event_saves_blocking_reason_id() -> None:
     }
 
 
-def test_blocked_event_then_seller_view_returns_blocking_reason() -> None:
+def test_blocked_event_then_seller_view_returns_blocking_reason(monkeypatch) -> None:
     product = _product()
     reason_id = uuid4()
     FakeProductRepository.product = product
@@ -265,6 +270,11 @@ def test_blocked_event_then_seller_view_returns_blocking_reason() -> None:
 
     async def fake_seller():
         return SimpleNamespace(id=product.seller_id, is_active=True)
+
+    async def fake_reason(_client, reason_id: str):
+        return {"id": reason_id, "title": "Image is blurry", "comment": "Image is blurry"}
+
+    monkeypatch.setattr(moderation_router.ModerationClient, "get_blocking_reason", fake_reason)
 
     app.dependency_overrides[moderation_router.get_db] = fake_db
     app.dependency_overrides[products_router.get_db] = fake_db
@@ -312,7 +322,7 @@ def test_blocked_event_then_seller_view_returns_blocking_reason() -> None:
     ]
 
 
-def test_blocked_event_saves_full_top_level_blocking_reason_for_seller_view() -> None:
+def test_blocked_event_saves_full_top_level_blocking_reason_for_seller_view(monkeypatch) -> None:
     product = _product()
     reason_id = uuid4()
     FakeProductRepository.product = product
@@ -322,6 +332,15 @@ def test_blocked_event_saves_full_top_level_blocking_reason_for_seller_view() ->
 
     async def fake_seller():
         return SimpleNamespace(id=product.seller_id, is_active=True)
+
+    async def fake_reason(_client, reason_id: str):
+        return {
+            "id": reason_id,
+            "title": "Description mismatch",
+            "comment": "Photos and description contradict each other",
+        }
+
+    monkeypatch.setattr(moderation_router.ModerationClient, "get_blocking_reason", fake_reason)
 
     app.dependency_overrides[moderation_router.get_db] = fake_db
     app.dependency_overrides[products_router.get_db] = fake_db
@@ -338,11 +357,6 @@ def test_blocked_event_saves_full_top_level_blocking_reason_for_seller_view() ->
                 "hard_block": False,
                 "blocking_reason_id": str(reason_id),
                 "moderator_comment": "Photos and description contradict each other",
-                "blocking_reason": {
-                    "id": str(reason_id),
-                    "title": "Description mismatch",
-                    "comment": "Photos and description contradict each other",
-                },
                 "field_reports": [
                     {
                         "field_name": "description",
