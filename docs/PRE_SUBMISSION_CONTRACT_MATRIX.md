@@ -4,7 +4,7 @@ Sources frozen for this audit:
 
 - Canon: `2ff93a4cebc119e860385b318ebd8753fda1d801`
 - Protocols: `3b405c6844f26d2d7c4ea32a44ea2f419723e8d0` (`master`)
-- Project verified commit: `b26cee243031266c4e7ad300afe6a5d785518214`
+- Project verified commit: `77dea9e` (strict moderation contract and source-of-truth reason lookup)
 
 | Task | Endpoint | Method | Auth/Header | Request | Success | Errors | OpenAPI | Canon |
 |---|---|---|---|---|---|---|---|---|
