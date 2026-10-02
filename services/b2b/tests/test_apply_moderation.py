@@ -338,6 +338,11 @@ def test_blocked_event_saves_full_top_level_blocking_reason_for_seller_view() ->
                 "hard_block": False,
                 "blocking_reason_id": str(reason_id),
                 "moderator_comment": "Photos and description contradict each other",
+                "blocking_reason": {
+                    "id": str(reason_id),
+                    "title": "Description mismatch",
+                    "comment": "Photos and description contradict each other",
+                },
                 "field_reports": [
                     {
                         "field_name": "description",
@@ -356,7 +361,7 @@ def test_blocked_event_saves_full_top_level_blocking_reason_for_seller_view() ->
     body = product_response.json()
     assert body["blocking_reason"] == {
         "id": str(reason_id),
-        "title": "Photos and description contradict each other",
+        "title": "Description mismatch",
         "comment": "Photos and description contradict each other",
     }
     assert body["moderator_comment"] == "Photos and description contradict each other"

@@ -196,6 +196,11 @@ class ModerationService:
             "moderator_comment": comment
             or getattr(blocking_reason, "description", None)
             or self._first_field_report_comment(serialized_reports),
+            "blocking_reason": self._blocking_reason_payload(
+                blocking_reason,
+                comment=comment,
+                field_reports=serialized_reports,
+            ),
             "field_reports": serialized_reports,
         }
 
