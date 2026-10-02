@@ -373,6 +373,20 @@ async def test_blocked_hard_sets_terminal_status() -> None:
 
     assert product.status == ProductStatus.HARD_BLOCKED
     assert len(FakeOutboxEventRepository.events) == 1
+    assert FakeOutboxEventRepository.events[0]["event_type"] == "PRODUCT_BLOCKED"
+
+
+@pytest.mark.asyncio
+async def test_soft_block_emits_product_blocked() -> None:
+    product = _product()
+    FakeProductRepository.product = product
+
+    await ModerationEventService(FakeSession()).apply(
+        _event(product.id, status="BLOCKED", hard_block=False)
+    )
+
+    assert product.status == ProductStatus.BLOCKED
+    assert FakeOutboxEventRepository.events[0]["event_type"] == "PRODUCT_BLOCKED"
 
 
 @pytest.mark.asyncio

@@ -134,13 +134,27 @@ class B2BClient:
         try:
             response = await self._client.post(
                 "/api/v1/public/products/batch",
-                # The service-only batch mode includes blocked and zero-stock
-                # records so CartService can calculate an accurate reason.
-                json={"product_ids": product_ids, "include_unavailable": True},
+                # The canonical B2B batch contract accepts product_ids only.
+                # Hidden/unavailable products are enriched through the
+                # service-key detail route below so CartService can still
+                # distinguish blocked, out-of-stock and deleted lines.
+                json={"product_ids": product_ids},
                 headers={"X-Service-Key": settings.service_key},
             )
             response.raise_for_status()
-            return response.json()
+            products = response.json()
+            returned = {str(product.get("id")) for product in products}
+            for product_id in product_ids:
+                if product_id in returned:
+                    continue
+                try:
+                    hidden = await self._get(f"/api/v1/products/{product_id}")
+                except HTTPException as error:
+                    if error.status_code == 404:
+                        continue
+                    raise
+                products.append(hidden)
+            return products
         except httpx.HTTPStatusError as e:
             raise HTTPException(status_code=e.response.status_code, detail=str(e))
         except httpx.RequestError:

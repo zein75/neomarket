@@ -65,7 +65,7 @@ class ProductService:
                     "message": "Product not found",
                 },
             )
-        return self._public_product_detail(product)
+        return self._public_product_detail(product, include_unavailable_skus=True)
 
     async def get_public_batch(
         self,

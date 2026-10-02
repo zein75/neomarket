@@ -795,3 +795,48 @@ async def test_b2b_client_get_sku_uses_public_sku_route(
     assert captured["headers"] == {
         "X-Service-Key": "dev-service-key-change-in-production"
     }
+
+
+@pytest.mark.asyncio
+async def test_b2b_batch_request_matches_canonical_schema_and_enriches_hidden_product(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    product_id = uuid4()
+    captured: list[tuple[str, object]] = []
+
+    class FakeResponse:
+        def __init__(self, body: object) -> None:
+            self.body = body
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> object:
+            return self.body
+
+    class FakeAsyncClient:
+        def __init__(self, *args, **kwargs) -> None:
+            return None
+
+        async def aclose(self) -> None:
+            return None
+
+        async def post(self, path: str, *, json, headers):
+            captured.append((path, json))
+            return FakeResponse([])
+
+        async def get(self, path: str, *, params=None, headers=None):
+            captured.append((path, params or {}))
+            return FakeResponse({"id": str(product_id), "status": "BLOCKED", "skus": []})
+
+    monkeypatch.setattr(b2b_client_module.httpx, "AsyncClient", FakeAsyncClient)
+
+    async with B2BClient("http://b2b") as client:
+        products = await client.get_products_batch([str(product_id)])
+
+    assert captured[0] == (
+        "/api/v1/public/products/batch",
+        {"product_ids": [str(product_id)]},
+    )
+    assert captured[1][0] == f"/api/v1/products/{product_id}"
+    assert products[0]["status"] == "BLOCKED"

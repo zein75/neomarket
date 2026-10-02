@@ -57,11 +57,10 @@ class ModerationEventService:
             self._apply_moderated(product)
         else:
             self._apply_blocked(product, event)
-            event_type = (
-                "PRODUCT_HARD_BLOCKED"
-                if product.status is ProductStatus.HARD_BLOCKED
-                else "PRODUCT_BLOCKED"
-            )
+            # HARD_BLOCKED is an internal B2B terminal state.  The published
+            # B2B→B2C event contract deliberately uses one unavailable-product
+            # event for both soft and hard moderation blocks.
+            event_type = "PRODUCT_BLOCKED"
             await self.outbox_repo.create_b2c_event(
                 idempotency_key=idempotency_key,
                 event_type=event_type,

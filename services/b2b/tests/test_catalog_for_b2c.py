@@ -417,7 +417,7 @@ def test_public_products_batch_route_returns_visible_public_details() -> None:
     assert "reserved_quantity" not in sku
 
 
-def test_cart_batch_includes_blocked_and_zero_stock_records() -> None:
+def test_cart_batch_follows_canonical_public_schema() -> None:
     blocked = _product(status=ProductStatus.BLOCKED, deleted=False, stock=5, reserved=0)
     out_of_stock = _product(
         status=ProductStatus.MODERATED,
@@ -436,8 +436,7 @@ def test_cart_batch_includes_blocked_and_zero_stock_records() -> None:
         response = TestClient(app).post(
             "/api/v1/public/products/batch",
             json={
-                "product_ids": [str(blocked.id), str(out_of_stock.id), str(deleted.id)],
-                "include_unavailable": True,
+                "product_ids": [str(blocked.id), str(out_of_stock.id), str(deleted.id)]
             },
             headers={"X-Service-Key": "dev-service-key-change-in-production"},
         )
@@ -446,9 +445,7 @@ def test_cart_batch_includes_blocked_and_zero_stock_records() -> None:
 
     assert response.status_code == 200
     body = response.json()
-    assert [item["id"] for item in body] == [str(blocked.id), str(out_of_stock.id)]
-    assert body[0]["status"] == "BLOCKED"
-    assert body[1]["skus"][0]["active_quantity"] == 0
+    assert body == []
 
 
 @pytest.mark.asyncio

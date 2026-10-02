@@ -4,13 +4,14 @@ Sources frozen for this audit:
 
 - Canon: `2ff93a4cebc119e860385b318ebd8753fda1d801`
 - Protocols: `3b405c6844f26d2d7c4ea32a44ea2f419723e8d0` (`master`)
-- Project baseline: `07137f7efc83317d9373107a215c90b3c0e9f501`
+- Project audited commit before this remediation: `e39d9706c5b4944cb42c31e2954e7d7672ca72bf`
 
 | Task | Endpoint | Method | Auth/Header | Request | Success | Errors | OpenAPI | Canon |
 |---|---|---|---|---|---|---|---|---|
 | Reserve | `/api/v1/inventory/reserve` | POST | `X-Service-Key` | `ReserveRequest`: UUID key, order, items | 200 exact stored `ReserveResponse` including `reserved_at` | 409 root `Error`, failed SKUs at `details.failed_items`; same key/different request → conflict | b2b | reserve-sku |
 | Unreserve | `/api/v1/inventory/unreserve` | POST | `X-Service-Key` | `InventoryOrderRequest`: order and items | 200 `InventoryOrderResponse` including `processed_at` | root `Error` | b2b | reserve-sku |
 | Moderation | `/api/v1/moderation/events` | POST | `X-Service-Key` | typed `ModerationEventRequest` (`event_type`, required `blocking_reason_id` for BLOCKED, typed reports) | 204 empty | 400/401 root `Error` | b2b | apply-moderation |
+| Catalog batch | `/api/v1/public/products/batch` | POST | `X-Service-Key` | `{product_ids}` only | 200 public product array; omitted products are enriched via service detail | 401/422 | b2b | b2c-8-cart |
 | Cart read | `/api/v1/cart` | GET | JWT or `X-Session-Id` | — | 200 `CartResponse` | root `Error` | b2c | b2c-8-cart |
 | Cart items | `/api/v1/cart/items`, `/api/v1/cart/items/{sku_id}` | POST/PATCH/DELETE | JWT or `X-Session-Id` | add/update models; path is SKU UUID | POST/PATCH 200 `CartResponse`; DELETE 204 empty | root `Error` | b2c | b2c-8-cart |
 | Clear cart | `/api/v1/cart` | DELETE | JWT or `X-Session-Id` | — | 204 empty | root `Error` | b2c | b2c-8-cart |

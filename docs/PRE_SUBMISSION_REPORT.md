@@ -25,7 +25,7 @@ The real PostgreSQL migration and behavioural concurrency gates passed on Docker
 
 - Canonical route is `/api/v1/moderation/events`; the historical route is hidden from the generated schema.
 - Current `event_type` request model, required `blocking_reason_id` for BLOCKED, and typed field reports are enforced; Admin emits that exact shape.
-- Blocking creates a durable B2C outbox event; hard blocks emit `PRODUCT_HARD_BLOCKED`.
+- Blocking creates a durable B2C outbox event; both soft `BLOCKED` and internal terminal `HARD_BLOCKED` emit canonical `PRODUCT_BLOCKED`.
 
 ## Task 3 — Cart
 
@@ -58,8 +58,8 @@ See [INTERNAL_API_COMPATIBILITY.md](INTERNAL_API_COMPATIBILITY.md) for method/he
 
 | Suite | Result |
 |---|---:|
-| B2B unit/regression | 131 passed, 3 skipped (PostgreSQL targets selected separately) |
-| B2C unit/regression | 106 passed, 2 skipped (PostgreSQL targets selected separately) |
+| B2B unit/regression | 132 passed, 3 skipped (PostgreSQL targets selected separately) |
+| B2C unit/regression | 107 passed, 2 skipped (PostgreSQL targets selected separately) |
 | Admin unit/regression | 16 passed |
 | PostgreSQL B2B migrations | PASS: head `0017_reserve_request_hash` |
 | PostgreSQL B2C migrations | PASS: head `0019_reserve_compensation` |
