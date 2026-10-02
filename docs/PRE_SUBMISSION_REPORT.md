@@ -2,7 +2,7 @@
 
 ## Sources
 
-Project verified SHA: `bed444f` (strict moderation contract and undeclared-field regression test)
+Project verified SHA: `e3238cb36991a606184fc3961668cc87576f1f02`
 Canon SHA: `2ff93a4cebc119e860385b318ebd8753fda1d801`  
 Protocols SHA: `3b405c6844f26d2d7c4ea32a44ea2f419723e8d0`
 
@@ -58,14 +58,14 @@ See [INTERNAL_API_COMPATIBILITY.md](INTERNAL_API_COMPATIBILITY.md) for method/he
 
 | Suite | Result |
 |---|---:|
-| B2B unit/regression | 135 passed with PostgreSQL URL (no skips) |
+| B2B unit/regression | 136 passed with PostgreSQL URL (no skips) |
 | B2C unit/regression | 109 passed with PostgreSQL URL (no skips) |
 | Admin unit/regression | 16 passed |
 | PostgreSQL B2B migrations | PASS: head `0017_reserve_request_hash` |
 | PostgreSQL B2C migrations | PASS: head `0019_reserve_compensation` |
 | PostgreSQL B2B behavioural concurrency | PASS: 3 passed |
 | PostgreSQL B2C behavioural concurrency | PASS: 2 passed |
-| HTTP service E2E on final source | PASS: local Uvicorn B2B/B2C over Docker PostgreSQL; guest cart add/get, authenticated cart add, checkout 201, exact idempotent replay 200, reserve 200, unreserve 200, cancel 200 with `CANCELLED` and loaded history, clear cart 204, and both OpenAPI endpoints 200. |
+| Docker runtime E2E | PASS: healthy Admin/B2B/B2C/PostgreSQL/Redis stack; cart → checkout → replay → cancel → clear; soft/hard moderation cascades; seller hard-block 403; durable outbox and CANCEL_PENDING recovery after dependent-service restart. |
 
 ## OpenAPI contract check
 
