@@ -22,11 +22,15 @@ async def _decision_event(event: ModerationEventRequest) -> ModerationDecisionEv
                 str(event.blocking_reason_id)
             )
         except httpx.HTTPError as exc:
+            # The frozen wire contract for this endpoint declares only 204,
+            # 400 and 401.  A reason lookup failure therefore remains a
+            # contract-valid rejected event; the moderation producer owns the
+            # retry rather than receiving an undeclared 503.
             raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "code": "MODERATION_UNAVAILABLE",
-                    "message": "Blocking reason service is unavailable",
+                    "code": "BLOCKING_REASON_LOOKUP_FAILED",
+                    "message": "Blocking reason could not be resolved",
                 },
             ) from exc
         if not reason_metadata or not reason_metadata.get("title"):

@@ -115,10 +115,12 @@ class PendingFulfillment(Base, TimestampMixin):
 
 
 class PendingReservationCompensation(Base, TimestampMixin):
-    """A durable unreserve request for a checkout that failed locally.
+    """Durable checkout intent and, if needed, a compensation request.
 
-    The row deliberately has no foreign key to ``orders``: it exists precisely
-    when creating that order did not complete.
+    The row is committed *before* the reserve call.  It deliberately has no
+    foreign key to ``orders``: after a crash there may be a B2B reservation
+    without a local order.  A worker first checks for a committed order and
+    only unreserves when no order exists.
     """
 
     __tablename__ = "pending_reservation_compensations"
@@ -127,6 +129,7 @@ class PendingReservationCompensation(Base, TimestampMixin):
         UUID(as_uuid=True), primary_key=True
     )
     items: Mapped[list[dict[str, object]]] = mapped_column(JSON, nullable=False)
+    request_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True)
     attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     next_retry_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

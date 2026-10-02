@@ -101,6 +101,8 @@ class FakeSession:
         self.rolled_back = False
         self.committed = False
         self.fail_flush = False
+        self.fail_commit_at: int | None = None
+        self.commit_calls = 0
 
     def add(self, obj) -> None:
         self.added.append(obj)
@@ -114,6 +116,9 @@ class FakeSession:
         self.rolled_back = True
 
     async def commit(self) -> None:
+        self.commit_calls += 1
+        if self.fail_commit_at == self.commit_calls:
+            raise RuntimeError("database commit failed")
         self.committed = True
 
     async def delete(self, obj) -> None:
@@ -244,7 +249,7 @@ class FakeOrderRepository:
         self.pending_fulfillments.pop(pending.order_id, None)
 
     async def queue_reservation_compensation(
-        self, *, order_id, items, error, next_retry_at
+        self, *, order_id, items, error, next_retry_at, request_fingerprint=None
     ):
         pending = self.pending_reservation_compensations.get(order_id)
         if pending is None:
@@ -254,13 +259,19 @@ class FakeOrderRepository:
                 attempts=1,
                 next_retry_at=next_retry_at,
                 last_error=error,
+                request_fingerprint=request_fingerprint,
             )
             self.pending_reservation_compensations[order_id] = pending
         else:
             pending.attempts += 1
             pending.next_retry_at = next_retry_at
             pending.last_error = error
+            if request_fingerprint is not None:
+                pending.request_fingerprint = request_fingerprint
         return pending
+
+    async def get_reservation_compensation(self, order_id):
+        return self.pending_reservation_compensations.get(order_id)
 
     async def list_due_reservation_compensations(self, now, limit: int = 100):
         return [
@@ -565,13 +576,12 @@ async def test_concurrent_idempotency_race_returns_existing_order() -> None:
     assert order is existing
     assert session.rolled_back is True
     assert service.last_checkout_replayed is True
-    assert len(FakeB2BClient.unreserve_calls) == 1
-    assert FakeB2BClient.unreserve_calls[0]["items"] == [
-        {"sku_id": str(sku_id), "quantity": 1}
-    ]
+    # Both concurrent deliveries use the same deterministic B2B operation.
+    # Compensating it here would unreserve the winning order.
+    assert FakeB2BClient.unreserve_calls == []
 
 
-async def test_duplicate_checkout_unreserve_failure_persists_compensation() -> None:
+async def test_duplicate_checkout_reuses_winning_reservation_without_compensation() -> None:
     user_id, product_id, sku_id = uuid4(), uuid4(), uuid4()
     request = _order_request()
     FakeCartRepository.cart = _cart(
@@ -588,7 +598,6 @@ async def test_duplicate_checkout_unreserve_failure_persists_compensation() -> N
     existing.request_fingerprint = OrderService(FakeSession())._request_fingerprint(request)
     FakeOrderRepository.race_order = existing
     FakeOrderRepository.raise_integrity_error = True
-    FakeB2BClient.unreserve_error = HTTPException(status_code=503, detail="down")
     session = FakeSession()
 
     order = await OrderService(session).checkout(
@@ -598,10 +607,9 @@ async def test_duplicate_checkout_unreserve_failure_persists_compensation() -> N
         order_request=request,
     )
 
-    leaked_reserve_id = UUID(FakeB2BClient.reserve_calls[0]["order_id"])
     assert order is existing
-    assert leaked_reserve_id in FakeOrderRepository.pending_reservation_compensations
-    assert session.committed is True
+    assert FakeOrderRepository.pending_reservation_compensations == {}
+    assert FakeB2BClient.unreserve_calls == []
 
 
 async def test_idempotency_with_different_body_returns_409() -> None:
@@ -1183,3 +1191,88 @@ async def test_other_user_order_returns_404() -> None:
 
     assert exc.value.status_code == 404
     assert FakeB2BClient.unreserve_calls == []
+
+
+async def test_checkout_final_commit_failure_compensates_durable_reserve() -> None:
+    """A router commit can no longer leak a successful B2B reservation."""
+    user_id, product_id, sku_id = uuid4(), uuid4(), uuid4()
+    request = _order_request()
+    cart = _cart(user_id=user_id, items=[_cart_item(product_id=product_id, sku_id=sku_id)])
+    FakeCartRepository.cart = cart
+    FakeB2BClient.products = [{
+        "id": str(product_id), "title": "Phone",
+        "skus": [{"id": str(sku_id), "name": "128 GB", "price": 150, "active_quantity": 5}],
+    }]
+    session = FakeSession()
+    # Commit 1 persists intent; commit 2 is the order confirmation and fails.
+    session.fail_commit_at = 2
+
+    with pytest.raises(RuntimeError, match="database commit failed"):
+        await OrderService(session).checkout(user_id, cart.id, "commit-failure", request)
+
+    assert len(FakeB2BClient.reserve_calls) == 1
+    assert len(FakeB2BClient.unreserve_calls) == 1
+    assert session.rolled_back is True
+
+
+async def test_checkout_commit_failure_with_unreserve_failure_keeps_durable_intent() -> None:
+    user_id, product_id, sku_id = uuid4(), uuid4(), uuid4()
+    request = _order_request()
+    cart = _cart(user_id=user_id, items=[_cart_item(product_id=product_id, sku_id=sku_id)])
+    FakeCartRepository.cart = cart
+    FakeB2BClient.products = [{
+        "id": str(product_id), "title": "Phone",
+        "skus": [{"id": str(sku_id), "name": "128 GB", "price": 150, "active_quantity": 5}],
+    }]
+    session = FakeSession()
+    session.fail_commit_at = 2
+    FakeB2BClient.unreserve_error = HTTPException(status_code=503, detail="down")
+
+    with pytest.raises(RuntimeError, match="database commit failed"):
+        await OrderService(session).checkout(user_id, cart.id, "commit-compensation", request)
+
+    reserve_id = UUID(FakeB2BClient.reserve_calls[0]["order_id"])
+    pending = FakeOrderRepository.pending_reservation_compensations[reserve_id]
+    assert pending.items == [{"sku_id": str(sku_id), "quantity": 1}]
+    assert "unreserve" in pending.last_error
+
+
+async def test_compensation_worker_never_unreserves_committed_order() -> None:
+    order = _order(user_id=uuid4(), status=OrderStatus.PAID)
+    FakeOrderRepository.orders_by_id[order.id] = order
+    await FakeOrderRepository(FakeSession()).queue_reservation_compensation(
+        order_id=order.id,
+        items=[{"sku_id": str(order.items[0].sku_id), "quantity": 2}],
+        error="stale intent",
+        next_retry_at=None,
+    )
+
+    retried = await OrderService(FakeSession()).retry_pending_reservation_compensations()
+
+    assert retried == 1
+    assert FakeB2BClient.unreserve_calls == []
+    assert FakeOrderRepository.pending_reservation_compensations == {}
+
+
+async def test_cancel_pending_is_committed_before_unreserve() -> None:
+    order = _order(user_id=uuid4(), status=OrderStatus.PAID)
+    FakeOrderRepository.orders_by_id[order.id] = order
+    session = FakeSession()
+
+    await OrderService(session).cancel_order(order.id, order.user_id)
+
+    # First commit happens with CANCEL_PENDING, before the external call.
+    assert session.commit_calls >= 2
+    assert FakeB2BClient.unreserve_calls == [_unreserve_payload(order)]
+
+
+async def test_cancel_final_commit_failure_leaves_durable_pending_for_retry() -> None:
+    order = _order(user_id=uuid4(), status=OrderStatus.PAID)
+    FakeOrderRepository.orders_by_id[order.id] = order
+    session = FakeSession()
+    session.fail_commit_at = 2
+
+    await OrderService(session).cancel_order(order.id, order.user_id)
+
+    assert session.rolled_back is True
+    assert FakeB2BClient.unreserve_calls == [_unreserve_payload(order)]

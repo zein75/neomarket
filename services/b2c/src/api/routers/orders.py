@@ -69,7 +69,6 @@ async def create_order(
         idempotency_key=key,
         order_request=order_request,
     )
-    await db.commit()
     payload = OrderResponse.model_validate(order).model_dump(mode="json")
     return JSONResponse(
         # OpenAPI distinguishes a newly-created order from an idempotent replay.
@@ -113,5 +112,4 @@ async def cancel_order(
         current_user.id,
         reason=cancel_request.reason if cancel_request else None,
     )
-    await db.commit()
     return order

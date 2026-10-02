@@ -32,7 +32,6 @@ def _order(*, user_id: UUID, key: str, status: OrderStatus = OrderStatus.PAID) -
 def _prepare(engine) -> UUID:
     user_id = uuid4()
     with engine.begin() as connection:
-        connection.execute(text("TRUNCATE orders, users CASCADE"))
         connection.execute(
             text("INSERT INTO users (id, email, hashed_password, is_active, created_at, updated_at) VALUES (:id, :email, 'h', true, now(), now())"),
             {"id": user_id, "email": f"{user_id}@test"},

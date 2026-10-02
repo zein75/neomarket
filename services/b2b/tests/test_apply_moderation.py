@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 from uuid import uuid4
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError
@@ -641,3 +642,44 @@ def test_moderation_event_alias_returns_204() -> None:
 
     assert response.status_code == 204
     assert response.content == b""
+
+
+def test_reason_lookup_failure_uses_declared_moderation_error_status(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The frozen endpoint has no 503 response, so do not emit one."""
+    product = _product()
+    FakeProductRepository.product = product
+
+    async def unavailable(*_args, **_kwargs):
+        raise httpx.ConnectError("moderation down")
+
+    async def fake_db():
+        yield FakeSession()
+
+    monkeypatch.setattr(
+        moderation_router.ModerationClient,
+        "get_blocking_reason",
+        unavailable,
+    )
+    app.dependency_overrides[moderation_router.get_db] = fake_db
+    try:
+        response = TestClient(app).post(
+            "/api/v1/moderation/events",
+            headers={"X-Service-Key": "dev-service-key-change-in-production"},
+            json={
+                "idempotency_key": str(uuid4()),
+                "event_type": "BLOCKED",
+                "product_id": str(product.id),
+                "occurred_at": "2026-09-18T12:00:00Z",
+                "blocking_reason_id": str(uuid4()),
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "code": "BLOCKING_REASON_LOOKUP_FAILED",
+        "message": "Blocking reason could not be resolved",
+    }

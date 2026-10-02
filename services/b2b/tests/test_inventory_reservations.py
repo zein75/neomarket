@@ -395,7 +395,7 @@ async def test_persisted_idempotent_response_survives_a_later_reservation(
         assert repeated == first
         assert repeated["items"][0]["remaining_stock"] == 7
 
-    Base.metadata.drop_all(engine)
+    engine.dispose()
 
 
 @pytest.mark.asyncio
@@ -422,11 +422,8 @@ async def test_postgres_multi_sku_reserve_and_replay(
     order_id, key = uuid4(), str(uuid4())
 
     with Session(engine) as session:
-        session.query(Reservation).delete()
-        session.query(ReservationOperation).delete()
-        session.query(SKU).delete()
-        session.query(Product).delete()
-        session.query(Seller).delete()
+        # Use UUID-scoped fixtures against a shared Docker database.  Do not
+        # clear unrelated marketplace data merely to exercise PostgreSQL.
         session.add(Seller(id=seller_id, email=f"{seller_id}@test", hashed_password="h", company_name="Seller"))
         session.add(Product(id=product_id, seller_id=seller_id, title="Phone", description="Phone", category="electronics", status=ProductStatus.MODERATED))
         session.add_all([SKU(id=sku_id, product_id=product_id, name=f"SKU-{index}", price=100, stock=5, reserved_quantity=0, images=[]) for index, sku_id in enumerate(sku_ids)])
@@ -445,7 +442,11 @@ async def test_postgres_multi_sku_reserve_and_replay(
 
         assert second == first
         assert session.query(Reservation).filter_by(order_id=order_id).count() == 3
-        assert [sku.reserved_quantity for sku in session.query(SKU).order_by(SKU.id)] == [1, 1, 1]
+        reserved = {
+            sku.id: sku.reserved_quantity
+            for sku in session.query(SKU).filter(SKU.id.in_(sku_ids))
+        }
+        assert reserved == {sku_id: 1 for sku_id in sku_ids}
 
 
 @pytest.mark.asyncio
@@ -468,11 +469,7 @@ async def test_postgres_same_key_different_payload_returns_conflict(
     key = str(uuid4())
 
     with Session(engine) as session:
-        session.query(Reservation).delete()
-        session.query(ReservationOperation).delete()
-        session.query(SKU).delete()
-        session.query(Product).delete()
-        session.query(Seller).delete()
+        # UUID-scoped fixtures; intentionally no global table deletion.
         session.add(Seller(id=seller_id, email=f"{seller_id}@test", hashed_password="h", company_name="Seller"))
         session.add(Product(id=product_id, seller_id=seller_id, title="Phone", description="Phone", category="electronics", status=ProductStatus.MODERATED))
         session.add(SKU(id=sku_id, product_id=product_id, name="SKU", price=100, stock=5, reserved_quantity=0, images=[]))
@@ -504,11 +501,7 @@ async def test_postgres_concurrent_same_key_reserves_once(
     request = _reserve_request((sku_id, 2), idempotency_key=str(uuid4()), order_id=order_id)
 
     with Session(engine) as session:
-        session.query(Reservation).delete()
-        session.query(ReservationOperation).delete()
-        session.query(SKU).delete()
-        session.query(Product).delete()
-        session.query(Seller).delete()
+        # UUID-scoped fixtures; intentionally no global table deletion.
         session.add(Seller(id=seller_id, email=f"{seller_id}@test", hashed_password="h", company_name="Seller"))
         session.add(Product(id=product_id, seller_id=seller_id, title="Phone", description="Phone", category="electronics", status=ProductStatus.MODERATED))
         session.add(SKU(id=sku_id, product_id=product_id, name="SKU", price=100, stock=5, reserved_quantity=0, images=[]))
@@ -656,7 +649,7 @@ async def test_persisted_outbox_event_retries_after_b2c_recovers(
         assert event.attempts == 2
         assert FakeB2CClient.out_of_stock_events == [event.payload]
 
-    Base.metadata.drop_all(engine)
+    engine.dispose()
 
 
 @pytest.mark.asyncio
@@ -779,7 +772,7 @@ def test_multi_sku_reserve_idempotency_key_allowed_by_real_schema() -> None:
         )
         session.commit()
 
-    Base.metadata.drop_all(engine)
+    engine.dispose()
 
 
 @pytest.mark.asyncio
@@ -891,7 +884,7 @@ async def test_reserve_all_skus_succeeds_on_real_schema(
         assert outbox_events[0].payload["payload"]["sku_id"] == str(sku_b_id)
         assert session.get(ReservationOperation, idempotency_key) is not None
 
-    Base.metadata.drop_all(engine)
+    engine.dispose()
 
 
 def test_reserve_idempotency_key_unique_across_real_operations() -> None:
@@ -917,7 +910,7 @@ def test_reserve_idempotency_key_unique_across_real_operations() -> None:
         with pytest.raises(IntegrityError):
             session.commit()
 
-    Base.metadata.drop_all(engine)
+    engine.dispose()
 
 
 def test_reserve_missing_service_key_returns_401() -> None:

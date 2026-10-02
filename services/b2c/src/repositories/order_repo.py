@@ -179,6 +179,7 @@ class OrderRepository(BaseRepository[Order]):
         items: list[dict[str, object]],
         error: str,
         next_retry_at: datetime,
+        request_fingerprint: str | None = None,
     ) -> PendingReservationCompensation:
         pending = await self.session.get(PendingReservationCompensation, order_id)
         if pending is None:
@@ -188,14 +189,22 @@ class OrderRepository(BaseRepository[Order]):
                 attempts=1,
                 next_retry_at=next_retry_at,
                 last_error=error[:500],
+                request_fingerprint=request_fingerprint,
             )
             self.session.add(pending)
         else:
             pending.attempts += 1
             pending.next_retry_at = next_retry_at
             pending.last_error = error[:500]
+            if request_fingerprint is not None:
+                pending.request_fingerprint = request_fingerprint
         await self.session.flush()
         return pending
+
+    async def get_reservation_compensation(
+        self, order_id: UUID
+    ) -> PendingReservationCompensation | None:
+        return await self.session.get(PendingReservationCompensation, order_id)
 
     async def list_due_reservation_compensations(
         self,

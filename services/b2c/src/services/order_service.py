@@ -3,7 +3,7 @@ import json
 import logging
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
-from uuid import uuid4
+from uuid import NAMESPACE_URL, uuid4, uuid5
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +21,10 @@ from src.schemas.order import OrderCreateRequest, OrderPaginatedResponse
 logger = logging.getLogger(__name__)
 CANCEL_RETRY_BASE_SECONDS = 30
 CANCEL_RETRY_MAX_SECONDS = 3600
+# A checkout intent must survive a process crash after B2B accepts reserve.
+# The grace period keeps the recovery worker from racing a healthy request
+# between reserve and the local order commit.
+CHECKOUT_INTENT_GRACE_SECONDS = 60
 
 
 class OrderService:
@@ -72,14 +76,52 @@ class OrderService:
         snapshots = await self._build_item_snapshots(items)
         self._validate_snapshots(items, snapshots)
         self._validate_item_snapshot(order_request, items, snapshots)
-        order_id = uuid4()
-        await self._reserve(order_id, idempotency_key, items)
+        # A deterministic operation id lets concurrent retries use the same
+        # B2B reservation.  The durable row is committed before B2B is called:
+        # after a crash the worker can compensate an orphaned reservation.
+        order_id = self._checkout_operation_id(user_id, idempotency_key)
+        try:
+            await self._prepare_checkout_intent(
+                order_id=order_id,
+                items=items,
+                request_fingerprint=request_fingerprint,
+            )
+            await self.order_repo.session.commit()
+        except IntegrityError:
+            # Another same-buyer/same-key request created the intent first.
+            await self.order_repo.session.rollback()
+            pending = await self.order_repo.get_reservation_compensation(order_id)
+            if pending is None:
+                raise
+            self._validate_checkout_intent(pending, request_fingerprint)
+
+        # A commit ends the advisory-lock transaction. Re-acquire it and look
+        # once more: a concurrent request may already have committed the order.
+        if lock_key is not None:
+            await lock_key(idempotency_key)
+        existing = await self.order_repo.get_by_idempotency_key(idempotency_key)
+        if existing:
+            if existing.user_id != user_id:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail={"code": "ORDER_NOT_FOUND", "message": "Order not found"},
+                )
+            await self._delete_checkout_intent(order_id)
+            return self._return_idempotent_order(existing, request_fingerprint)
+
+        try:
+            await self._reserve(order_id, idempotency_key, items)
+        except Exception:
+            # No successful reserve was observed. Removing the intent is an
+            # optimisation only; if this cleanup itself fails, idempotent B2B
+            # unreserve by the worker is still safe.
+            await self._delete_checkout_intent(order_id, best_effort=True)
+            raise
 
         total = sum(
             item.quantity * int(snapshots[str(item.sku_id)]["price"])
             for item in items
         )
-        reserve_compensated = False
         try:
             try:
                 order = await self.order_repo.create(
@@ -103,27 +145,18 @@ class OrderService:
                 existing = await self.order_repo.get_by_idempotency_key(idempotency_key)
                 if existing is None:
                     raise
-                try:
-                    await self._unreserve_items(order_id, items)
-                    reserve_compensated = True
-                except Exception as unreserve_error:  # noqa: BLE001 - preserve the winning response and durable recovery
-                    logger.exception(
-                        "Failed to compensate duplicate checkout reserve %s", order_id
-                    )
-                    await self._queue_reservation_compensation(
-                        order_id=order_id,
-                        items=items,
-                        error=(
-                            "duplicate checkout reserve; unreserve: "
-                            f"{type(unreserve_error).__name__}: {unreserve_error}"
-                        ),
-                    )
-                    await self.order_repo.session.commit()
                 if existing.user_id != user_id:
+                    # Different buyers can race on the globally unique header
+                    # key. Their operation ids differ, so only the losing
+                    # reservation is compensated.
+                    await self._compensate_checkout_reservation(
+                        order_id, items, "idempotency key belongs to another buyer"
+                    )
                     raise HTTPException(
                         status_code=status.HTTP_404_NOT_FOUND,
                         detail={"code": "ORDER_NOT_FOUND", "message": "Order not found"},
                     )
+                await self._delete_checkout_intent(order_id)
                 return self._return_idempotent_order(existing, request_fingerprint)
 
             for cart_item in items:
@@ -142,30 +175,22 @@ class OrderService:
                 order.__dict__.setdefault("items", []).append(order_item)
 
             await self.order_repo.session.flush()
+            # The order is the durable confirmation of the saga.  It must be
+            # committed here, not in the HTTP router after this method returns.
+            await self.order_repo.session.commit()
+            await self._delete_checkout_intent(order_id)
             # Response serialization includes status_history.  Return only the
             # explicitly eager-loaded aggregate; falling back to ``order`` can
             # trigger an async lazy load while FastAPI serializes the response.
             return await self._load_order_for_response(order.id)
         except Exception as checkout_error:
-            # A failed flush leaves a real SQLAlchemy transaction unusable;
-            # restore it before either direct compensation or persisting the
-            # durable fallback job.
+            # A failed flush/commit leaves a real SQLAlchemy transaction
+            # unusable. The already committed intent remains available to the
+            # recovery worker even if direct compensation also fails.
             await self.order_repo.session.rollback()
-            if not reserve_compensated:
-                try:
-                    await self._unreserve_items(order_id, items)
-                except Exception as unreserve_error:  # noqa: BLE001 - preserve the original checkout error
-                    logger.exception("Failed to compensate checkout reserve %s", order_id)
-                    await self._queue_reservation_compensation(
-                        order_id=order_id,
-                        items=items,
-                        error=f"{type(checkout_error).__name__}: {checkout_error}; "
-                        f"unreserve: {type(unreserve_error).__name__}: {unreserve_error}",
-                    )
-                    # This is intentionally committed before re-raising the
-                    # checkout error. The caller's normal rollback must not
-                    # discard the only durable record of the reserve.
-                    await self.order_repo.session.commit()
+            await self._compensate_checkout_reservation(
+                order_id, items, f"{type(checkout_error).__name__}: {checkout_error}"
+            )
             raise
 
     async def create_from_cart(self, user_id: UUID, cart_id: UUID) -> Order:
@@ -276,6 +301,9 @@ class OrderService:
             )
         )
         await self.order_repo.session.flush()
+        # Commit intent before B2B. A successful unreserve must never be
+        # followed by a rollback to PAID when the router later commits.
+        await self.order_repo.session.commit()
 
         try:
             await self._unreserve(order)
@@ -284,6 +312,13 @@ class OrderService:
             self._schedule_cancel_retry(order)
             self._sync_order_address(order)
             await self.order_repo.session.flush()
+            # CANCEL_PENDING was already committed; persist retry metadata
+            # independently and leave the durable state pending if this commit
+            # happens to fail.
+            try:
+                await self.order_repo.session.commit()
+            except Exception:  # noqa: BLE001 - pending intent is durable
+                await self.order_repo.session.rollback()
             return await self._load_order_for_response(order.id)
 
         order.status = OrderStatus.CANCELLED
@@ -298,6 +333,10 @@ class OrderService:
         )
         self._sync_order_address(order)
         await self.order_repo.session.flush()
+        try:
+            await self.order_repo.session.commit()
+        except Exception:  # noqa: BLE001 - committed CANCEL_PENDING is retried
+            await self.order_repo.session.rollback()
         return await self._load_order_for_response(order.id)
 
     async def mark_delivered(self, order_id: UUID) -> Order:
@@ -372,6 +411,11 @@ class OrderService:
                 )
             )
             await self.order_repo.session.flush()
+            try:
+                await self.order_repo.session.commit()
+            except Exception:  # noqa: BLE001 - pending state remains durable
+                await self.order_repo.session.rollback()
+                continue
             retried += 1
         return retried
 
@@ -382,6 +426,12 @@ class OrderService:
             datetime.now(timezone.utc), limit
         )
         for pending in pending_jobs:
+            # A stale intent must never compensate an order that did commit
+            # after the worker originally listed the row.
+            if await self.order_repo.get_with_items(pending.order_id):
+                await self.order_repo.delete_reservation_compensation(pending)
+                retried += 1
+                continue
             try:
                 await self._unreserve_payload(pending.order_id, pending.items)
             except Exception as exc:  # noqa: BLE001 - retain durable retry intent
@@ -626,6 +676,78 @@ class OrderService:
             error=error,
             next_retry_at=self._next_retry_at(1),
         )
+
+    async def _prepare_checkout_intent(
+        self,
+        *,
+        order_id: UUID,
+        items: list[object],
+        request_fingerprint: str,
+    ) -> None:
+        pending = await self.order_repo.get_reservation_compensation(order_id)
+        if pending is not None:
+            self._validate_checkout_intent(pending, request_fingerprint)
+            return
+        await self.order_repo.queue_reservation_compensation(
+            order_id=order_id,
+            items=[
+                {"sku_id": str(item.sku_id), "quantity": item.quantity}
+                for item in items
+            ],
+            error="checkout reserve intent",
+            next_retry_at=datetime.now(timezone.utc)
+            + timedelta(seconds=CHECKOUT_INTENT_GRACE_SECONDS),
+            request_fingerprint=request_fingerprint,
+        )
+
+    async def _delete_checkout_intent(
+        self, order_id: UUID, *, best_effort: bool = False
+    ) -> None:
+        try:
+            pending = await self.order_repo.get_reservation_compensation(order_id)
+            if pending is None:
+                return
+            await self.order_repo.delete_reservation_compensation(pending)
+            await self.order_repo.session.commit()
+        except Exception:  # noqa: BLE001 - the durable worker resolves stale intent
+            await self.order_repo.session.rollback()
+            if not best_effort:
+                logger.exception("Could not remove checkout intent %s", order_id)
+
+    async def _compensate_checkout_reservation(
+        self, order_id: UUID, items: list[object], error: str
+    ) -> None:
+        try:
+            await self._unreserve_items(order_id, items)
+        except Exception as unreserve_error:  # noqa: BLE001 - durable intent stays queued
+            logger.exception("Failed to compensate checkout reserve %s", order_id)
+            await self._queue_reservation_compensation(
+                order_id=order_id,
+                items=items,
+                error=f"{error}; unreserve: {type(unreserve_error).__name__}: {unreserve_error}",
+            )
+            try:
+                await self.order_repo.session.commit()
+            except Exception:  # noqa: BLE001 - initial intent was already committed
+                await self.order_repo.session.rollback()
+            return
+        await self._delete_checkout_intent(order_id, best_effort=True)
+
+    @staticmethod
+    def _checkout_operation_id(user_id: UUID, idempotency_key: str) -> UUID:
+        return uuid5(NAMESPACE_URL, f"neomarket:checkout:{user_id}:{idempotency_key}")
+
+    @staticmethod
+    def _validate_checkout_intent(pending: object, request_fingerprint: str) -> None:
+        stored = getattr(pending, "request_fingerprint", None)
+        if stored is not None and stored != request_fingerprint:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "IDEMPOTENCY_KEY_REUSED",
+                    "message": "Idempotency key was already used with a different request body",
+                },
+            )
 
     @staticmethod
     def _next_retry_at(attempt: int) -> datetime:
