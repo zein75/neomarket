@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
@@ -26,14 +26,13 @@ async def receive_product_event(
 
 @router.post(
     "/api/v1/b2b/events",
-    status_code=status.HTTP_204_NO_CONTENT,
-    include_in_schema=False,
+    status_code=status.HTTP_202_ACCEPTED,
 )
 async def receive_b2b_event(
     event: LegacyB2BEventRequest,
     _: None = Depends(verify_service_key),
     db: AsyncSession = Depends(get_db),
-) -> None:
+) -> Response:
     payload = dict(event.payload)
     product_event = ProductEventRequest.model_validate(
         {
@@ -48,3 +47,4 @@ async def receive_b2b_event(
     )
     await B2BEventService(db).handle_product_event(product_event)
     await db.commit()
+    return Response(status_code=status.HTTP_202_ACCEPTED)

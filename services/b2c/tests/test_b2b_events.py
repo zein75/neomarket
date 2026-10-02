@@ -87,14 +87,14 @@ def patch_dependencies():
     app.dependency_overrides.clear()
 
 
-def test_receive_sku_out_of_stock_event_returns_204() -> None:
+def test_receive_sku_out_of_stock_event_returns_202() -> None:
     response = TestClient(app).post(
         "/api/v1/b2b/events",
         headers={"X-Service-Key": "dev-service-key-change-in-production"},
         json=_event(),
     )
 
-    assert response.status_code == 204
+    assert response.status_code == 202
     assert response.content == b""
 
 

@@ -4,6 +4,7 @@ import asyncio
 import logging
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from src.api.routers import auth, b2b_events, cart, catalog, favorites, health, home, orders
@@ -45,6 +46,30 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    """Keep public validation errors in the root-level Error envelope.
+
+    FastAPI's default ``detail`` wrapper is not part of the B2C wire contract.
+    Authentication dependencies still use their explicit 401 handler.
+    """
+    return JSONResponse(
+        status_code=400,
+        content={
+            "code": "VALIDATION_ERROR",
+            "message": "Request validation failed",
+            "details": {
+                "errors": [
+                    {key: value for key, value in error.items() if key != "ctx"}
+                    for error in exc.errors()
+                ]
+            },
+        },
+    )
 
 
 @app.exception_handler(HTTPException)

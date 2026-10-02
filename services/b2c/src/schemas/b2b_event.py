@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, model_validator
 
 class B2BProductEvent(StrEnum):
     PRODUCT_BLOCKED = "PRODUCT_BLOCKED"
+    PRODUCT_HARD_BLOCKED = "PRODUCT_HARD_BLOCKED"
     PRODUCT_DELETED = "PRODUCT_DELETED"
     SKU_OUT_OF_STOCK = "SKU_OUT_OF_STOCK"
 
@@ -53,6 +54,7 @@ class LegacyB2BEventRequest(BaseModel):
     event_type: Literal[
         "PRODUCT_DELETED",
         "PRODUCT_BLOCKED",
+        "PRODUCT_HARD_BLOCKED",
         "SKU_OUT_OF_STOCK",
     ]
     idempotency_key: UUID

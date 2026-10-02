@@ -54,11 +54,16 @@ class ModerationEventService:
             self._apply_moderated(product)
         else:
             self._apply_blocked(product, event)
+            event_type = (
+                "PRODUCT_HARD_BLOCKED"
+                if product.status is ProductStatus.HARD_BLOCKED
+                else "PRODUCT_BLOCKED"
+            )
             await self.outbox_repo.create_b2c_event(
                 idempotency_key=idempotency_key,
-                event_type="PRODUCT_BLOCKED",
+                event_type=event_type,
                 payload={
-                    "event_type": "PRODUCT_BLOCKED",
+                    "event_type": event_type,
                     "idempotency_key": idempotency_key,
                     "occurred_at": event.occurred_at.isoformat(),
                     "payload": {

@@ -31,19 +31,13 @@ def _decision_event(event: ModerationEventRequest) -> ModerationDecisionEvent:
     )
 
 
-@router.post("/api/v1/events/moderation", status_code=status.HTTP_204_NO_CONTENT)
-async def apply_moderation_event(
-    event: ModerationEventRequest,
-    _: None = Depends(verify_service_key),
-    db: AsyncSession = Depends(get_db),
-) -> Response:
-    await ModerationEventService(db).apply(_decision_event(event))
-    await db.commit()
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
 @router.post("/api/v1/moderation/events", status_code=status.HTTP_204_NO_CONTENT)
-async def apply_moderation_event_alias(
+@router.post(
+    "/api/v1/events/moderation",
+    status_code=status.HTTP_204_NO_CONTENT,
+    include_in_schema=False,
+)
+async def apply_moderation_event(
     event: ModerationEventRequest,
     _: None = Depends(verify_service_key),
     db: AsyncSession = Depends(get_db),
