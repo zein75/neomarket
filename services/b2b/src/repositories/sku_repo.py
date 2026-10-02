@@ -2,7 +2,7 @@ from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import selectinload
 
 from src.models.sku import SKU
 from .base import BaseRepository
@@ -22,7 +22,7 @@ class SKURepository(BaseRepository[SKU]):
         result = await self.session.execute(
             select(SKU)
             .where(SKU.id == sku_id)
-            .options(joinedload(SKU.product))
+            .options(selectinload(SKU.product))
         )
         return result.scalar_one_or_none()
 
@@ -30,7 +30,9 @@ class SKURepository(BaseRepository[SKU]):
         result = await self.session.execute(
             select(SKU)
             .where(SKU.id.in_(sku_ids))
-            .options(joinedload(SKU.product))
+            # PostgreSQL rejects FOR UPDATE over joinedload's nullable outer
+            # join. Lock SKU rows only; fetch the parent in a separate query.
+            .options(selectinload(SKU.product))
             # Acquire overlapping SKU locks in one stable order so two carts
             # containing the same SKUs in a different order cannot deadlock.
             .order_by(SKU.id)

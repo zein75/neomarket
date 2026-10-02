@@ -1,4 +1,7 @@
 from datetime import datetime, timezone
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+import os
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -358,6 +361,96 @@ async def test_persisted_idempotent_response_survives_a_later_reservation(
         assert repeated["items"][0]["remaining_stock"] == 7
 
     Base.metadata.drop_all(engine)
+
+
+@pytest.mark.asyncio
+async def test_postgres_multi_sku_reserve_and_replay(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Exercise real PostgreSQL uniqueness and row locking, not the fake repository."""
+    database_url = os.getenv("NEOMARKET_POSTGRES_TEST_URL")
+    if not database_url:
+        pytest.skip("set NEOMARKET_POSTGRES_TEST_URL to run PostgreSQL integration tests")
+
+    monkeypatch.setattr(reservation_service_module, "SKURepository", SKURepository)
+    monkeypatch.setattr(
+        reservation_service_module, "ReservationRepository", ReservationRepository
+    )
+    monkeypatch.setattr(
+        reservation_service_module,
+        "ReservationOperationRepository",
+        ReservationOperationRepository,
+    )
+    engine = create_engine(database_url)
+    seller_id, product_id = uuid4(), uuid4()
+    sku_ids = [uuid4(), uuid4(), uuid4()]
+    order_id, key = uuid4(), str(uuid4())
+
+    with Session(engine) as session:
+        session.query(Reservation).delete()
+        session.query(ReservationOperation).delete()
+        session.query(SKU).delete()
+        session.query(Product).delete()
+        session.query(Seller).delete()
+        session.add(Seller(id=seller_id, email=f"{seller_id}@test", hashed_password="h", company_name="Seller"))
+        session.add(Product(id=product_id, seller_id=seller_id, title="Phone", description="Phone", category="electronics", status=ProductStatus.MODERATED))
+        session.add_all([SKU(id=sku_id, product_id=product_id, name=f"SKU-{index}", price=100, stock=5, reserved_quantity=0, images=[]) for index, sku_id in enumerate(sku_ids)])
+        session.commit()
+
+        adapter = SyncSessionAdapter(session)
+        request = _reserve_request(
+            *((sku_id, 1) for sku_id in sku_ids),
+            idempotency_key=key,
+            order_id=order_id,
+        )
+        first = await ReservationService(adapter).reserve(request)
+        session.commit()
+        second = await ReservationService(adapter).reserve(request)
+        session.commit()
+
+        assert second == first
+        assert session.query(Reservation).filter_by(order_id=order_id).count() == 3
+        assert [sku.reserved_quantity for sku in session.query(SKU).order_by(SKU.id)] == [1, 1, 1]
+
+
+@pytest.mark.asyncio
+async def test_postgres_concurrent_same_key_reserves_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database_url = os.getenv("NEOMARKET_POSTGRES_TEST_URL")
+    if not database_url:
+        pytest.skip("set NEOMARKET_POSTGRES_TEST_URL to run PostgreSQL integration tests")
+    monkeypatch.setattr(reservation_service_module, "SKURepository", SKURepository)
+    monkeypatch.setattr(reservation_service_module, "ReservationRepository", ReservationRepository)
+    monkeypatch.setattr(reservation_service_module, "ReservationOperationRepository", ReservationOperationRepository)
+    engine = create_engine(database_url)
+    seller_id, product_id, sku_id, order_id = uuid4(), uuid4(), uuid4(), uuid4()
+    request = _reserve_request((sku_id, 2), idempotency_key=str(uuid4()), order_id=order_id)
+
+    with Session(engine) as session:
+        session.query(Reservation).delete()
+        session.query(ReservationOperation).delete()
+        session.query(SKU).delete()
+        session.query(Product).delete()
+        session.query(Seller).delete()
+        session.add(Seller(id=seller_id, email=f"{seller_id}@test", hashed_password="h", company_name="Seller"))
+        session.add(Product(id=product_id, seller_id=seller_id, title="Phone", description="Phone", category="electronics", status=ProductStatus.MODERATED))
+        session.add(SKU(id=sku_id, product_id=product_id, name="SKU", price=100, stock=5, reserved_quantity=0, images=[]))
+        session.commit()
+
+    def reserve_once() -> dict[str, object]:
+        with Session(engine) as session:
+            result = asyncio.run(ReservationService(SyncSessionAdapter(session)).reserve(request))
+            session.commit()
+            return result
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first, second = list(pool.map(lambda _: reserve_once(), range(2)))
+
+    with Session(engine) as session:
+        assert first == second
+        assert session.query(Reservation).filter_by(order_id=order_id).count() == 1
+        assert session.get(SKU, sku_id).reserved_quantity == 2
 
 
 @pytest.mark.asyncio
