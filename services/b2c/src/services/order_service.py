@@ -111,11 +111,17 @@ class OrderService:
 
         try:
             await self._reserve(order_id, idempotency_key, items)
+        except HTTPException as exc:
+            # A B2B 409 is an all-or-nothing business rejection, so no stock
+            # was reserved and the intent can be completed.  A 503 can mean
+            # that B2B reserved stock but its response was lost: retain the
+            # intent for idempotent replay or worker compensation.
+            if exc.status_code != status.HTTP_503_SERVICE_UNAVAILABLE:
+                await self._delete_checkout_intent(order_id, best_effort=True)
+            raise
         except Exception:
-            # No successful reserve was observed. Removing the intent is an
-            # optimisation only; if this cleanup itself fails, idempotent B2B
-            # unreserve by the worker is still safe.
-            await self._delete_checkout_intent(order_id, best_effort=True)
+            # Transport exceptions have the same ambiguous outcome as a lost
+            # response.  Never delete the only durable recovery record here.
             raise
 
         total = sum(

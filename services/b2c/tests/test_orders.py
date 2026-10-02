@@ -732,17 +732,40 @@ async def test_b2b_unavailable_returns_503() -> None:
         detail="B2B service unavailable",
     )
 
+    request = _order_request()
     with pytest.raises(HTTPException) as exc:
         await OrderService(FakeSession()).checkout(
             user_id=user_id,
             cart_id=cart.id,
             idempotency_key="checkout-4",
-            order_request=_order_request(),
+            order_request=request,
         )
 
     assert exc.value.status_code == 503
     assert exc.value.detail["code"] == "B2B_UNAVAILABLE"
     assert FakeOrderRepository.created_orders == []
+    # A timeout can happen after B2B accepted reserve. Keep the intent so a
+    # same-key retry is idempotent and a crash can be compensated by the worker.
+    order_id = UUID(FakeB2BClient.reserve_calls[0]["order_id"])
+    assert order_id in FakeOrderRepository.pending_reservation_compensations
+    assert (
+        FakeOrderRepository.pending_reservation_compensations[order_id]
+        .request_fingerprint
+        == OrderService(FakeSession())._request_fingerprint(request)
+    )
+
+    # If B2B had actually reserved before its response was lost, the stable
+    # operation identity makes the retry a replay rather than a double reserve.
+    FakeB2BClient.reserve_error = None
+    retried = await OrderService(FakeSession()).checkout(
+        user_id=user_id,
+        cart_id=cart.id,
+        idempotency_key="checkout-4",
+        order_request=request,
+    )
+    assert retried.id == order_id
+    assert len(FakeB2BClient.reserve_calls) == 2
+    assert FakeB2BClient.unreserve_calls == []
 
 
 async def test_checkout_rejects_address_not_owned_by_buyer() -> None:
@@ -1276,3 +1299,16 @@ async def test_cancel_final_commit_failure_leaves_durable_pending_for_retry() ->
 
     assert session.rolled_back is True
     assert FakeB2BClient.unreserve_calls == [_unreserve_payload(order)]
+
+
+async def test_cancel_pending_commit_failure_does_not_call_unreserve() -> None:
+    """No external side effect is allowed before CANCEL_PENDING is durable."""
+    order = _order(user_id=uuid4(), status=OrderStatus.PAID)
+    FakeOrderRepository.orders_by_id[order.id] = order
+    session = FakeSession()
+    session.fail_commit_at = 1
+
+    with pytest.raises(RuntimeError, match="database commit failed"):
+        await OrderService(session).cancel_order(order.id, order.user_id)
+
+    assert FakeB2BClient.unreserve_calls == []
