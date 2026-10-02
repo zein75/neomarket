@@ -193,6 +193,11 @@ def _reserve_request(*items, idempotency_key: str | None = None, order_id=None):
     )
 
 
+def _sync_postgres_url(database_url: str) -> str:
+    """Adapt the async application URL for this deliberately synchronous test harness."""
+    return database_url.replace("+asyncpg", "+psycopg2", 1)
+
+
 @pytest.mark.asyncio
 async def test_reserve_all_skus_succeeds() -> None:
     sku_a = _sku(stock=10, reserved_quantity=1)
@@ -411,7 +416,7 @@ async def test_postgres_multi_sku_reserve_and_replay(
         "ReservationOperationRepository",
         ReservationOperationRepository,
     )
-    engine = create_engine(database_url)
+    engine = create_engine(_sync_postgres_url(database_url))
     seller_id, product_id = uuid4(), uuid4()
     sku_ids = [uuid4(), uuid4(), uuid4()]
     order_id, key = uuid4(), str(uuid4())
@@ -458,7 +463,7 @@ async def test_postgres_same_key_different_payload_returns_conflict(
         "ReservationOperationRepository",
         ReservationOperationRepository,
     )
-    engine = create_engine(database_url)
+    engine = create_engine(_sync_postgres_url(database_url))
     seller_id, product_id, sku_id, order_id = uuid4(), uuid4(), uuid4(), uuid4()
     key = str(uuid4())
 
@@ -494,7 +499,7 @@ async def test_postgres_concurrent_same_key_reserves_once(
     monkeypatch.setattr(reservation_service_module, "SKURepository", SKURepository)
     monkeypatch.setattr(reservation_service_module, "ReservationRepository", ReservationRepository)
     monkeypatch.setattr(reservation_service_module, "ReservationOperationRepository", ReservationOperationRepository)
-    engine = create_engine(database_url)
+    engine = create_engine(_sync_postgres_url(database_url))
     seller_id, product_id, sku_id, order_id = uuid4(), uuid4(), uuid4(), uuid4()
     request = _reserve_request((sku_id, 2), idempotency_key=str(uuid4()), order_id=order_id)
 

@@ -14,7 +14,10 @@ def _database_url() -> str:
     url = os.getenv("NEOMARKET_POSTGRES_TEST_URL")
     if not url:
         pytest.skip("set NEOMARKET_POSTGRES_TEST_URL to run PostgreSQL integration tests")
-    return url.replace("/b2b", "/b2c")
+    # These tests deliberately use synchronous SQLAlchemy sessions to create
+    # genuinely concurrent PostgreSQL transactions, so they need a sync
+    # driver even though the application itself uses asyncpg.
+    return url.replace("+asyncpg", "+psycopg2", 1).replace("/b2b", "/b2c")
 
 
 def _order(*, user_id: UUID, key: str, status: OrderStatus = OrderStatus.PAID) -> Order:
@@ -41,7 +44,10 @@ def _run_concurrently(operation):
     """Run two separate database transactions, with PostgreSQL lock timeouts."""
     with ThreadPoolExecutor(max_workers=2) as pool:
         futures = [pool.submit(operation) for _ in range(2)]
-        return [future.result(timeout=15) for future in futures]
+        # Docker Desktop can take longer than 15 seconds to establish two new
+        # psycopg connections on Windows.  PostgreSQL still has its own 5s
+        # lock timeout, while this watchdog only protects the test process.
+        return [future.result(timeout=60) for future in futures]
 
 
 def test_postgres_concurrent_checkout_key_returns_one_order() -> None:
