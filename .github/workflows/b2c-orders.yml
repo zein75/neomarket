@@ -21,6 +21,20 @@ on:
 jobs:
   orders:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: b2c
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -30,6 +44,11 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv sync --dev
+      - name: Apply B2C PostgreSQL schema
+        working-directory: services/b2c
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/b2c
+        run: uv run alembic upgrade head
       - name: Run canonical checkout and cancellation scenarios
         working-directory: services/b2c
         run: >-
@@ -48,3 +67,8 @@ jobs:
           cancel_delivering_order_transitions_to_cancelled or
           cancel_delivered_order_returns_409 or
           other_user_order_returns_404"
+      - name: Run PostgreSQL checkout and cancellation concurrency scenarios
+        working-directory: services/b2c
+        env:
+          NEOMARKET_POSTGRES_TEST_URL: postgresql://postgres:postgres@127.0.0.1:5432/b2c
+        run: uv run pytest -q tests/test_postgres_order_concurrency.py

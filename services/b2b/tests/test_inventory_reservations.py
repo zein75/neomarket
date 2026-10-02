@@ -223,8 +223,7 @@ async def test_partial_insufficient_stock_returns_409_all_rollback() -> None:
 
     assert exc_info.value.status_code == 409
     assert exc_info.value.detail["code"] == "INSUFFICIENT_STOCK"
-    assert exc_info.value.detail["reserved"] is False
-    assert exc_info.value.detail["failed_items"][0]["available"] == 1
+    assert exc_info.value.detail["details"]["failed_items"][0]["available"] == 1
     assert sku_a.reserved_quantity == 1
     assert sku_b.reserved_quantity == 4
 
@@ -240,7 +239,7 @@ async def test_unmoderated_product_cannot_be_reserved() -> None:
 
     assert exc_info.value.status_code == 409
     assert sku.reserved_quantity == 0
-    assert exc_info.value.detail["failed_items"][0]["reason"] == "PRODUCT_BLOCKED"
+    assert exc_info.value.detail["details"]["failed_items"][0]["reason"] == "PRODUCT_BLOCKED"
 
 
 @pytest.mark.asyncio
@@ -931,5 +930,4 @@ def test_insufficient_stock_response_matches_error_contract() -> None:
 
     assert response.status_code == 409
     assert response.json()["code"] == "INSUFFICIENT_STOCK"
-    assert response.json()["reserved"] is False
-    assert response.json()["failed_items"][0]["available"] == 1
+    assert response.json()["details"]["failed_items"][0]["available"] == 1

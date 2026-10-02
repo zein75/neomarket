@@ -137,13 +137,26 @@ class OrderService:
             # explicitly eager-loaded aggregate; falling back to ``order`` can
             # trigger an async lazy load while FastAPI serializes the response.
             return await self._load_order_for_response(order.id)
-        except Exception:
+        except Exception as checkout_error:
+            # A failed flush leaves a real SQLAlchemy transaction unusable;
+            # restore it before either direct compensation or persisting the
+            # durable fallback job.
+            await self.order_repo.session.rollback()
             if not reserve_compensated:
                 try:
                     await self._unreserve_items(order_id, items)
-                except Exception:  # noqa: BLE001 - preserve the original checkout error
+                except Exception as unreserve_error:  # noqa: BLE001 - preserve the original checkout error
                     logger.exception("Failed to compensate checkout reserve %s", order_id)
-            await self.order_repo.session.rollback()
+                    await self._queue_reservation_compensation(
+                        order_id=order_id,
+                        items=items,
+                        error=f"{type(checkout_error).__name__}: {checkout_error}; "
+                        f"unreserve: {type(unreserve_error).__name__}: {unreserve_error}",
+                    )
+                    # This is intentionally committed before re-raising the
+                    # checkout error. The caller's normal rollback must not
+                    # discard the only durable record of the reserve.
+                    await self.order_repo.session.commit()
             raise
 
     async def create_from_cart(self, user_id: UUID, cart_id: UUID) -> Order:
@@ -353,6 +366,30 @@ class OrderService:
             retried += 1
         return retried
 
+    async def retry_pending_reservation_compensations(self, limit: int = 100) -> int:
+        """Retry unreserve jobs created when checkout failed after reserve."""
+        retried = 0
+        pending_jobs = await self.order_repo.list_due_reservation_compensations(
+            datetime.now(timezone.utc), limit
+        )
+        for pending in pending_jobs:
+            try:
+                await self._unreserve_payload(pending.order_id, pending.items)
+            except Exception as exc:  # noqa: BLE001 - retain durable retry intent
+                logger.exception(
+                    "Failed to retry checkout reserve compensation %s", pending.order_id
+                )
+                await self.order_repo.queue_reservation_compensation(
+                    order_id=pending.order_id,
+                    items=pending.items,
+                    error=f"{type(exc).__name__}: {exc}",
+                    next_retry_at=self._next_retry_at(pending.attempts + 1),
+                )
+                continue
+            await self.order_repo.delete_reservation_compensation(pending)
+            retried += 1
+        return retried
+
     @staticmethod
     def _schedule_cancel_retry(order: Order) -> None:
         order.cancel_retry_attempts = (order.cancel_retry_attempts or 0) + 1
@@ -549,15 +586,45 @@ class OrderService:
         await self._unreserve_items(order.id, order.items)
 
     async def _unreserve_items(self, order_id: UUID, items: list[object]) -> None:
-        payload = {
-            "order_id": str(order_id),
-            "items": [
+        payload_items = [
+            {"sku_id": str(item.sku_id), "quantity": item.quantity}
+            for item in items
+        ]
+        await self._unreserve_payload(order_id, payload_items)
+
+    async def _unreserve_payload(
+        self,
+        order_id: UUID,
+        items: list[dict[str, object]],
+    ) -> None:
+        payload = {"order_id": str(order_id), "items": items}
+        async with B2BClient(settings.b2b_base_url) as client:
+            await client.unreserve(payload)
+
+    async def _queue_reservation_compensation(
+        self,
+        *,
+        order_id: UUID,
+        items: list[object],
+        error: str,
+    ) -> None:
+        await self.order_repo.queue_reservation_compensation(
+            order_id=order_id,
+            items=[
                 {"sku_id": str(item.sku_id), "quantity": item.quantity}
                 for item in items
             ],
-        }
-        async with B2BClient(settings.b2b_base_url) as client:
-            await client.unreserve(payload)
+            error=error,
+            next_retry_at=self._next_retry_at(1),
+        )
+
+    @staticmethod
+    def _next_retry_at(attempt: int) -> datetime:
+        delay = min(
+            CANCEL_RETRY_BASE_SECONDS * (2 ** max(attempt - 1, 0)),
+            CANCEL_RETRY_MAX_SECONDS,
+        )
+        return datetime.now(timezone.utc) + timedelta(seconds=delay)
 
     async def _try_fulfill(self, order: Order) -> bool:
         payload = {
@@ -576,13 +643,14 @@ class OrderService:
                 return False
 
     def _reserve_failure_detail(self, detail: object) -> object:
+        if isinstance(detail, dict) and isinstance(detail.get("details"), dict):
+            detail = {**detail, **detail["details"]}
         if isinstance(detail, dict) and "failed_items" in detail:
             return {
-                "code": detail.get("code", "RESERVE_FAILED"),
-                "message": detail.get(
-                    "message",
-                    "Unable to reserve one or more items",
-                ),
+                # B2C exposes its own checkout failure code while preserving
+                # B2B's exact problematic SKU list.
+                "code": "RESERVE_FAILED",
+                "message": "Unable to reserve one or more items",
                 "failed_items": detail["failed_items"],
             }
         if isinstance(detail, dict) and "sku_ids" in detail:

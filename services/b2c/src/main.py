@@ -21,6 +21,7 @@ async def _retry_pending_cancellations(stop: asyncio.Event) -> None:
         try:
             async with AsyncSessionLocal() as session:
                 await OrderService(session).retry_pending_cancellations()
+                await OrderService(session).retry_pending_reservation_compensations()
                 await session.commit()
         except Exception:  # noqa: BLE001 - a later iteration must still run
             logger.exception("Failed to retry pending order cancellations")

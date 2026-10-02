@@ -5,7 +5,12 @@ from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.models.order import Order, OrderStatus, PendingFulfillment
+from src.models.order import (
+    Order,
+    OrderStatus,
+    PendingFulfillment,
+    PendingReservationCompensation,
+)
 
 from .base import BaseRepository
 
@@ -163,6 +168,54 @@ class OrderRepository(BaseRepository[Order]):
     async def delete_pending_fulfillment(
         self,
         pending: PendingFulfillment,
+    ) -> None:
+        await self.session.delete(pending)
+        await self.session.flush()
+
+    async def queue_reservation_compensation(
+        self,
+        *,
+        order_id: UUID,
+        items: list[dict[str, object]],
+        error: str,
+        next_retry_at: datetime,
+    ) -> PendingReservationCompensation:
+        pending = await self.session.get(PendingReservationCompensation, order_id)
+        if pending is None:
+            pending = PendingReservationCompensation(
+                order_id=order_id,
+                items=items,
+                attempts=1,
+                next_retry_at=next_retry_at,
+                last_error=error[:500],
+            )
+            self.session.add(pending)
+        else:
+            pending.attempts += 1
+            pending.next_retry_at = next_retry_at
+            pending.last_error = error[:500]
+        await self.session.flush()
+        return pending
+
+    async def list_due_reservation_compensations(
+        self,
+        now: datetime,
+        limit: int = 100,
+    ) -> list[PendingReservationCompensation]:
+        result = await self.session.execute(
+            select(PendingReservationCompensation)
+            .where(
+                (PendingReservationCompensation.next_retry_at.is_(None))
+                | (PendingReservationCompensation.next_retry_at <= now)
+            )
+            .order_by(PendingReservationCompensation.created_at)
+            .limit(limit)
+        )
+        return list(result.scalars().all())
+
+    async def delete_reservation_compensation(
+        self,
+        pending: PendingReservationCompensation,
     ) -> None:
         await self.session.delete(pending)
         await self.session.flush()

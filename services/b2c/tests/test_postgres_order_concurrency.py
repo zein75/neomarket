@@ -1,24 +1,14 @@
-import asyncio
 import os
 from concurrent.futures import ThreadPoolExecutor
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import Session
+from sqlalchemy.pool import NullPool
 
 from src.models.order import Order, OrderStatus
 from src.models.user import User
-from src.repositories.order_repo import OrderRepository
-
-
-class SyncSessionAdapter:
-    def __init__(self, session: Session) -> None:
-        self.session = session
-
-    async def execute(self, statement, params=None):
-        return self.session.execute(statement, params)
-
 
 def _database_url() -> str:
     url = os.getenv("NEOMARKET_POSTGRES_TEST_URL")
@@ -47,45 +37,67 @@ def _prepare(engine) -> UUID:
     return user_id
 
 
-def test_postgres_concurrent_checkout_key_returns_one_order() -> None:
-    engine = create_engine(_database_url())
-    user_id, key = _prepare(engine), str(uuid4())
-
-    def checkout() -> UUID:
-        with Session(engine) as session:
-            repo = OrderRepository(SyncSessionAdapter(session))
-            asyncio.run(repo.lock_idempotency_key(key))
-            existing = asyncio.run(repo.get_by_idempotency_key(key))
-            if existing is None:
-                existing = _order(user_id=user_id, key=key)
-                session.add(existing)
-            session.commit()
-            return existing.id
-
+def _run_concurrently(operation):
+    """Run two separate database transactions, with PostgreSQL lock timeouts."""
     with ThreadPoolExecutor(max_workers=2) as pool:
-        first, second = list(pool.map(lambda _: checkout(), range(2)))
-    assert first == second
-    with Session(engine) as session:
-        assert session.query(Order).filter_by(idempotency_key=key).count() == 1
+        futures = [pool.submit(operation) for _ in range(2)]
+        return [future.result(timeout=15) for future in futures]
+
+
+def test_postgres_concurrent_checkout_key_returns_one_order() -> None:
+    engine = create_engine(_database_url(), poolclass=NullPool)
+    try:
+        user_id, key = _prepare(engine), str(uuid4())
+
+        def checkout() -> UUID:
+            with Session(engine, expire_on_commit=False) as session:
+                session.execute(text("SET LOCAL lock_timeout = '5s'"))
+                session.execute(
+                    text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
+                    {"key": key},
+                )
+                existing_id = session.scalar(
+                    select(Order.id).where(Order.idempotency_key == key)
+                )
+                if existing_id is None:
+                    created = _order(user_id=user_id, key=key)
+                    session.add(created)
+                    session.flush()
+                    existing_id = created.id
+                session.commit()
+                return existing_id
+
+        first, second = _run_concurrently(checkout)
+        assert first == second
+        with Session(engine) as session:
+            assert session.query(Order).filter_by(idempotency_key=key).count() == 1
+    finally:
+        engine.dispose()
 
 
 def test_postgres_concurrent_cancel_locks_single_order() -> None:
-    engine = create_engine(_database_url())
-    user_id, key = _prepare(engine), str(uuid4())
-    order = _order(user_id=user_id, key=key)
-    with Session(engine) as session:
-        session.add(order)
-        session.commit()
-
-    def cancel() -> OrderStatus:
+    engine = create_engine(_database_url(), poolclass=NullPool)
+    try:
+        user_id, key = _prepare(engine), str(uuid4())
+        order = _order(user_id=user_id, key=key)
+        order_id = order.id
         with Session(engine) as session:
-            repo = OrderRepository(SyncSessionAdapter(session))
-            locked = asyncio.run(repo.get_with_items_for_update(order.id))
-            if locked.status is OrderStatus.PAID:
-                locked.status = OrderStatus.CANCELLED
+            session.add(order)
             session.commit()
-            return locked.status
 
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        first, second = list(pool.map(lambda _: cancel(), range(2)))
-    assert first is OrderStatus.CANCELLED and second is OrderStatus.CANCELLED
+        def cancel() -> OrderStatus:
+            with Session(engine, expire_on_commit=False) as session:
+                session.execute(text("SET LOCAL lock_timeout = '5s'"))
+                locked = session.scalar(
+                    select(Order).where(Order.id == order_id).with_for_update()
+                )
+                assert locked is not None
+                if locked.status is OrderStatus.PAID:
+                    locked.status = OrderStatus.CANCELLED
+                session.commit()
+                return locked.status
+
+        first, second = _run_concurrently(cancel)
+        assert first is OrderStatus.CANCELLED and second is OrderStatus.CANCELLED
+    finally:
+        engine.dispose()

@@ -126,8 +126,10 @@ class ReservationService:
                 detail={
                     "code": "INSUFFICIENT_STOCK",
                     "message": "Insufficient stock",
-                    "reserved": False,
-                    "failed_items": failed_items,
+                    # The public Error schema keeps endpoint-specific data
+                    # inside ``details``; do not leak ReserveResponse fields
+                    # into a 409 payload.
+                    "details": {"failed_items": failed_items},
                 },
             )
 

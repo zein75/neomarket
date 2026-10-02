@@ -23,6 +23,20 @@ on:
 jobs:
   reservation:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: b2b
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -32,6 +46,11 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv sync --dev
+      - name: Apply B2B PostgreSQL schema
+        working-directory: services/b2b
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/b2b
+        run: uv run alembic upgrade head
       - name: Run canonical reservation scenarios
         working-directory: services/b2b
         run: >-
@@ -43,6 +62,13 @@ jobs:
           sku_out_of_stock_event_emitted or
           persisted_outbox_event_retries_after_b2c_recovers or
           unreserve_restores_quantities"
+      - name: Run PostgreSQL reservation atomicity and concurrency scenarios
+        working-directory: services/b2b
+        env:
+          NEOMARKET_POSTGRES_TEST_URL: postgresql://postgres:postgres@127.0.0.1:5432/b2b
+        run: >-
+          uv run pytest -q tests/test_inventory_reservations.py
+          -k "postgres_multi_sku_reserve_and_replay or postgres_concurrent_same_key_reserves_once"
       - name: Run moderation decision scenarios
         working-directory: services/b2b
         run: uv run pytest -q tests/test_apply_moderation.py

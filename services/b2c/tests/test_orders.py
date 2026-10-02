@@ -140,6 +140,7 @@ class FakeOrderRepository:
     orders_by_key: dict[str, Order] = {}
     orders_by_id: dict[UUID, Order] = {}
     pending_fulfillments: dict[UUID, SimpleNamespace] = {}
+    pending_reservation_compensations: dict[UUID, SimpleNamespace] = {}
     created_orders: list[Order] = []
     locked_gets: list[UUID] = []
     race_order: Order | None = None
@@ -242,6 +243,35 @@ class FakeOrderRepository:
     async def delete_pending_fulfillment(self, pending) -> None:
         self.pending_fulfillments.pop(pending.order_id, None)
 
+    async def queue_reservation_compensation(
+        self, *, order_id, items, error, next_retry_at
+    ):
+        pending = self.pending_reservation_compensations.get(order_id)
+        if pending is None:
+            pending = SimpleNamespace(
+                order_id=order_id,
+                items=items,
+                attempts=1,
+                next_retry_at=next_retry_at,
+                last_error=error,
+            )
+            self.pending_reservation_compensations[order_id] = pending
+        else:
+            pending.attempts += 1
+            pending.next_retry_at = next_retry_at
+            pending.last_error = error
+        return pending
+
+    async def list_due_reservation_compensations(self, now, limit: int = 100):
+        return [
+            pending
+            for pending in self.pending_reservation_compensations.values()
+            if pending.next_retry_at is None or pending.next_retry_at <= now
+        ][:limit]
+
+    async def delete_reservation_compensation(self, pending) -> None:
+        self.pending_reservation_compensations.pop(pending.order_id, None)
+
 
 class FakeAddressRepository:
     return_none = False
@@ -320,6 +350,7 @@ def patch_dependencies(monkeypatch):
     FakeOrderRepository.orders_by_key = {}
     FakeOrderRepository.orders_by_id = {}
     FakeOrderRepository.pending_fulfillments = {}
+    FakeOrderRepository.pending_reservation_compensations = {}
     FakeOrderRepository.created_orders = []
     FakeOrderRepository.locked_gets = []
     FakeOrderRepository.race_order = None
@@ -434,7 +465,11 @@ async def test_partial_reserve_failure_returns_409() -> None:
     ]
     FakeB2BClient.reserve_error = HTTPException(
         status_code=409,
-        detail={"code": "RESERVE_FAILED", "failed_items": [{"sku_id": str(sku_id)}]},
+        detail={
+            "code": "INSUFFICIENT_STOCK",
+            "message": "Insufficient stock",
+            "details": {"failed_items": [{"sku_id": str(sku_id)}]},
+        },
     )
 
     with pytest.raises(HTTPException) as exc:
@@ -770,6 +805,55 @@ async def test_checkout_compensates_reserve_when_created_order_cannot_reload() -
             "items": [{"sku_id": str(sku_id), "quantity": 2}],
         }
     ]
+
+
+async def test_checkout_persists_compensation_when_unreserve_also_fails() -> None:
+    user_id, product_id, sku_id = uuid4(), uuid4(), uuid4()
+    cart = _cart(
+        user_id=user_id,
+        items=[_cart_item(product_id=product_id, sku_id=sku_id, quantity=2)],
+    )
+    FakeCartRepository.cart = cart
+    FakeB2BClient.products = [{
+        "id": str(product_id), "title": "Phone",
+        "skus": [{"id": str(sku_id), "name": "128 GB", "price": 150, "active_quantity": 5}],
+    }]
+    FakeB2BClient.unreserve_error = HTTPException(status_code=503, detail="down")
+    session = FakeSession()
+    session.fail_flush = True
+
+    with pytest.raises(RuntimeError, match="database write failed"):
+        await OrderService(session).checkout(
+            user_id=user_id,
+            cart_id=cart.id,
+            idempotency_key="checkout-durable-compensation",
+            order_request=_order_request(),
+        )
+
+    order_id = UUID(FakeB2BClient.reserve_calls[0]["order_id"])
+    pending = FakeOrderRepository.pending_reservation_compensations[order_id]
+    assert pending.items == [{"sku_id": str(sku_id), "quantity": 2}]
+    assert session.committed is True
+
+
+async def test_pending_checkout_compensation_retries_after_b2b_recovers() -> None:
+    order_id, sku_id = uuid4(), uuid4()
+    FakeOrderRepository.pending_reservation_compensations[order_id] = SimpleNamespace(
+        order_id=order_id,
+        items=[{"sku_id": str(sku_id), "quantity": 2}],
+        attempts=1,
+        next_retry_at=datetime.now(timezone.utc),
+        last_error="B2B unavailable",
+    )
+
+    retried = await OrderService(FakeSession()).retry_pending_reservation_compensations()
+
+    assert retried == 1
+    assert FakeOrderRepository.pending_reservation_compensations == {}
+    assert FakeB2BClient.unreserve_calls == [{
+        "order_id": str(order_id),
+        "items": [{"sku_id": str(sku_id), "quantity": 2}],
+    }]
 
 
 async def test_orders_list_returns_own_orders_paginated() -> None:

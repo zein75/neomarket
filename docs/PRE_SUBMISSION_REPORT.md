@@ -1,8 +1,8 @@
-# NeoMarket pre-submission audit
+# NeoMarket final pre-submission audit
 
 ## Sources
 
-Project baseline SHA: `7d08cc7`  
+Project baseline SHA: `33b7c4231d69738e2ed768d092374cf4cc2f9e10`
 Canon SHA: `2ff93a4cebc119e860385b318ebd8753fda1d801`  
 Protocols SHA: `3b405c6844f26d2d7c4ea32a44ea2f419723e8d0`
 
@@ -13,13 +13,13 @@ High: 0
 Medium: 0  
 Low: 0
 
-The real PostgreSQL migration gate passed. The repository currently has no behavioural PostgreSQL concurrency test target: its pytest suites use in-memory repositories for these flows. This is an explicit test-coverage limitation, not a suppressed test result.
+The real PostgreSQL migration and behavioural concurrency gates passed on Docker PostgreSQL 16. Checkout has a durable unreserve-compensation queue for the failure window after B2B reserve and before local order persistence.
 
 ## Task 1 — Reserve / Unreserve
 
 - Canonical inventory routes, typed reserve/unreserve requests, response timestamps and root-level errors are covered.
 - Multi-SKU reserve, replay preserving the original response, parent moderation status, transactional outbox and retry regressions are in the B2B suite.
-- Historical arbiter blockers: `[x]` response timestamps, `[x]` error envelope, `[x]` multi-SKU idempotency scope, `[x]` persisted outbox, `[x]` retry.
+- Historical arbiter blockers: `[x]` response timestamps, `[x]` `Error.details.failed_items` envelope, `[x]` multi-SKU idempotency scope, `[x]` persisted outbox, `[x]` retry.
 
 ## Task 2 — Moderation
 
@@ -30,12 +30,12 @@ The real PostgreSQL migration gate passed. The repository currently has no behav
 ## Task 3 — Cart
 
 - SKU-addressed mutation, clear, validate, explicit merge and login merge are covered.
-- DELETE item now returns the contract-required 200 `CartResponse` (not historical 204).
+- DELETE item returns the contract-required 204 empty response.
 - Price change and distinct unavailable cases are covered; no reservation occurs while adding to cart.
 
 ## Task 4 — Checkout
 
-- Checkout validates address ownership and cart, snapshots address/prices, uses canonical B2B reserve, scopes idempotency by buyer and compensates a failed local write.
+- Checkout validates address ownership and cart, snapshots address/prices, uses canonical B2B reserve, scopes idempotency by buyer and durably compensates a failed local write even when immediate unreserve is unavailable.
 - All Order response relationships are eagerly loaded before serialization.
 - Replays return the original order as protocol status 201 without a second reserve.
 
@@ -59,24 +59,26 @@ See [INTERNAL_API_COMPATIBILITY.md](INTERNAL_API_COMPATIBILITY.md) for method/he
 | Suite | Result |
 |---|---:|
 | B2B unit/regression | 129 passed |
-| B2C unit/regression | 103 passed |
+| B2C unit/regression | 105 passed |
 | Admin unit/regression | 16 passed |
 | PostgreSQL B2B migrations | PASS: head `0016_reservation_response` |
-| PostgreSQL B2C migrations | PASS: head `0017_cancel_retry` |
-| PostgreSQL behavioural concurrency | no repository test target exists |
+| PostgreSQL B2C migrations | PASS: head `0019_reserve_compensation` |
+| PostgreSQL B2B behavioural concurrency | PASS: 2 passed |
+| PostgreSQL B2C behavioural concurrency | PASS: 2 passed |
+| Current-code HTTP E2E | PASS: cart → checkout → idempotent replay → cancel; B2B reserve 409 envelope |
 
 ## OpenAPI contract check
 
 Generated application schemas were checked for the changed canonical paths:
 
 - B2B moderation: POST `/api/v1/moderation/events` -> 204; old route excluded.
-- B2C cart item DELETE: 200 `CartResponse`.
+- B2C cart item DELETE: 204 empty response.
 - B2C checkout: 201 `OrderResponse`.
 - B2C B2B-event receiver: 202.
 
 ## Remaining risks
 
-No code-level critical or high finding remains. PostgreSQL migrations were executed against a clean Docker PostgreSQL 16 instance. The repository still needs dedicated behavioural concurrency tests before that part can be claimed as executed.
+No code-level critical or high finding remains. PostgreSQL migrations and dedicated behavioural concurrency tests were executed against Docker PostgreSQL 16; CI provisions PostgreSQL and runs those targets without skip.
 
 ## Reproduction
 
