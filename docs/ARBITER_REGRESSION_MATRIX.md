@@ -1,6 +1,6 @@
 # Arbiter regression matrix
 
-Checked against project commit `77dea9e` (strict moderation contract and source-of-truth reason lookup) and authoritative canon/protocols SHAs recorded in the pre-submission report.
+Checked against project commit `bed444f` (strict moderation contract and undeclared-field regression test) and authoritative canon/protocols SHAs recorded in the pre-submission report.
 
 | Task | Historical arbiter issue | Code fix | Regression test | Test type | Result |
 |---|---|---|---|---|---|

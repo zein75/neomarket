@@ -2,7 +2,7 @@
 
 ## Sources
 
-Project verified SHA: `77dea9e` (strict moderation contract and source-of-truth reason lookup)
+Project verified SHA: `bed444f` (strict moderation contract and undeclared-field regression test)
 Canon SHA: `2ff93a4cebc119e860385b318ebd8753fda1d801`  
 Protocols SHA: `3b405c6844f26d2d7c4ea32a44ea2f419723e8d0`
 
@@ -58,14 +58,14 @@ See [INTERNAL_API_COMPATIBILITY.md](INTERNAL_API_COMPATIBILITY.md) for method/he
 
 | Suite | Result |
 |---|---:|
-| B2B unit/regression | 132 passed, 3 skipped (PostgreSQL targets selected separately) |
-| B2C unit/regression | 107 passed, 2 skipped (PostgreSQL targets selected separately) |
+| B2B unit/regression | 135 passed with PostgreSQL URL (no skips) |
+| B2C unit/regression | 109 passed with PostgreSQL URL (no skips) |
 | Admin unit/regression | 16 passed |
 | PostgreSQL B2B migrations | PASS: head `0017_reserve_request_hash` |
 | PostgreSQL B2C migrations | PASS: head `0019_reserve_compensation` |
 | PostgreSQL B2B behavioural concurrency | PASS: 3 passed |
 | PostgreSQL B2C behavioural concurrency | PASS: 2 passed |
-| HTTP service E2E at frozen baseline | PASS: cart → checkout → idempotent replay → cancel; B2B reserve 409 envelope. The final source changes are additionally covered by current-source FastAPI, unit/regression, contract-export, and real-PostgreSQL suites above. |
+| HTTP service E2E on final source | PASS: local Uvicorn B2B/B2C over Docker PostgreSQL; guest cart add/get, authenticated cart add, checkout 201, exact idempotent replay 200, reserve 200, unreserve 200, cancel 200 with `CANCELLED` and loaded history, clear cart 204, and both OpenAPI endpoints 200. |
 
 ## OpenAPI contract check
 
