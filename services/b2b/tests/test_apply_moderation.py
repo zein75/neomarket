@@ -548,6 +548,38 @@ def test_moderation_event_route_rejects_internal_status_field() -> None:
     assert product.status == ProductStatus.ON_MODERATION
 
 
+def test_moderation_event_route_rejects_undeclared_blocking_reason_snapshot() -> None:
+    product = _product()
+    FakeProductRepository.product = product
+
+    async def fake_db():
+        yield FakeSession()
+
+    app.dependency_overrides[moderation_router.get_db] = fake_db
+    try:
+        response = TestClient(app).post(
+            "/api/v1/moderation/events",
+            headers={"X-Service-Key": "dev-service-key-change-in-production"},
+            json={
+                "idempotency_key": str(uuid4()),
+                "event_type": "BLOCKED",
+                "product_id": str(product.id),
+                "occurred_at": "2026-09-18T12:00:00Z",
+                "blocking_reason_id": str(uuid4()),
+                "blocking_reason": {
+                    "id": str(uuid4()),
+                    "title": "Must not be accepted",
+                    "comment": "Undeclared wire field",
+                },
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 400
+    assert product.status == ProductStatus.ON_MODERATION
+
+
 def test_moderation_event_route_rejects_undeclared_field_report_fields() -> None:
     product = _product()
     FakeProductRepository.product = product
