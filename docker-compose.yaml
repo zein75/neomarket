@@ -23,6 +23,38 @@ services:
     volumes:
       - redis_data:/data
 
+  b2c:
+    build:
+      context: .
+      dockerfile: services/b2c/Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/b2c
+      REDIS_URL: redis://redis:6379
+      B2B_BASE_URL: http://b2b:8002
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  b2b:
+    build:
+      context: .
+      dockerfile: services/b2b/Dockerfile
+    ports:
+      - "8002:8002"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/b2b
+      REDIS_URL: redis://redis:6379
+      B2C_URL: http://b2c:8001
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
 volumes:
   postgres_data:
   redis_data:

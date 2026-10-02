@@ -20,7 +20,7 @@ from src.services.reservation_service import ReservationService
 router = APIRouter(tags=["reservations"])
 
 
-@router.post("/api/v1/reserve", response_model=InventoryReserveResponse)
+@router.post("/api/v1/inventory/reserve", response_model=InventoryReserveResponse)
 async def reserve_inventory(
     data: ReserveRequest,
     _: None = Depends(verify_service_key),
@@ -31,8 +31,12 @@ async def reserve_inventory(
     return result
 
 
-@router.post("/api/v1/inventory/reserve", response_model=InventoryReserveResponse)
-async def reserve_inventory_alias(
+@router.post(
+    "/api/v1/reserve",
+    response_model=InventoryReserveResponse,
+    include_in_schema=False,
+)
+async def reserve_inventory_legacy_alias(
     data: ReserveRequest,
     _: None = Depends(verify_service_key),
     db: AsyncSession = Depends(get_db),
@@ -40,7 +44,7 @@ async def reserve_inventory_alias(
     return await reserve_inventory(data, _, db)
 
 
-@router.post("/api/v1/unreserve", response_model=InventoryUnreserveResponse)
+@router.post("/api/v1/inventory/unreserve", response_model=InventoryUnreserveResponse)
 async def unreserve_inventory(
     data: UnreserveRequest,
     _: None = Depends(verify_service_key),
@@ -51,8 +55,12 @@ async def unreserve_inventory(
     return result
 
 
-@router.post("/api/v1/inventory/unreserve", response_model=InventoryUnreserveResponse)
-async def unreserve_inventory_alias(
+@router.post(
+    "/api/v1/unreserve",
+    response_model=InventoryUnreserveResponse,
+    include_in_schema=False,
+)
+async def unreserve_inventory_legacy_alias(
     data: UnreserveRequest,
     _: None = Depends(verify_service_key),
     db: AsyncSession = Depends(get_db),

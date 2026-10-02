@@ -130,7 +130,7 @@ class OrderService:
                     line_total=cart_item.quantity * int(snapshot["price"]),
                 )
                 self.order_repo.session.add(order_item)
-                order.items.append(order_item)
+                order.__dict__.setdefault("items", []).append(order_item)
 
             await self.order_repo.session.flush()
             # Response serialization includes status_history.  Return only the

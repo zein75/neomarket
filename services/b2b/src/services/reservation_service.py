@@ -267,6 +267,22 @@ class ReservationService:
         ]
         return decoded
 
+    @staticmethod
+    def _encode_unreserve_response(response: dict[str, object]) -> dict[str, object]:
+        return {
+            **response,
+            "order_id": str(response["order_id"]),
+            "processed_at": response["processed_at"].isoformat(),
+        }
+
+    @staticmethod
+    def _decode_unreserve_response(response: dict[str, object]) -> dict[str, object]:
+        return {
+            **response,
+            "order_id": UUID(str(response["order_id"])),
+            "processed_at": datetime.fromisoformat(str(response["processed_at"])),
+        }
+
     async def retry_pending_outbox(self, limit: int = 100) -> int:
         delivered = 0
         for event in await self.outbox_repo.list_pending(limit):
@@ -304,7 +320,7 @@ class ReservationService:
                         "message": "order_id used with different payload",
                     },
                 )
-            return existing_operation.response
+            return self._decode_unreserve_response(existing_operation.response)
 
         sku_ids = [item.sku_id for item in data.items]
         if len(set(sku_ids)) != len(sku_ids):
@@ -327,10 +343,7 @@ class ReservationService:
                 order_id=data.order_id,
                 request_hash=request_hash,
                 request_payload=request_payload,
-                response={
-                    **response,
-                    "processed_at": response["processed_at"].isoformat(),
-                },
+                response=self._encode_unreserve_response(response),
             )
             return response
         skus = await self.sku_repo.list_for_update(sku_ids)
@@ -368,10 +381,7 @@ class ReservationService:
                 order_id=data.order_id,
                 request_hash=request_hash,
                 request_payload=request_payload,
-                response={
-                    **response,
-                    "processed_at": response["processed_at"].isoformat(),
-                },
+                response=self._encode_unreserve_response(response),
             )
         except IntegrityError:
             await self.unreserve_operation_repo.session.rollback()
@@ -388,7 +398,7 @@ class ReservationService:
                         "message": "order_id used with different payload",
                     },
                 )
-            return existing_operation.response
+            return self._decode_unreserve_response(existing_operation.response)
 
         to_delete = []
         for item in data.items:
