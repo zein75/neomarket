@@ -1,0 +1,893 @@
+import pytest
+from fastapi.testclient import TestClient
+from types import SimpleNamespace
+from uuid import UUID, uuid4
+
+from src.api.routers import auth as auth_router
+from src.api.routers import cart as cart_router
+from src.clients import b2b_client as b2b_client_module
+from src.clients.b2b_client import B2BClient
+from src.main import app
+from src.services import cart_service as cart_service_module
+from src.services.cart_service import CartService
+from src.schemas.user import LoginRequest, TokenResponse
+
+
+GUEST_SESSION_ID = "00000000-0000-0000-0000-000000000001"
+
+
+class FakeSession:
+    async def flush(self) -> None:
+        return None
+
+    async def commit(self) -> None:
+        return None
+
+
+def _cart(*, user_id: UUID | None = None, session_id: str | None = None):
+    return SimpleNamespace(
+        id=uuid4(),
+        user_id=user_id,
+        session_id=session_id,
+        currency="RUB",
+        items=[],
+    )
+
+
+def _item(*, cart_id: UUID, sku_id: UUID, product_id: UUID, quantity: int = 1):
+    return SimpleNamespace(
+        id=uuid4(),
+        cart_id=cart_id,
+        sku_id=sku_id,
+        product_id=product_id,
+        quantity=quantity,
+        unit_price=0,
+    )
+
+
+class FakeCartRepository:
+    carts_by_user: dict[UUID, SimpleNamespace] = {}
+    carts_by_session: dict[str, SimpleNamespace] = {}
+    carts_by_id: dict[UUID, SimpleNamespace] = {}
+    removed_carts: list[UUID] = []
+
+    def __init__(self, session: object) -> None:
+        self.session = session
+
+    async def get_by_user_id(self, user_id: UUID):
+        return self.carts_by_user.get(user_id)
+
+    async def get_by_session_id(self, session_id: str):
+        return self.carts_by_session.get(session_id)
+
+    async def get_with_items(self, cart_id: UUID):
+        return self.carts_by_id.get(cart_id)
+
+    async def create(self, **kwargs):
+        cart = _cart(
+            user_id=kwargs.get("user_id"),
+            session_id=kwargs.get("session_id"),
+        )
+        self.carts_by_id[cart.id] = cart
+        if cart.user_id:
+            self.carts_by_user[cart.user_id] = cart
+        if cart.session_id:
+            self.carts_by_session[cart.session_id] = cart
+        return cart
+
+    async def add_item(
+        self,
+        cart_id: UUID,
+        sku_id: UUID,
+        product_id: UUID,
+        quantity: int,
+        unit_price: int = 0,
+    ):
+        item = _item(
+            cart_id=cart_id,
+            sku_id=sku_id,
+            product_id=product_id,
+            quantity=quantity,
+        )
+        item.unit_price = unit_price
+        self.carts_by_id[cart_id].items.append(item)
+        return item
+
+    async def update_item_quantity(self, item, quantity: int):
+        item.quantity = quantity
+        return item
+
+    async def get_item_by_sku(self, cart_id: UUID, sku_id: UUID):
+        cart = self.carts_by_id.get(cart_id)
+        if not cart:
+            return None
+        return next((item for item in cart.items if item.sku_id == sku_id), None)
+
+    async def remove_item(self, item) -> None:
+        cart = self.carts_by_id.get(item.cart_id)
+        if cart:
+            cart.items.remove(item)
+
+    async def clear_items(self, cart) -> None:
+        cart.items.clear()
+
+    async def remove_cart(self, cart) -> None:
+        self.removed_carts.append(cart.id)
+        self.carts_by_id.pop(cart.id, None)
+        if cart.session_id:
+            self.carts_by_session.pop(cart.session_id, None)
+
+
+class FakeB2BClient:
+    products: list[dict] = []
+
+    def __init__(self, base_url: str) -> None:
+        self.base_url = base_url
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args):
+        return None
+
+    async def get_products_batch(self, product_ids: list[str]):
+        return self.products
+
+    async def get_sku(self, sku_id: str):
+        for product in self.products:
+            for sku in product.get("skus", []):
+                if str(sku.get("id")) == sku_id:
+                    return {**sku, "product_id": product["id"]}
+        raise AssertionError("SKU was not found in public catalog fixture")
+
+
+@pytest.fixture(autouse=True)
+def patch_dependencies(monkeypatch: pytest.MonkeyPatch):
+    FakeCartRepository.carts_by_user = {}
+    FakeCartRepository.carts_by_session = {}
+    FakeCartRepository.carts_by_id = {}
+    FakeCartRepository.removed_carts = []
+    FakeB2BClient.products = []
+    monkeypatch.setattr(cart_service_module, "CartRepository", FakeCartRepository)
+    monkeypatch.setattr(cart_service_module, "B2BClient", FakeB2BClient)
+
+
+@pytest.mark.asyncio
+async def test_add_sku_increments_quantity_if_already_in_cart() -> None:
+    cart = _cart(session_id=GUEST_SESSION_ID)
+    product_id = uuid4()
+    sku_id = uuid4()
+    item = _item(cart_id=cart.id, product_id=product_id, sku_id=sku_id, quantity=2)
+    cart.items = [item]
+    FakeCartRepository.carts_by_id[cart.id] = cart
+    FakeB2BClient.products = [
+        {
+            "id": str(product_id),
+            "skus": [{"id": str(sku_id), "active_quantity": 7}],
+        }
+    ]
+
+    updated = await CartService(FakeSession()).add_item(
+        cart.id,
+        cart_service_module.CartItemAdd(sku_id=sku_id, quantity=3),
+    )
+
+    assert updated.id == item.id
+    assert item.quantity == 5
+    assert len(cart.items) == 1
+
+
+@pytest.mark.asyncio
+async def test_add_new_sku_uses_public_catalog_data() -> None:
+    cart = _cart(session_id=GUEST_SESSION_ID)
+    product_id = uuid4()
+    sku_id = uuid4()
+    FakeCartRepository.carts_by_id[cart.id] = cart
+    FakeB2BClient.products = [
+        {
+            "id": str(product_id),
+            "title": "Keyboard",
+            "skus": [
+                {
+                    "id": str(sku_id),
+                    "name": "Black",
+                    "price": 12500,
+                    "active_quantity": 7,
+                }
+            ],
+        }
+    ]
+
+    added = await CartService(FakeSession()).add_item(
+        cart.id,
+        cart_service_module.CartItemAdd(sku_id=sku_id, quantity=2),
+    )
+
+    assert added.sku_id == sku_id
+    assert added.product_id == product_id
+    assert added.unit_price == 12500
+    assert added.quantity == 2
+
+
+@pytest.mark.asyncio
+async def test_get_cart_enriched_with_b2b_data() -> None:
+    cart = _cart(session_id=GUEST_SESSION_ID)
+    product_id = uuid4()
+    sku_id = uuid4()
+    cart.items = [_item(cart_id=cart.id, product_id=product_id, sku_id=sku_id, quantity=2)]
+    FakeCartRepository.carts_by_id[cart.id] = cart
+    FakeB2BClient.products = [
+        {
+            "id": str(product_id),
+            "title": "Keyboard",
+            "skus": [
+                {
+                    "id": str(sku_id),
+                    "name": "Black",
+                    "price": 12500,
+                    "active_quantity": 7,
+                    "images": [{"url": "https://cdn.test/sku.jpg"}],
+                }
+            ],
+        }
+    ]
+
+    response = await CartService(FakeSession()).get_enriched_cart(cart.id)
+
+    assert response["items"][0]["name"] == "Keyboard Black"
+    assert response["items"][0]["unit_price"] == 12500
+    assert response["items"][0]["line_total"] == 25000
+    assert response["subtotal"] == 25000
+    assert response["is_valid"] is True
+    assert set(response) == {"id", "items", "items_count", "subtotal", "is_valid", "updated_at"}
+    assert set(response["items"][0]) == {
+        "sku_id", "product_id", "name", "quantity", "unit_price", "line_total",
+        "available_quantity", "is_available", "unavailable_reason", "unit_price_at_add",
+        "image",
+    }
+
+
+@pytest.mark.asyncio
+async def test_unavailable_sku_shown_with_reason() -> None:
+    cart = _cart(session_id=GUEST_SESSION_ID)
+    product_id = uuid4()
+    sku_id = uuid4()
+    cart.items = [_item(cart_id=cart.id, product_id=product_id, sku_id=sku_id, quantity=2)]
+    FakeCartRepository.carts_by_id[cart.id] = cart
+    FakeB2BClient.products = [
+        {
+            "id": str(product_id),
+            "title": "Keyboard",
+            "skus": [
+                {
+                    "id": str(sku_id),
+                    "name": "Black",
+                    "price": 12500,
+                    "active_quantity": 0,
+                    "images": [],
+                }
+            ],
+        }
+    ]
+
+    response = await CartService(FakeSession()).get_enriched_cart(cart.id)
+
+    assert response["items"][0]["is_available"] is False
+    assert response["items"][0]["unavailable_reason"] == "OUT_OF_STOCK"
+    assert response["items"][0]["line_total"] == 0
+    assert response["subtotal"] == 0
+    assert response["is_valid"] is False
+
+
+@pytest.mark.asyncio
+async def test_blocked_product_shown_with_blocked_reason() -> None:
+    cart = _cart(session_id=GUEST_SESSION_ID)
+    product_id = uuid4()
+    sku_id = uuid4()
+    cart.items = [_item(cart_id=cart.id, product_id=product_id, sku_id=sku_id)]
+    FakeCartRepository.carts_by_id[cart.id] = cart
+    FakeB2BClient.products = [
+        {
+            "id": str(product_id),
+            "title": "Keyboard",
+            "status": "BLOCKED",
+            "skus": [
+                {
+                    "id": str(sku_id),
+                    "name": "Black",
+                    "price": 12500,
+                    "active_quantity": 7,
+                    "images": [],
+                }
+            ],
+        }
+    ]
+
+    response = await CartService(FakeSession()).get_enriched_cart(cart.id)
+
+    assert response["items"][0]["is_available"] is False
+    assert response["items"][0]["unavailable_reason"] == "PRODUCT_BLOCKED"
+    assert response["subtotal"] == 0
+
+
+@pytest.mark.asyncio
+async def test_guest_cart_merged_on_login() -> None:
+    user_id = uuid4()
+    product_id = uuid4()
+    sku_id = uuid4()
+    user = SimpleNamespace(id=user_id)
+    auth_cart = _cart(user_id=user_id)
+    guest_cart = _cart(session_id=GUEST_SESSION_ID)
+    auth_item = _item(
+        cart_id=auth_cart.id,
+        product_id=product_id,
+        sku_id=sku_id,
+        quantity=2,
+    )
+    guest_item = _item(
+        cart_id=guest_cart.id,
+        product_id=product_id,
+        sku_id=sku_id,
+        quantity=5,
+    )
+    auth_cart.items = [auth_item]
+    guest_cart.items = [guest_item]
+    FakeCartRepository.carts_by_user[user_id] = auth_cart
+    FakeCartRepository.carts_by_session[GUEST_SESSION_ID] = guest_cart
+    FakeCartRepository.carts_by_id[auth_cart.id] = auth_cart
+    FakeCartRepository.carts_by_id[guest_cart.id] = guest_cart
+
+    merged = await CartService(FakeSession()).merge_guest_cart(user, GUEST_SESSION_ID)
+
+    assert merged.id == auth_cart.id
+    assert auth_item.quantity == 5
+    assert FakeCartRepository.removed_carts == [guest_cart.id]
+
+
+@pytest.mark.asyncio
+async def test_login_merge_loads_new_auth_cart_items_before_access() -> None:
+    """A newly-created SQLAlchemy cart has an unloaded ``items`` relation.
+
+    The real async ORM raises MissingGreenlet if the merge loop accesses it
+    before an eager reload.  This sentinel reproduces that distinction without
+    requiring a live database in the unit suite.
+    """
+    user = SimpleNamespace(id=uuid4())
+    guest_cart = _cart(session_id=GUEST_SESSION_ID)
+    guest_cart.items = [
+        _item(cart_id=guest_cart.id, product_id=uuid4(), sku_id=uuid4(), quantity=2)
+    ]
+
+    class NewlyCreatedCart:
+        def __init__(self) -> None:
+            self.id = uuid4()
+
+        @property
+        def items(self):
+            raise AssertionError("merge accessed an unloaded relation")
+
+    created = NewlyCreatedCart()
+
+    class ReloadingRepository(FakeCartRepository):
+        async def get_by_user_id(self, user_id: UUID):
+            return None
+
+        async def create(self, **kwargs):
+            return created
+
+        async def get_with_items(self, cart_id: UUID):
+            assert cart_id == created.id
+            auth_cart = _cart(user_id=user.id)
+            self.carts_by_id[auth_cart.id] = auth_cart
+            self.carts_by_user[user.id] = auth_cart
+            return auth_cart
+
+    FakeCartRepository.carts_by_session[GUEST_SESSION_ID] = guest_cart
+    FakeCartRepository.carts_by_id[guest_cart.id] = guest_cart
+    original_repository = cart_service_module.CartRepository
+    cart_service_module.CartRepository = ReloadingRepository
+    try:
+        merged = await CartService(FakeSession()).merge_guest_cart(user, GUEST_SESSION_ID)
+    finally:
+        cart_service_module.CartRepository = original_repository
+
+    assert len(merged.items) == 1
+    assert merged.items[0].quantity == 2
+
+
+@pytest.mark.asyncio
+async def test_login_automatically_merges_guest_cart(monkeypatch: pytest.MonkeyPatch) -> None:
+    user_id = uuid4()
+    product_id = uuid4()
+    sku_id = uuid4()
+    user = SimpleNamespace(id=user_id)
+    auth_cart = _cart(user_id=user_id)
+    guest_cart = _cart(session_id=GUEST_SESSION_ID)
+    auth_cart.items = [_item(cart_id=auth_cart.id, product_id=product_id, sku_id=sku_id, quantity=2)]
+    guest_cart.items = [_item(cart_id=guest_cart.id, product_id=product_id, sku_id=sku_id, quantity=5)]
+    FakeCartRepository.carts_by_user[user_id] = auth_cart
+    FakeCartRepository.carts_by_session[GUEST_SESSION_ID] = guest_cart
+    FakeCartRepository.carts_by_id[auth_cart.id] = auth_cart
+    FakeCartRepository.carts_by_id[guest_cart.id] = guest_cart
+
+    class FakeAuthService:
+        def __init__(self, session):
+            pass
+
+        async def authenticate(self, email: str, password: str):
+            return user
+
+        def create_token(self, authenticated_user):
+            return TokenResponse(access_token="token")
+
+    monkeypatch.setattr(auth_router, "AuthService", FakeAuthService)
+    response = await auth_router.login(
+        LoginRequest(email="buyer@example.com", password="secret123"),
+        GUEST_SESSION_ID,
+        FakeSession(),
+    )
+
+    assert response.access_token == "token"
+    assert auth_cart.items[0].quantity == 5
+    assert FakeCartRepository.removed_carts == [guest_cart.id]
+
+
+@pytest.mark.asyncio
+async def test_authenticated_cart_ignores_x_session_id_outside_merge() -> None:
+    user_id = uuid4()
+    product_id = uuid4()
+    sku_id = uuid4()
+    user = SimpleNamespace(id=user_id)
+    auth_cart = _cart(user_id=user_id)
+    guest_cart = _cart(session_id=GUEST_SESSION_ID)
+    auth_item = _item(
+        cart_id=auth_cart.id,
+        product_id=product_id,
+        sku_id=sku_id,
+        quantity=2,
+    )
+    guest_item = _item(
+        cart_id=guest_cart.id,
+        product_id=product_id,
+        sku_id=sku_id,
+        quantity=5,
+    )
+    auth_cart.items = [auth_item]
+    guest_cart.items = [guest_item]
+    FakeCartRepository.carts_by_user[user_id] = auth_cart
+    FakeCartRepository.carts_by_session[GUEST_SESSION_ID] = guest_cart
+    FakeCartRepository.carts_by_id[auth_cart.id] = auth_cart
+    FakeCartRepository.carts_by_id[guest_cart.id] = guest_cart
+
+    cart = await CartService(FakeSession()).get_or_create_cart(
+        user=user,
+        session_id=GUEST_SESSION_ID,
+    )
+
+    assert cart.id == auth_cart.id
+    assert auth_item.quantity == 2
+    assert guest_item.quantity == 5
+    assert FakeCartRepository.removed_carts == []
+
+
+def test_patch_cart_item_addresses_item_by_sku_id() -> None:
+    cart = _cart(session_id=GUEST_SESSION_ID)
+    product_id = uuid4()
+    sku_id = uuid4()
+    cart.items = [_item(cart_id=cart.id, product_id=product_id, sku_id=sku_id, quantity=2)]
+    FakeCartRepository.carts_by_id[cart.id] = cart
+    FakeCartRepository.carts_by_session[GUEST_SESSION_ID] = cart
+    FakeB2BClient.products = [
+        {
+            "id": str(product_id),
+            "title": "Keyboard",
+            "skus": [{"id": str(sku_id), "name": "Black", "price": 12500, "active_quantity": 7}],
+        }
+    ]
+
+    async def fake_db():
+        yield FakeSession()
+
+    async def fake_optional_user():
+        return None
+
+    app.dependency_overrides[cart_router.get_db] = fake_db
+    app.dependency_overrides[cart_router.get_optional_user] = fake_optional_user
+    try:
+        response = TestClient(app).patch(
+            f"/api/v1/cart/items/{sku_id}",
+            json={"quantity": 4},
+            headers={"X-Session-Id": GUEST_SESSION_ID},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["items"][0]["sku_id"] == str(sku_id)
+    assert response.json()["items"][0]["quantity"] == 4
+
+
+def test_put_cart_item_is_not_an_undocumented_contract_method() -> None:
+    cart = _cart(session_id=GUEST_SESSION_ID)
+    product_id = uuid4()
+    sku_id = uuid4()
+    item = _item(cart_id=cart.id, product_id=product_id, sku_id=sku_id, quantity=2)
+    cart.items = [item]
+    FakeCartRepository.carts_by_id[cart.id] = cart
+    FakeCartRepository.carts_by_session[GUEST_SESSION_ID] = cart
+    FakeB2BClient.products = [
+        {
+            "id": str(product_id),
+            "title": "Keyboard",
+            "skus": [{"id": str(sku_id), "name": "Black", "price": 12500, "active_quantity": 7}],
+        }
+    ]
+
+    async def fake_db():
+        yield FakeSession()
+
+    async def fake_optional_user():
+        return None
+
+    app.dependency_overrides[cart_router.get_db] = fake_db
+    app.dependency_overrides[cart_router.get_optional_user] = fake_optional_user
+    try:
+        response = TestClient(app).put(
+            f"/api/v1/cart/items/{sku_id}",
+            json={"quantity": 4},
+            headers={"X-Session-Id": GUEST_SESSION_ID},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 405
+
+
+def test_get_cart_item_is_not_an_undocumented_contract_method() -> None:
+    cart = _cart(session_id=GUEST_SESSION_ID)
+    product_id = uuid4()
+    sku_id = uuid4()
+    item = _item(cart_id=cart.id, product_id=product_id, sku_id=sku_id, quantity=2)
+    cart.items = [item]
+    FakeCartRepository.carts_by_id[cart.id] = cart
+    FakeCartRepository.carts_by_session[GUEST_SESSION_ID] = cart
+    FakeB2BClient.products = [
+        {
+            "id": str(product_id),
+            "title": "Keyboard",
+            "skus": [{"id": str(sku_id), "name": "Black", "price": 12500, "active_quantity": 7}],
+        }
+    ]
+
+    async def fake_db():
+        yield FakeSession()
+
+    async def fake_optional_user():
+        return None
+
+    app.dependency_overrides[cart_router.get_db] = fake_db
+    app.dependency_overrides[cart_router.get_optional_user] = fake_optional_user
+    try:
+        response = TestClient(app).get(
+            f"/api/v1/cart/items/{sku_id}",
+            headers={"X-Session-Id": GUEST_SESSION_ID},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 405
+
+
+def test_delete_cart_item_addresses_item_by_sku_id() -> None:
+    cart = _cart(session_id=GUEST_SESSION_ID)
+    product_id = uuid4()
+    sku_id = uuid4()
+    item = _item(cart_id=cart.id, product_id=product_id, sku_id=sku_id, quantity=2)
+    cart.items = [item]
+    FakeCartRepository.carts_by_id[cart.id] = cart
+    FakeCartRepository.carts_by_session[GUEST_SESSION_ID] = cart
+
+    async def fake_db():
+        yield FakeSession()
+
+    async def fake_optional_user():
+        return None
+
+    app.dependency_overrides[cart_router.get_db] = fake_db
+    app.dependency_overrides[cart_router.get_optional_user] = fake_optional_user
+    try:
+        response = TestClient(app).delete(
+            f"/api/v1/cart/items/{sku_id}",
+            headers={"X-Session-Id": GUEST_SESSION_ID},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 204
+    assert response.content == b""
+    assert cart.items == []
+
+
+def test_cart_without_identity_returns_400() -> None:
+    async def fake_db():
+        yield FakeSession()
+
+    async def fake_optional_user():
+        return None
+
+    app.dependency_overrides[cart_router.get_db] = fake_db
+    app.dependency_overrides[cart_router.get_optional_user] = fake_optional_user
+    try:
+        response = TestClient(app).get("/api/v1/cart")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "code": "MISSING_CART_IDENTITY",
+        "message": "Provide Authorization or X-Session-Id",
+    }
+
+
+def test_clear_cart_returns_204_and_removes_all_items() -> None:
+    cart = _cart(session_id=GUEST_SESSION_ID)
+    product_id = uuid4()
+    cart.items = [
+        _item(cart_id=cart.id, product_id=product_id, sku_id=uuid4(), quantity=2),
+        _item(cart_id=cart.id, product_id=product_id, sku_id=uuid4(), quantity=1),
+    ]
+    FakeCartRepository.carts_by_id[cart.id] = cart
+    FakeCartRepository.carts_by_session[GUEST_SESSION_ID] = cart
+
+    async def fake_db():
+        yield FakeSession()
+
+    async def fake_optional_user():
+        return None
+
+    app.dependency_overrides[cart_router.get_db] = fake_db
+    app.dependency_overrides[cart_router.get_optional_user] = fake_optional_user
+    try:
+        response = TestClient(app).delete(
+            "/api/v1/cart",
+            headers={"X-Session-Id": GUEST_SESSION_ID},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 204
+    assert cart.items == []
+
+
+def test_cart_validate_returns_checkout_issues() -> None:
+    cart = _cart(session_id=GUEST_SESSION_ID)
+    product_id = uuid4()
+    sku_id = uuid4()
+    cart.items = [_item(cart_id=cart.id, product_id=product_id, sku_id=sku_id, quantity=2)]
+    cart.items[0].unit_price = 12500
+    FakeCartRepository.carts_by_id[cart.id] = cart
+    FakeCartRepository.carts_by_session[GUEST_SESSION_ID] = cart
+    FakeB2BClient.products = [
+        {
+            "id": str(product_id),
+            "title": "Keyboard",
+            "skus": [
+                {
+                    "id": str(sku_id),
+                    "name": "Black",
+                    "price": 12500,
+                    "active_quantity": 0,
+                    "images": [],
+                }
+            ],
+        }
+    ]
+
+    async def fake_db():
+        yield FakeSession()
+
+    async def fake_optional_user():
+        return None
+
+    app.dependency_overrides[cart_router.get_db] = fake_db
+    app.dependency_overrides[cart_router.get_optional_user] = fake_optional_user
+    try:
+        response = TestClient(app).post(
+            "/api/v1/cart/validate",
+            headers={"X-Session-Id": GUEST_SESSION_ID},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["is_valid"] is False
+    assert payload["cart"]["items"][0]["sku_id"] == str(sku_id)
+    assert payload["issues"][0] == {
+        "sku_id": str(sku_id),
+        "type": "OUT_OF_STOCK",
+        "message": "Cart item is not available: OUT_OF_STOCK",
+    }
+
+
+@pytest.mark.asyncio
+async def test_cart_validate_reports_price_changed() -> None:
+    cart = _cart(session_id=GUEST_SESSION_ID)
+    product_id = uuid4()
+    sku_id = uuid4()
+    cart.items = [_item(cart_id=cart.id, product_id=product_id, sku_id=sku_id)]
+    cart.items[0].unit_price = 100
+    FakeCartRepository.carts_by_id[cart.id] = cart
+    FakeB2BClient.products = [
+        {
+            "id": str(product_id),
+            "title": "Keyboard",
+            "skus": [
+                {
+                    "id": str(sku_id),
+                    "name": "Black",
+                    "price": 125,
+                    "active_quantity": 5,
+                    "images": [],
+                }
+            ],
+        }
+    ]
+
+    result = await CartService(FakeSession()).validate_cart(cart.id)
+
+    assert result["is_valid"] is False
+    assert result["issues"] == [
+        {
+            "sku_id": sku_id,
+            "type": "PRICE_CHANGED",
+            "message": "Cart item price has changed",
+            "old_value": 100,
+            "new_value": 125,
+        }
+    ]
+
+
+def test_cart_merge_endpoint_merges_guest_cart_on_login() -> None:
+    user_id = uuid4()
+    product_id = uuid4()
+    sku_id = uuid4()
+    user = SimpleNamespace(id=user_id)
+    auth_cart = _cart(user_id=user_id)
+    guest_cart = _cart(session_id=GUEST_SESSION_ID)
+    auth_item = _item(
+        cart_id=auth_cart.id,
+        product_id=product_id,
+        sku_id=sku_id,
+        quantity=2,
+    )
+    guest_item = _item(
+        cart_id=guest_cart.id,
+        product_id=product_id,
+        sku_id=sku_id,
+        quantity=5,
+    )
+    auth_cart.items = [auth_item]
+    guest_cart.items = [guest_item]
+    FakeCartRepository.carts_by_user[user_id] = auth_cart
+    FakeCartRepository.carts_by_session[GUEST_SESSION_ID] = guest_cart
+    FakeCartRepository.carts_by_id[auth_cart.id] = auth_cart
+    FakeCartRepository.carts_by_id[guest_cart.id] = guest_cart
+    FakeB2BClient.products = [
+        {
+            "id": str(product_id),
+            "title": "Keyboard",
+            "skus": [
+                {
+                    "id": str(sku_id),
+                    "name": "Black",
+                    "price": 12500,
+                    "active_quantity": 7,
+                    "images": [],
+                }
+            ],
+        }
+    ]
+
+    async def fake_db():
+        yield FakeSession()
+
+    async def fake_current_user():
+        return user
+
+    app.dependency_overrides[cart_router.get_db] = fake_db
+    app.dependency_overrides[cart_router.get_current_user] = fake_current_user
+    try:
+        response = TestClient(app).post(
+            "/api/v1/cart/merge",
+            headers={"X-Session-Id": GUEST_SESSION_ID},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert auth_item.quantity == 5
+    assert FakeCartRepository.removed_carts == [guest_cart.id]
+    assert response.json()["items"][0]["quantity"] == 5
+
+
+@pytest.mark.asyncio
+async def test_b2b_client_get_sku_uses_public_sku_route(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sku_id = uuid4()
+    captured = {}
+
+    class FakeResponse:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self):
+            return {"id": str(sku_id), "product_id": str(uuid4())}
+
+    class FakeAsyncClient:
+        def __init__(self, *args, **kwargs) -> None:
+            return None
+
+        async def aclose(self) -> None:
+            return None
+
+        async def get(self, path: str, *, headers=None, **kwargs):
+            captured["path"] = path
+            captured["headers"] = headers
+            return FakeResponse()
+
+    monkeypatch.setattr(b2b_client_module.httpx, "AsyncClient", FakeAsyncClient)
+
+    async with B2BClient("http://b2b") as client:
+        await client.get_sku(str(sku_id))
+
+    assert captured["path"] == f"/api/v1/public/skus/{sku_id}"
+    assert captured["headers"] == {
+        "X-Service-Key": "dev-service-key-change-in-production"
+    }
+
+
+@pytest.mark.asyncio
+async def test_b2b_batch_request_matches_canonical_schema_and_enriches_hidden_product(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    product_id = uuid4()
+    captured: list[tuple[str, object]] = []
+
+    class FakeResponse:
+        def __init__(self, body: object) -> None:
+            self.body = body
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> object:
+            return self.body
+
+    class FakeAsyncClient:
+        def __init__(self, *args, **kwargs) -> None:
+            return None
+
+        async def aclose(self) -> None:
+            return None
+
+        async def post(self, path: str, *, json, headers):
+            captured.append((path, json))
+            return FakeResponse([])
+
+        async def get(self, path: str, *, params=None, headers=None):
+            captured.append((path, params or {}))
+            return FakeResponse({"id": str(product_id), "status": "BLOCKED", "skus": []})
+
+    monkeypatch.setattr(b2b_client_module.httpx, "AsyncClient", FakeAsyncClient)
+
+    async with B2BClient("http://b2b") as client:
+        products = await client.get_products_batch([str(product_id)])
+
+    assert captured[0] == (
+        "/api/v1/public/products/batch",
+        {"product_ids": [str(product_id)]},
+    )
+    assert captured[1][0] == f"/api/v1/products/{product_id}"
+    assert products[0]["status"] == "BLOCKED"
