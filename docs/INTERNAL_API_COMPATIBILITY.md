@@ -1,6 +1,6 @@
 # Internal API compatibility
 
-Audited against Protocols `3b405c6844f26d2d7c4ea32a44ea2f419723e8d0`.
+Audited against Protocols `3b405c6844f26d2d7c4ea32a44ea2f419723e8d0` and application code `2c5ca0d3df8d619e241107e1c1656cca3de1ed92`.
 
 | Sender | Method / URL | Header | Payload | Receiver | Result |
 |---|---|---|---|---|---|
@@ -11,4 +11,4 @@ Audited against Protocols `3b405c6844f26d2d7c4ea32a44ea2f419723e8d0`.
 | B2C cancellation/retry | POST `/api/v1/inventory/unreserve` | `X-Service-Key` | `InventoryOrderRequest` | B2B inventory router | PASS: 200 |
 | B2B outbox | POST `/api/v1/b2b/events` | `X-Service-Key` | `B2BEvent` | B2C B2B-events router | PASS: 202; duplicate is 409 |
 
-The B2B outbox persists the event in the inventory/moderation transaction and retries failed delivery. Cancellation intent is committed on the order as `CANCEL_PENDING` before B2B unreserve and is retried by the B2C worker after restart. Checkout commits a request-fingerprinted pre-reserve intent before B2B reserve; if local persistence does not commit, the worker retries the exact unreserve payload, but first deletes stale intent without unreserving when the Order did commit. B2C computes cart availability from fresh B2B product data, avoiding stale event-derived availability after a re-stock or re-moderation.
+The B2B outbox persists the event in the inventory/moderation transaction and retries failed delivery. Cancellation intent is committed on the order as `CANCEL_PENDING` before B2B unreserve and is retried by the B2C worker after restart. Checkout commits a request-fingerprinted pre-reserve intent before B2B reserve; if local persistence does not commit, the worker retries the exact unreserve payload, but first deletes stale intent without unreserving when the Order did commit. A completed compensation remains as an operation tombstone, preventing B2B's cached reserve replay from producing an order after the reservation was released. B2C computes cart availability from fresh B2B product data, avoiding stale event-derived availability after a re-stock or re-moderation.

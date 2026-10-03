@@ -1,6 +1,6 @@
 # Arbiter regression matrix
 
-Checked against project commit `e3238cb36991a606184fc3961668cc87576f1f02` and authoritative canon/protocols SHAs recorded in the pre-submission report.
+Checked against application commit `2c5ca0d3df8d619e241107e1c1656cca3de1ed92` and authoritative canon/protocols SHAs recorded in the pre-submission report.
 
 | Task | Historical arbiter issue | Code fix | Regression test | Test type | Result |
 |---|---|---|---|---|---|
@@ -17,9 +17,23 @@ Checked against project commit `e3238cb36991a606184fc3961668cc87576f1f02` and au
 | Checkout | cross-user idempotency leak | ownership-scoped lookup | checkout ownership test | unit | PASS |
 | Checkout | concurrent same-key IntegrityError | PostgreSQL idempotent replay | PostgreSQL checkout concurrency suite | PostgreSQL | PASS |
 | Checkout | reserve succeeded but local write failed | durable compensation row/retry | compensation fault-injection tests | integration | PASS |
+| Checkout | timeout response could hide successful reserve | pre-reserve durable intent, then compensation tombstone | `test_b2b_unavailable_returns_503`, `test_compensated_ambiguous_checkout_cannot_create_order_on_late_retry` | integration | PASS |
 | Cancel | stale cancellation status list | current cancelable status set | cancel status regression tests | unit | PASS |
 | Cancel | unloaded status history | eager order relationships | cancel serialization test | integration | PASS |
 | Cancel | unreserve failure lost intent | `CANCEL_PENDING` durable retry | cancel retry suite | PostgreSQL | PASS |
+
+## Executed verification totals
+
+| Task | Historical regression suite | Result |
+|---|---|---|
+| Task 1 — Reserve / Unreserve | reserve regressions + 3 PostgreSQL cases | PASS |
+| Task 2 — Moderation | moderation and producer/consumer regressions | PASS |
+| Task 3 — Cart | cart contract/enrichment regressions | PASS |
+| Task 4 — Checkout | checkout saga/idempotency/serialization regressions | PASS |
+| Task 5 — Cancel | cancellation/retry/status regressions | PASS |
+
+Uncovered historical regressions: **0**. The rows above are backed by the final
+local and Docker PostgreSQL commands recorded in `PRE_SUBMISSION_REPORT.md`.
 
 ## Current contract checks
 
