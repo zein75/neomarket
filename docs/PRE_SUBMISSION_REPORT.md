@@ -2,7 +2,7 @@
 
 ## Sources
 
-Audited application SHA: `7459d466f53d26f9865998a1558b8440c2c6020b`
+Audited application SHA: `99047a50c4995d7ddd5b74d83a8b0fcbf122bd27`
 Canon SHA: `2ff93a4cebc119e860385b318ebd8753fda1d801`  
 Protocols SHA: `3b405c6844f26d2d7c4ea32a44ea2f419723e8d0`
 
@@ -30,6 +30,11 @@ The real PostgreSQL migration and behavioural concurrency gates passed on Docker
 ## Task 3 — Cart
 
 - SKU-addressed mutation, clear, validate, explicit merge and login merge are covered.
+- Docker HTTP E2E found and closed two async ORM regressions: a first login
+  with a guest cart attempted lazy-load of a newly-created auth cart
+  (`MissingGreenlet`), and the first add response could serialize a stale empty
+  item collection. Both paths now force an eager relation reload; the real
+  login merge and POST add response were repeated successfully.
 - DELETE item returns the contract-required 204 empty response.
 - Price change and distinct unavailable cases are covered; no reservation occurs while adding to cart.
 
@@ -59,13 +64,13 @@ See [INTERNAL_API_COMPATIBILITY.md](INTERNAL_API_COMPATIBILITY.md) for method/he
 | Suite | Result |
 |---|---:|
 | B2B unit/regression | 134 passed; 3 PostgreSQL-gated cases run separately inside Docker |
-| B2C unit/regression | 121 passed; 4 PostgreSQL-gated cases run separately inside Docker |
+| B2C unit/regression | 122 passed; 4 PostgreSQL-gated cases run separately against Docker PostgreSQL |
 | Admin unit/regression | 16 passed |
 | PostgreSQL B2B migrations | PASS: head `0017_reserve_request_hash` |
 | PostgreSQL B2C migrations | PASS: clean and 0021→head upgrades reach `0022_compensation_state`; existing tombstone/pending rows backfill to `COMPENSATED`/`PENDING` |
 | PostgreSQL B2B behavioural concurrency | PASS: 3 passed |
 | PostgreSQL B2C behavioural concurrency | PASS: 4 passed, including retry-vs-compensation serialization and durable `COMPENSATING` visibility from independent AsyncSession connections |
-| Docker runtime E2E | PASS: healthy Admin/B2B/B2C/PostgreSQL/Redis stack; cart → checkout → replay → cancel → clear; soft/hard moderation cascades; seller hard-block 403; durable outbox and CANCEL_PENDING recovery after dependent-service restart. |
+| Docker runtime E2E | PASS: healthy Admin/B2B/B2C/PostgreSQL/Redis stack; guest cart add → login merge → checkout → replay → cancel → clear; canonical multi-SKU reserve/replay/unreserve; Admin → B2B soft block → B2C cart `PRODUCT_BLOCKED` cascade. |
 
 ## OpenAPI contract check
 
@@ -82,19 +87,18 @@ No code-level critical or high finding remains. PostgreSQL migrations and dedica
 
 ## Final freeze verification
 
-- Runtime-tested application SHA: `7459d466f53d26f9865998a1558b8440c2c6020b` (the final production commit containing migration `0022_compensation_state`).
+- Runtime-tested application SHA: `99047a50c4995d7ddd5b74d83a8b0fcbf122bd27` (including the Cart eager-relation E2E fixes).
 - Docker PostgreSQL migration gates: clean upgrade and `0021_compensation_tombstone` → head both passed, reaching `0022_compensation_state`; explicit legacy-row backfill was verified.
 - Runtime commerce HTTP proof on the Docker stack: cart add/read → checkout `201` → same-key replay `200` → cancel `CANCELLED` → B2B reservation count `0` → cart clear `204` with an empty body.
 - GitHub Actions must be read from the runs for the audited SHA above; runs for the preceding code SHA are deliberately not treated as evidence for this commit.
-- Final local suites actually run on the audited code: B2B `134 passed, 3 host-gated PostgreSQL cases`; B2C `121 passed, 4 host-gated PostgreSQL cases`; Admin `16 passed`. All seven critical PostgreSQL cases ran inside Docker with no skips: B2B `3 passed`; B2C `4 passed`.
+- Final local suites actually run on the audited code: B2B `134 passed, 3 host-gated PostgreSQL cases`; B2C `122 passed, 4 host-gated PostgreSQL cases`; Admin `16 passed`. All seven critical PostgreSQL cases ran against Docker PostgreSQL with no skips: B2B `3 passed`; B2C `4 passed`.
 
 ## Reproduction
 
 ```powershell
-cd services/b2b; uv run pytest tests/ -q
-cd ../b2c; uv run pytest tests/ -q
-cd ../admin; uv run pytest tests/ -q
-cd ../..; docker compose up -d postgres
-docker compose exec -T -e NEOMARKET_POSTGRES_TEST_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/b2b b2c sh -lc "cd /app/services/b2c && uv run --group dev pytest tests/test_postgres_order_concurrency.py -q -rs"
-docker compose exec -T -e NEOMARKET_POSTGRES_TEST_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/b2b b2b sh -lc "cd /app/services/b2b && uv run --group dev pytest tests/test_inventory_reservations.py -k 'postgres_' -q -rs"
+uv run --group dev pytest services/b2b/tests -q
+uv run --group dev pytest services/b2c/tests -q
+uv run --group dev pytest services/admin/tests -q
+$env:PYTHONPATH='services/b2c'; $env:NEOMARKET_POSTGRES_TEST_URL='postgresql://postgres:postgres@127.0.0.1:5434/b2c'; uv run --group dev pytest services/b2c/tests/test_postgres_order_concurrency.py -q -rs
+$env:PYTHONPATH='services/b2b'; $env:NEOMARKET_POSTGRES_TEST_URL='postgresql://postgres:postgres@127.0.0.1:5434/b2b'; uv run --group dev pytest services/b2b/tests/test_inventory_reservations.py -k 'postgres_' -q -rs
 ```
