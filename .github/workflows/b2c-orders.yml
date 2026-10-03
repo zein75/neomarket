@@ -67,6 +67,10 @@ jobs:
           compensated_ambiguous_checkout_cannot_create_order_on_late_retry or
           checkout_retry_racing_with_compensation_never_creates_unreserved_order or
           compensation_wins_race_leaves_tombstone_and_rejects_checkout or
+          checkout_compensation_crash_after_unreserve_before_tombstone_is_safe or
+          checkout_retry_is_rejected_while_compensation_is_in_progress or
+          compensating_intent_survives_restart_and_finishes or
+          checkout_compensation_handles_ambiguous_unreserve_timeout or
           cancel_paid_order_transitions_to_cancelled or
           unreserve_failure_transitions_to_cancel_pending or
           cancel_assembling_order_transitions_to_cancelled or

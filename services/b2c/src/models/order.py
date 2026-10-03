@@ -23,6 +23,14 @@ class OrderStatus(enum.Enum):
     CANCEL_PENDING = "CANCEL_PENDING"
 
 
+class CheckoutCompensationState(enum.Enum):
+    """Durable state of an orphaned checkout-reservation recovery saga."""
+
+    PENDING = "PENDING"
+    COMPENSATING = "COMPENSATING"
+    COMPENSATED = "COMPENSATED"
+
+
 class Order(Base, TimestampMixin):
     __tablename__ = "orders"
 
@@ -133,6 +141,15 @@ class PendingReservationCompensation(Base, TimestampMixin):
     attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     next_retry_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+    # ``COMPENSATING`` is committed before calling B2B unreserve.  It is not
+    # interchangeable with ``compensated_at``: a process can die after B2B
+    # succeeds but before the final database commit.  A delayed checkout must
+    # then be rejected rather than trusting B2B's cached reserve response.
+    compensation_state: Mapped[CheckoutCompensationState] = mapped_column(
+        Enum(CheckoutCompensationState, name="checkout_compensation_state"),
+        default=CheckoutCompensationState.PENDING,
+        nullable=False,
     )
     # A successfully compensated ambiguous reserve must remain recorded.  B2B
     # replays a reserve idempotency key even after unreserve, so deleting this

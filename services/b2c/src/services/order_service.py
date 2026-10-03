@@ -11,7 +11,13 @@ from sqlalchemy.exc import IntegrityError
 
 from src.clients.b2b_client import B2BClient
 from src.core.config import settings
-from src.models.order import Order, OrderItem, OrderStatus, OrderStatusHistory
+from src.models.order import (
+    CheckoutCompensationState,
+    Order,
+    OrderItem,
+    OrderStatus,
+    OrderStatusHistory,
+)
 from src.repositories.cart_repo import CartRepository
 from src.repositories.address_repo import AddressRepository
 from src.repositories.order_repo import OrderRepository
@@ -110,16 +116,6 @@ class OrderService:
             if pending_for_update is not None
             else await self.order_repo.get_reservation_compensation(order_id)
         )
-        if pending is not None:
-            self._validate_checkout_intent(pending, request_fingerprint)
-            if getattr(pending, "compensated_at", None) is not None:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail={
-                        "code": "CHECKOUT_OPERATION_COMPENSATED",
-                        "message": "Checkout reservation was already compensated",
-                    },
-                )
         existing = await self.order_repo.get_by_idempotency_key(idempotency_key)
         if existing:
             if existing.user_id != user_id:
@@ -129,6 +125,9 @@ class OrderService:
                 )
             await self._delete_checkout_intent(order_id)
             return self._return_idempotent_order(existing, request_fingerprint)
+        if pending is not None:
+            self._validate_checkout_intent(pending, request_fingerprint)
+            self._raise_if_checkout_operation_compensating(pending)
 
         try:
             await self._reserve(order_id, idempotency_key, items)
@@ -459,44 +458,8 @@ class OrderService:
             datetime.now(timezone.utc), limit
         )
         for pending in pending_jobs:
-            operation_lock = getattr(self.order_repo, "lock_checkout_operation", None)
-            if operation_lock is not None:
-                await operation_lock(pending.order_id)
-            pending_for_update = getattr(
-                self.order_repo, "get_reservation_compensation_for_update", None
-            )
-            current = (
-                await pending_for_update(pending.order_id)
-                if pending_for_update is not None
-                else await self.order_repo.get_reservation_compensation(pending.order_id)
-            )
-            if current is None or getattr(current, "compensated_at", None) is not None:
-                continue
-            pending = current
-            # A stale intent must never compensate an order that did commit
-            # after the worker originally listed the row.  This re-check is
-            # deliberately after the shared operation lock.
-            if await self.order_repo.get_with_items(pending.order_id):
-                await self.order_repo.delete_reservation_compensation(pending)
+            if await self._process_reservation_compensation(pending.order_id):
                 retried += 1
-                continue
-            try:
-                await self._unreserve_payload(pending.order_id, pending.items)
-            except Exception as exc:  # noqa: BLE001 - retain durable retry intent
-                logger.exception(
-                    "Failed to retry checkout reserve compensation %s", pending.order_id
-                )
-                await self.order_repo.queue_reservation_compensation(
-                    order_id=pending.order_id,
-                    items=pending.items,
-                    error=f"{type(exc).__name__}: {exc}",
-                    next_retry_at=self._next_retry_at(pending.attempts + 1),
-                )
-                continue
-            await self.order_repo.mark_reservation_compensated(
-                pending, when=datetime.now(timezone.utc)
-            )
-            retried += 1
         return retried
 
     @staticmethod
@@ -737,14 +700,7 @@ class OrderService:
         pending = await self.order_repo.get_reservation_compensation(order_id)
         if pending is not None:
             self._validate_checkout_intent(pending, request_fingerprint)
-            if getattr(pending, "compensated_at", None) is not None:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail={
-                        "code": "CHECKOUT_OPERATION_COMPENSATED",
-                        "message": "Checkout reservation was already compensated",
-                    },
-                )
+            self._raise_if_checkout_operation_compensating(pending)
             return
         await self.order_repo.queue_reservation_compensation(
             order_id=order_id,
@@ -775,29 +731,144 @@ class OrderService:
     async def _compensate_checkout_reservation(
         self, order_id: UUID, items: list[object], error: str
     ) -> None:
+        # The intent was committed before reserve.  Make any direct
+        # compensation use the same durable PENDING -> COMPENSATING ->
+        # COMPENSATED state machine as the restart worker; otherwise a crash
+        # after B2B success could resurrect an unreserved order on retry.
+        await self._queue_reservation_compensation(
+            order_id=order_id,
+            items=items,
+            error=error,
+        )
         try:
-            await self._unreserve_items(order_id, items)
-        except Exception as unreserve_error:  # noqa: BLE001 - durable intent stays queued
-            logger.exception("Failed to compensate checkout reserve %s", order_id)
-            await self._queue_reservation_compensation(
-                order_id=order_id,
-                items=items,
-                error=f"{error}; unreserve: {type(unreserve_error).__name__}: {unreserve_error}",
-            )
-            try:
-                await self.order_repo.session.commit()
-            except Exception:  # noqa: BLE001 - initial intent was already committed
-                await self.order_repo.session.rollback()
+            await self.order_repo.session.commit()
+        except Exception:  # noqa: BLE001 - original intent remains durable
+            await self.order_repo.session.rollback()
             return
-        pending = await self.order_repo.get_reservation_compensation(order_id)
-        if pending is not None:
-            await self.order_repo.mark_reservation_compensated(
-                pending, when=datetime.now(timezone.utc)
+        await self._process_reservation_compensation(order_id)
+
+    async def _process_reservation_compensation(self, order_id: UUID) -> bool:
+        """Run one durable, restart-safe unreserve attempt for an operation.
+
+        The first commit records ``COMPENSATING`` *before* B2B is contacted.
+        Thus a crash after an otherwise successful unreserve leaves a durable
+        poison-pill for checkout retries; a later worker can safely replay the
+        idempotent unreserve and record the final tombstone.
+        """
+        operation_lock = getattr(self.order_repo, "lock_checkout_operation", None)
+        if operation_lock is not None:
+            await operation_lock(order_id)
+        pending_for_update = getattr(
+            self.order_repo, "get_reservation_compensation_for_update", None
+        )
+
+        async def current_intent():
+            return (
+                await pending_for_update(order_id)
+                if pending_for_update is not None
+                else await self.order_repo.get_reservation_compensation(order_id)
+            )
+
+        pending = await current_intent()
+        if pending is None or self._is_compensation_complete(pending):
+            return False
+        # A committed order always wins: this is a stale recovery intent and
+        # must never remove the real reservation behind that order.
+        if await self.order_repo.get_with_items(order_id):
+            await self.order_repo.delete_reservation_compensation(pending)
+            try:
+                await self.order_repo.session.commit()
+            except Exception:  # noqa: BLE001 - harmless stale intent retry
+                await self.order_repo.session.rollback()
+                return False
+            return True
+
+        if self._compensation_state(pending) is CheckoutCompensationState.PENDING:
+            await self.order_repo.mark_reservation_compensating(pending)
+            try:
+                # This commit is deliberately before the external call.
+                await self.order_repo.session.commit()
+            except Exception:  # noqa: BLE001 - leave PENDING for recovery
+                await self.order_repo.session.rollback()
+                return False
+
+            # Commit releases PostgreSQL's transaction-scoped advisory lock;
+            # reacquire it and reload the row before the network side effect.
+            if operation_lock is not None:
+                await operation_lock(order_id)
+            pending = await current_intent()
+            if pending is None or self._is_compensation_complete(pending):
+                return False
+            if await self.order_repo.get_with_items(order_id):
+                await self.order_repo.delete_reservation_compensation(pending)
+                try:
+                    await self.order_repo.session.commit()
+                except Exception:  # noqa: BLE001
+                    await self.order_repo.session.rollback()
+                    return False
+                return True
+
+        try:
+            await self._unreserve_payload(order_id, pending.items)
+        except Exception as exc:  # noqa: BLE001 - preserve COMPENSATING
+            logger.exception("Failed to retry checkout reserve compensation %s", order_id)
+            await self.order_repo.queue_reservation_compensation(
+                order_id=order_id,
+                items=pending.items,
+                error=f"unreserve: {type(exc).__name__}: {exc}",
+                next_retry_at=self._next_retry_at(pending.attempts + 1),
             )
             try:
                 await self.order_repo.session.commit()
-            except Exception:  # noqa: BLE001 - intent was committed before reserve
+            except Exception:  # noqa: BLE001 - prior COMPENSATING is durable
                 await self.order_repo.session.rollback()
+            return False
+
+        await self.order_repo.mark_reservation_compensated(
+            pending, when=datetime.now(timezone.utc)
+        )
+        try:
+            # Never delegate the final durability boundary to the lifecycle
+            # worker's outer transaction: process death here is precisely the
+            # failure mode this state machine closes.
+            await self.order_repo.session.commit()
+        except Exception:  # noqa: BLE001 - durable COMPENSATING permits safe replay
+            await self.order_repo.session.rollback()
+            return False
+        return True
+
+    @staticmethod
+    def _compensation_state(pending: object) -> CheckoutCompensationState:
+        state_value = getattr(pending, "compensation_state", None)
+        if isinstance(state_value, CheckoutCompensationState):
+            return state_value
+        if state_value is not None:
+            return CheckoutCompensationState(state_value)
+        # Compatibility for a row created by the migration immediately before
+        # this state was introduced; the migration itself backfills all rows.
+        return (
+            CheckoutCompensationState.COMPENSATED
+            if getattr(pending, "compensated_at", None) is not None
+            else CheckoutCompensationState.PENDING
+        )
+
+    @classmethod
+    def _is_compensation_complete(cls, pending: object) -> bool:
+        return cls._compensation_state(pending) is CheckoutCompensationState.COMPENSATED
+
+    @classmethod
+    def _raise_if_checkout_operation_compensating(cls, pending: object) -> None:
+        if cls._compensation_state(pending) in {
+            CheckoutCompensationState.COMPENSATING,
+            CheckoutCompensationState.COMPENSATED,
+        }:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "CHECKOUT_OPERATION_COMPENSATED",
+                    "message": "Checkout reservation was already compensated",
+                },
+            )
 
     @staticmethod
     def _checkout_operation_id(user_id: UUID, idempotency_key: str) -> UUID:

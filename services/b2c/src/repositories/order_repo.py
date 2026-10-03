@@ -10,6 +10,7 @@ from src.models.order import (
     OrderStatus,
     PendingFulfillment,
     PendingReservationCompensation,
+    CheckoutCompensationState,
 )
 
 from .base import BaseRepository
@@ -197,6 +198,7 @@ class OrderRepository(BaseRepository[Order]):
                 next_retry_at=next_retry_at,
                 last_error=error[:500],
                 request_fingerprint=request_fingerprint,
+                compensation_state=CheckoutCompensationState.PENDING,
             )
             self.session.add(pending)
         else:
@@ -216,9 +218,19 @@ class OrderRepository(BaseRepository[Order]):
         The tombstone prevents a delayed retry from treating B2B's cached
         reserve response as a live reservation.
         """
+        pending.compensation_state = CheckoutCompensationState.COMPENSATED
         pending.compensated_at = when
         pending.next_retry_at = None
         pending.last_error = "reservation compensated"
+        await self.session.flush()
+
+    async def mark_reservation_compensating(
+        self, pending: PendingReservationCompensation
+    ) -> None:
+        """Persist the point after which checkout may never create an order."""
+        pending.compensation_state = CheckoutCompensationState.COMPENSATING
+        pending.next_retry_at = None
+        pending.last_error = "reservation compensation in progress"
         await self.session.flush()
 
     async def get_reservation_compensation(
@@ -246,7 +258,12 @@ class OrderRepository(BaseRepository[Order]):
         result = await self.session.execute(
             select(PendingReservationCompensation)
             .where(
-                PendingReservationCompensation.compensated_at.is_(None),
+                PendingReservationCompensation.compensation_state.in_(
+                    (
+                        CheckoutCompensationState.PENDING,
+                        CheckoutCompensationState.COMPENSATING,
+                    )
+                ),
                 (PendingReservationCompensation.next_retry_at.is_(None))
                 | (PendingReservationCompensation.next_retry_at <= now)
             )

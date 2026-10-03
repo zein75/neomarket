@@ -13,7 +13,11 @@ from src.services.b2b_event_service import B2BEventService
 router = APIRouter(tags=["b2b-events"])
 
 
-@router.post("/api/v1/events/product", response_model=ProductEventResponse)
+@router.post(
+    "/api/v1/events/product",
+    response_model=ProductEventResponse,
+    include_in_schema=False,
+)
 async def receive_product_event(
     event: ProductEventRequest,
     _: None = Depends(verify_service_key),

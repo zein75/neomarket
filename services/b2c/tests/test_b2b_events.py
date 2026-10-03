@@ -98,6 +98,14 @@ def test_receive_sku_out_of_stock_event_returns_202() -> None:
     assert response.content == b""
 
 
+def test_b2b_event_openapi_exposes_only_the_canonical_receiver() -> None:
+    """The compatibility adapter must not replace the frozen wire contract."""
+    paths = app.openapi()["paths"]
+    assert "/api/v1/b2b/events" in paths
+    assert paths["/api/v1/b2b/events"]["post"]["responses"].get("202")
+    assert "/api/v1/events/product" not in paths
+
+
 def test_receive_b2b_event_without_service_key_returns_401() -> None:
     response = TestClient(app).post("/api/v1/b2b/events", json=_event())
 

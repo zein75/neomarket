@@ -1,6 +1,6 @@
 import os
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
+from concurrent.futures import ThreadPoolExecutor
 from threading import Event
 from uuid import UUID, uuid4
 
@@ -8,8 +8,14 @@ import pytest
 from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import NullPool
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
-from src.models.order import Order, OrderStatus, PendingReservationCompensation
+from src.models.order import (
+    CheckoutCompensationState,
+    Order,
+    OrderStatus,
+    PendingReservationCompensation,
+)
 from src.models.user import User
 
 def _database_url() -> str:
@@ -20,6 +26,16 @@ def _database_url() -> str:
     # genuinely concurrent PostgreSQL transactions, so they need a sync
     # driver even though the application itself uses asyncpg.
     return url.replace("+asyncpg", "+psycopg2", 1).replace("/b2b", "/b2c")
+
+
+def _async_database_url() -> str:
+    url = os.getenv("NEOMARKET_POSTGRES_TEST_URL")
+    if not url:
+        pytest.skip("set NEOMARKET_POSTGRES_TEST_URL to run PostgreSQL integration tests")
+    url = url.replace("/b2b", "/b2c")
+    if "+asyncpg" not in url:
+        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    return url
 
 
 def _order(*, user_id: UUID, key: str, status: OrderStatus = OrderStatus.PAID) -> Order:
@@ -180,3 +196,73 @@ def test_postgres_checkout_retry_vs_compensation_serializes_operation() -> None:
             assert pending is not None and pending.compensated_at is not None
     finally:
         engine.dispose()
+
+
+@pytest.mark.anyio
+async def test_postgres_compensating_state_blocks_checkout_retry() -> None:
+    """Two independent async DB sessions observe the durable poison-pill.
+
+    This models a restart after B2B unreserve succeeded but the worker died
+    before writing COMPENSATED: checkout must not insert its deterministic
+    order while a later worker is still allowed to finish the tombstone.
+    """
+    engine = create_async_engine(_async_database_url(), poolclass=NullPool)
+    try:
+        user_id, key, operation_id = uuid4(), str(uuid4()), uuid4()
+        async with engine.begin() as connection:
+            await connection.execute(
+                text(
+                    "INSERT INTO users (id, email, hashed_password, is_active, created_at, updated_at) "
+                    "VALUES (:id, :email, 'h', true, now(), now())"
+                ),
+                {"id": user_id, "email": f"{user_id}@test"},
+            )
+
+        # Worker transaction 1: commit COMPENSATING before its external call.
+        async with AsyncSession(engine, expire_on_commit=False) as worker_session:
+            worker_session.add(
+                PendingReservationCompensation(
+                    order_id=operation_id,
+                    items=[{"sku_id": str(uuid4()), "quantity": 1}],
+                    attempts=1,
+                    next_retry_at=None,
+                    last_error="reservation compensation in progress",
+                    request_fingerprint="test",
+                    compensation_state=CheckoutCompensationState.COMPENSATING,
+                )
+            )
+            await worker_session.commit()
+
+        # A separately connected delayed checkout sees the committed marker
+        # and follows the conflict branch rather than creating an Order.
+        async with AsyncSession(engine, expire_on_commit=False) as checkout_session:
+            pending = await checkout_session.get(
+                PendingReservationCompensation, operation_id
+            )
+            assert pending is not None
+            assert pending.compensation_state is CheckoutCompensationState.COMPENSATING
+            assert await checkout_session.get(Order, operation_id) is None
+            checkout_result = "CHECKOUT_OPERATION_COMPENSATED"
+
+        # Recovery worker transaction 2 can safely replay idempotent unreserve
+        # (HTTP is outside this persistence-focused test) and commit terminal
+        # state without ever creating an order.
+        async with AsyncSession(engine, expire_on_commit=False) as recovery_session:
+            pending = await recovery_session.get(
+                PendingReservationCompensation, operation_id
+            )
+            assert pending is not None
+            pending.compensation_state = CheckoutCompensationState.COMPENSATED
+            pending.compensated_at = datetime.now(timezone.utc)
+            pending.next_retry_at = None
+            await recovery_session.commit()
+
+        assert checkout_result == "CHECKOUT_OPERATION_COMPENSATED"
+        async with AsyncSession(engine) as verify_session:
+            assert await verify_session.get(Order, operation_id) is None
+            pending = await verify_session.get(PendingReservationCompensation, operation_id)
+            assert pending is not None
+            assert pending.compensation_state is CheckoutCompensationState.COMPENSATED
+            assert pending.compensated_at is not None
+    finally:
+        await engine.dispose()
