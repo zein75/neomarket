@@ -2,7 +2,7 @@
 
 ## Sources
 
-Audited application SHA: `d56e3037e88021f1bf03050684c2d67ee8dfd162`
+Audited application SHA: `7459d466f53d26f9865998a1558b8440c2c6020b`
 Canon SHA: `2ff93a4cebc119e860385b318ebd8753fda1d801`  
 Protocols SHA: `3b405c6844f26d2d7c4ea32a44ea2f419723e8d0`
 
@@ -13,7 +13,7 @@ High: 0
 Medium: 0  
 Low: 0
 
-The real PostgreSQL migration and behavioural concurrency gates passed on Docker PostgreSQL 16. Checkout now persists a pre-reserve intent and commits the Order inside the saga; cancellation commits `CANCEL_PENDING` before unreserve. Checkout finalization and the compensation worker now share an operation-level PostgreSQL advisory lock keyed by the deterministic checkout order id, eliminating retry-vs-worker unreserve races.
+The real PostgreSQL migration and behavioural concurrency gates passed on Docker PostgreSQL 16. Checkout now persists a pre-reserve intent and commits the Order inside the saga; cancellation commits `CANCEL_PENDING` before unreserve. Checkout finalization and the compensation worker share an operation-level PostgreSQL advisory lock keyed by the deterministic checkout order id. Compensation additionally persists `PENDING → COMPENSATING → COMPENSATED`: the pre-unreserve `COMPENSATING` commit blocks a delayed checkout even if the process dies after B2B unreserve succeeds and before the final tombstone commit.
 
 ## Task 1 — Reserve / Unreserve
 
@@ -23,7 +23,7 @@ The real PostgreSQL migration and behavioural concurrency gates passed on Docker
 
 ## Task 2 — Moderation
 
-- Canonical route is `/api/v1/moderation/events`; the historical route is hidden from the generated schema.
+- Canonical route is `/api/v1/moderation/events`; the historical route is hidden from the generated schema. The B2B→B2C receiver is the frozen `/api/v1/b2b/events`; its older product-event adapter is hidden from the generated schema.
 - Current `event_type` request model, required `blocking_reason_id` for BLOCKED, and typed field reports are enforced; Admin emits only canonical fields, while B2B resolves the real seller-facing title/comment from the moderation reason source of truth.
 - Blocking creates a durable B2C outbox event; both soft `BLOCKED` and internal terminal `HARD_BLOCKED` emit canonical `PRODUCT_BLOCKED`.
 
@@ -35,7 +35,7 @@ The real PostgreSQL migration and behavioural concurrency gates passed on Docker
 
 ## Task 4 — Checkout
 
-- Checkout validates address ownership and cart, snapshots address/prices, uses canonical B2B reserve, scopes idempotency by buyer and commits a durable intent before reserve. A committed order deletes the intent; recovery checks for that order before any unreserve, while an orphaned reservation is compensated durably. Successful compensation retains a tombstone and late reuse of that key returns 409 rather than an order without a reservation.
+- Checkout validates address ownership and cart, snapshots address/prices, uses canonical B2B reserve, scopes idempotency by buyer and commits a durable intent before reserve. A committed order deletes the intent; recovery checks for that order before any unreserve, while an orphaned reservation is compensated durably. Successful compensation retains a tombstone and late reuse of that key returns 409 rather than an order without a reservation. The pre-unreserve state is durable, so a crash or lost unreserve response cannot turn B2B's cached reserve replay into an Order without a live reservation.
 - All Order response relationships are eagerly loaded before serialization.
 - Replays return the original order as protocol status 200 without a second reserve.
 
@@ -59,12 +59,12 @@ See [INTERNAL_API_COMPATIBILITY.md](INTERNAL_API_COMPATIBILITY.md) for method/he
 | Suite | Result |
 |---|---:|
 | B2B unit/regression | 134 passed; 3 PostgreSQL-gated cases run separately inside Docker |
-| B2C unit/regression | 116 passed; 3 PostgreSQL-gated cases run separately inside Docker (including two deterministic race orders) |
+| B2C unit/regression | 121 passed; 4 PostgreSQL-gated cases run separately inside Docker |
 | Admin unit/regression | 16 passed |
 | PostgreSQL B2B migrations | PASS: head `0017_reserve_request_hash` |
-| PostgreSQL B2C migrations | PASS: clean and 0020→head upgrades both reach `0021_compensation_tombstone` |
+| PostgreSQL B2C migrations | PASS: clean and 0021→head upgrades reach `0022_compensation_state`; existing tombstone/pending rows backfill to `COMPENSATED`/`PENDING` |
 | PostgreSQL B2B behavioural concurrency | PASS: 3 passed |
-| PostgreSQL B2C behavioural concurrency | PASS: 3 passed, including retry-vs-compensation serialization |
+| PostgreSQL B2C behavioural concurrency | PASS: 4 passed, including retry-vs-compensation serialization and durable `COMPENSATING` visibility from independent AsyncSession connections |
 | Docker runtime E2E | PASS: healthy Admin/B2B/B2C/PostgreSQL/Redis stack; cart → checkout → replay → cancel → clear; soft/hard moderation cascades; seller hard-block 403; durable outbox and CANCEL_PENDING recovery after dependent-service restart. |
 
 ## OpenAPI contract check
@@ -82,11 +82,11 @@ No code-level critical or high finding remains. PostgreSQL migrations and dedica
 
 ## Final freeze verification
 
-- Runtime-tested application SHA: `d56e3037e88021f1bf03050684c2d67ee8dfd162`.
-- Docker PostgreSQL migration gates: clean upgrade and `0020_checkout_reserve_intent` → head both passed, reaching `0021_compensation_tombstone`.
+- Runtime-tested application SHA: `7459d466f53d26f9865998a1558b8440c2c6020b` (the final production commit containing migration `0022_compensation_state`).
+- Docker PostgreSQL migration gates: clean upgrade and `0021_compensation_tombstone` → head both passed, reaching `0022_compensation_state`; explicit legacy-row backfill was verified.
 - Runtime commerce HTTP proof on the Docker stack: cart add/read → checkout `201` → same-key replay `200` → cancel `CANCELLED` → B2B reservation count `0` → cart clear `204` with an empty body.
-- Final GitHub Actions for the audited SHA are green: [B2B reservation](https://github.com/zein75/neomarket/actions/runs/37099371159), [B2C cart](https://github.com/zein75/neomarket/actions/runs/37099371160), and [B2C orders](https://github.com/zein75/neomarket/actions/runs/37099371152).
-- Final local suites actually run on the audited code: B2B `134 passed, 3 host-gated PostgreSQL cases`; B2C `116 passed, 3 host-gated PostgreSQL cases`; Admin `16 passed`. All six critical PostgreSQL cases ran inside Docker with no skips: B2B `3 passed`; B2C `3 passed`.
+- GitHub Actions must be read from the runs for the audited SHA above; runs for the preceding code SHA are deliberately not treated as evidence for this commit.
+- Final local suites actually run on the audited code: B2B `134 passed, 3 host-gated PostgreSQL cases`; B2C `121 passed, 4 host-gated PostgreSQL cases`; Admin `16 passed`. All seven critical PostgreSQL cases ran inside Docker with no skips: B2B `3 passed`; B2C `4 passed`.
 
 ## Reproduction
 
