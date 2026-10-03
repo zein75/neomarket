@@ -451,7 +451,9 @@ class OrderService:
                     next_retry_at=self._next_retry_at(pending.attempts + 1),
                 )
                 continue
-            await self.order_repo.delete_reservation_compensation(pending)
+            await self.order_repo.mark_reservation_compensated(
+                pending, when=datetime.now(timezone.utc)
+            )
             retried += 1
         return retried
 
@@ -693,6 +695,14 @@ class OrderService:
         pending = await self.order_repo.get_reservation_compensation(order_id)
         if pending is not None:
             self._validate_checkout_intent(pending, request_fingerprint)
+            if getattr(pending, "compensated_at", None) is not None:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail={
+                        "code": "CHECKOUT_OPERATION_COMPENSATED",
+                        "message": "Checkout reservation was already compensated",
+                    },
+                )
             return
         await self.order_repo.queue_reservation_compensation(
             order_id=order_id,
@@ -737,7 +747,15 @@ class OrderService:
             except Exception:  # noqa: BLE001 - initial intent was already committed
                 await self.order_repo.session.rollback()
             return
-        await self._delete_checkout_intent(order_id, best_effort=True)
+        pending = await self.order_repo.get_reservation_compensation(order_id)
+        if pending is not None:
+            await self.order_repo.mark_reservation_compensated(
+                pending, when=datetime.now(timezone.utc)
+            )
+            try:
+                await self.order_repo.session.commit()
+            except Exception:  # noqa: BLE001 - intent was committed before reserve
+                await self.order_repo.session.rollback()
 
     @staticmethod
     def _checkout_operation_id(user_id: UUID, idempotency_key: str) -> UUID:

@@ -201,6 +201,19 @@ class OrderRepository(BaseRepository[Order]):
         await self.session.flush()
         return pending
 
+    async def mark_reservation_compensated(
+        self, pending: PendingReservationCompensation, *, when: datetime
+    ) -> None:
+        """Keep the operation tombstone after a successful unreserve.
+
+        The tombstone prevents a delayed retry from treating B2B's cached
+        reserve response as a live reservation.
+        """
+        pending.compensated_at = when
+        pending.next_retry_at = None
+        pending.last_error = "reservation compensated"
+        await self.session.flush()
+
     async def get_reservation_compensation(
         self, order_id: UUID
     ) -> PendingReservationCompensation | None:
@@ -214,6 +227,7 @@ class OrderRepository(BaseRepository[Order]):
         result = await self.session.execute(
             select(PendingReservationCompensation)
             .where(
+                PendingReservationCompensation.compensated_at.is_(None),
                 (PendingReservationCompensation.next_retry_at.is_(None))
                 | (PendingReservationCompensation.next_retry_at <= now)
             )

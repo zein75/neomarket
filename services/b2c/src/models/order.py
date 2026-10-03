@@ -134,4 +134,10 @@ class PendingReservationCompensation(Base, TimestampMixin):
     next_retry_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # A successfully compensated ambiguous reserve must remain recorded.  B2B
+    # replays a reserve idempotency key even after unreserve, so deleting this
+    # row would allow a late client retry to create an unpaid-for reservation.
+    compensated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     last_error: Mapped[str | None] = mapped_column(String(500), nullable=True)

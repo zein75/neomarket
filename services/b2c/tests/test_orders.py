@@ -260,6 +260,7 @@ class FakeOrderRepository:
                 next_retry_at=next_retry_at,
                 last_error=error,
                 request_fingerprint=request_fingerprint,
+                compensated_at=None,
             )
             self.pending_reservation_compensations[order_id] = pending
         else:
@@ -270,6 +271,11 @@ class FakeOrderRepository:
                 pending.request_fingerprint = request_fingerprint
         return pending
 
+    async def mark_reservation_compensated(self, pending, *, when) -> None:
+        pending.compensated_at = when
+        pending.next_retry_at = None
+        pending.last_error = "reservation compensated"
+
     async def get_reservation_compensation(self, order_id):
         return self.pending_reservation_compensations.get(order_id)
 
@@ -277,7 +283,8 @@ class FakeOrderRepository:
         return [
             pending
             for pending in self.pending_reservation_compensations.values()
-            if pending.next_retry_at is None or pending.next_retry_at <= now
+            if getattr(pending, "compensated_at", None) is None
+            and (pending.next_retry_at is None or pending.next_retry_at <= now)
         ][:limit]
 
     async def delete_reservation_compensation(self, pending) -> None:
@@ -908,16 +915,57 @@ async def test_pending_checkout_compensation_retries_after_b2b_recovers() -> Non
         attempts=1,
         next_retry_at=datetime.now(timezone.utc),
         last_error="B2B unavailable",
+        compensated_at=None,
     )
 
     retried = await OrderService(FakeSession()).retry_pending_reservation_compensations()
 
     assert retried == 1
-    assert FakeOrderRepository.pending_reservation_compensations == {}
+    pending = FakeOrderRepository.pending_reservation_compensations[order_id]
+    assert pending.compensated_at is not None
     assert FakeB2BClient.unreserve_calls == [{
         "order_id": str(order_id),
         "items": [{"sku_id": str(sku_id), "quantity": 2}],
     }]
+
+
+async def test_compensated_ambiguous_checkout_cannot_create_order_on_late_retry() -> None:
+    """Never turn B2B's cached reserve response into an unreserved order."""
+    user_id, product_id, sku_id = uuid4(), uuid4(), uuid4()
+    cart = _cart(
+        user_id=user_id,
+        items=[_cart_item(sku_id=sku_id, product_id=product_id, quantity=2)],
+    )
+    FakeCartRepository.cart = cart
+    FakeB2BClient.products = [{
+        "id": str(product_id), "title": "Phone",
+        "skus": [{"id": str(sku_id), "name": "128 GB", "price": 150, "active_quantity": 5}],
+    }]
+    request = _order_request()
+    service = OrderService(FakeSession())
+    order_id = service._checkout_operation_id(user_id, "checkout-timeout-tombstone")
+    FakeOrderRepository.pending_reservation_compensations[order_id] = SimpleNamespace(
+        order_id=order_id,
+        items=[{"sku_id": str(sku_id), "quantity": 2}],
+        attempts=1,
+        next_retry_at=None,
+        last_error="reservation compensated",
+        request_fingerprint=service._request_fingerprint(request),
+        compensated_at=datetime.now(timezone.utc),
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        await service.checkout(
+            user_id=user_id,
+            cart_id=cart.id,
+            idempotency_key="checkout-timeout-tombstone",
+            order_request=request,
+        )
+
+    assert exc.value.status_code == 409
+    assert exc.value.detail["code"] == "CHECKOUT_OPERATION_COMPENSATED"
+    assert FakeB2BClient.reserve_calls == []
+    assert FakeOrderRepository.created_orders == []
 
 
 async def test_orders_list_returns_own_orders_paginated() -> None:
