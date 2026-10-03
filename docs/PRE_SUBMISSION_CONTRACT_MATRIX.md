@@ -4,7 +4,7 @@ Sources frozen for this audit:
 
 - Canon: `2ff93a4cebc119e860385b318ebd8753fda1d801`
 - Protocols: `3b405c6844f26d2d7c4ea32a44ea2f419723e8d0` (`master`)
-- Application code verified commit: `d56e3037e88021f1bf03050684c2d67ee8dfd162` (durable checkout/cancellation remediation, compensated-operation tombstone, and shared checkout/worker operation lock)
+- AUDITED_CODE_SHA: `5aa94c9f6f39e82fb36878c80df18453d3d3be6a` (durable checkout/cancellation remediation, compensated-operation tombstone, shared checkout/worker operation lock, and rollback-safe compensation payload)
 
 | Task | Endpoint | Method | Auth/Header | Request | Success | Errors | OpenAPI | Canon |
 |---|---|---|---|---|---|---|---|---|

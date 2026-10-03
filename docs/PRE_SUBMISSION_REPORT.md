@@ -2,7 +2,7 @@
 
 ## Sources
 
-Audited application SHA: `99047a50c4995d7ddd5b74d83a8b0fcbf122bd27`
+AUDITED_CODE_SHA: `5aa94c9f6f39e82fb36878c80df18453d3d3be6a`
 Canon SHA: `2ff93a4cebc119e860385b318ebd8753fda1d801`  
 Protocols SHA: `3b405c6844f26d2d7c4ea32a44ea2f419723e8d0`
 
@@ -64,13 +64,13 @@ See [INTERNAL_API_COMPATIBILITY.md](INTERNAL_API_COMPATIBILITY.md) for method/he
 | Suite | Result |
 |---|---:|
 | B2B unit/regression | 134 passed; 3 PostgreSQL-gated cases run separately inside Docker |
-| B2C unit/regression | 122 passed; 4 PostgreSQL-gated cases run separately against Docker PostgreSQL |
+| B2C unit/regression | 123 passed; 4 PostgreSQL-gated cases run separately against Docker PostgreSQL |
 | Admin unit/regression | 16 passed |
 | PostgreSQL B2B migrations | PASS: head `0017_reserve_request_hash` |
 | PostgreSQL B2C migrations | PASS: clean and 0021→head upgrades reach `0022_compensation_state`; existing tombstone/pending rows backfill to `COMPENSATED`/`PENDING` |
 | PostgreSQL B2B behavioural concurrency | PASS: 3 passed |
 | PostgreSQL B2C behavioural concurrency | PASS: 4 passed, including retry-vs-compensation serialization and durable `COMPENSATING` visibility from independent AsyncSession connections |
-| Docker runtime E2E | PASS: healthy Admin/B2B/B2C/PostgreSQL/Redis stack; guest cart add → login merge → checkout → replay → cancel → clear; canonical multi-SKU reserve/replay/unreserve; Admin → B2B soft block → B2C cart `PRODUCT_BLOCKED` cascade. |
+| Docker runtime E2E | PASS: healthy Admin/B2B/B2C/PostgreSQL/Redis stack; soft and hard Admin → B2B → B2C block cascades; checkout reserve → injected local persistence failure → real B2B unreserve; crash-state `COMPENSATING` → B2C restart → `COMPENSATED`; retry while compensating → 409; cancel B2B-down → restart → `CANCELLED`; B2C-down outbox → restart → delivery; repeated checkout/replay/cancel/clear and canonical multi-SKU reserve/replay/unreserve. |
 
 ## OpenAPI contract check
 
@@ -87,11 +87,11 @@ No code-level critical or high finding remains. PostgreSQL migrations and dedica
 
 ## Final freeze verification
 
-- Runtime-tested application SHA: `99047a50c4995d7ddd5b74d83a8b0fcbf122bd27` (including the Cart eager-relation E2E fixes).
+- Runtime-tested application SHA: `5aa94c9f6f39e82fb36878c80df18453d3d3be6a` (including Cart eager-relation fixes and the rollback-safe checkout compensation payload).
 - Docker PostgreSQL migration gates: clean upgrade and `0021_compensation_tombstone` → head both passed, reaching `0022_compensation_state`; explicit legacy-row backfill was verified.
 - Runtime commerce HTTP proof on the Docker stack: cart add/read → checkout `201` → same-key replay `200` → cancel `CANCELLED` → B2B reservation count `0` → cart clear `204` with an empty body.
 - GitHub Actions must be read from the runs for the audited SHA above; runs for the preceding code SHA are deliberately not treated as evidence for this commit.
-- Final local suites actually run on the audited code: B2B `134 passed, 3 host-gated PostgreSQL cases`; B2C `122 passed, 4 host-gated PostgreSQL cases`; Admin `16 passed`. All seven critical PostgreSQL cases ran against Docker PostgreSQL with no skips: B2B `3 passed`; B2C `4 passed`.
+- Final local suites actually run on the audited code: B2B `134 passed, 3 host-gated PostgreSQL cases`; B2C `123 passed, 4 host-gated PostgreSQL cases`; Admin `16 passed`. All seven critical PostgreSQL cases ran against Docker PostgreSQL with no skips: B2B `3 passed`; B2C `4 passed`.
 
 ## Reproduction
 

@@ -1,6 +1,6 @@
 # Arbiter regression matrix
 
-Checked against production commit `7459d466f53d26f9865998a1558b8440c2c6020b` and authoritative canon/protocols SHAs recorded in the pre-submission report.
+Checked against `AUDITED_CODE_SHA` `5aa94c9f6f39e82fb36878c80df18453d3d3be6a` and authoritative canon/protocols SHAs recorded in the pre-submission report.
 
 | Task | Historical arbiter issue | Code fix | Regression test | Test type | Result |
 |---|---|---|---|---|---|
@@ -22,6 +22,7 @@ Checked against production commit `7459d466f53d26f9865998a1558b8440c2c6020b` and
 | Checkout | cross-user idempotency leak | ownership-scoped lookup | checkout ownership test | unit | PASS |
 | Checkout | concurrent same-key IntegrityError | PostgreSQL idempotent replay | PostgreSQL checkout concurrency suite | PostgreSQL | PASS |
 | Checkout | reserve succeeded but local write failed | durable compensation row/retry | compensation fault-injection tests | integration | PASS |
+| Checkout | compensation read expired async cart ORM rows after local rollback | materialize immutable B2B unreserve payload before transactional work | `test_checkout_compensation_never_reads_expired_cart_items_after_rollback` + real PostgreSQL trigger E2E | unit + Docker E2E | PASS |
 | Checkout | timeout response could hide successful reserve | pre-reserve durable intent, then compensation tombstone | `test_b2b_unavailable_returns_503`, `test_compensated_ambiguous_checkout_cannot_create_order_on_late_retry` | integration | PASS |
 | Checkout | retry raced worker and could create an unreserved Order | shared `order_id` advisory lock plus re-read under lock | `test_checkout_retry_racing_with_compensation_never_creates_unreserved_order`, `test_compensation_wins_race_leaves_tombstone_and_rejects_checkout`, `test_postgres_checkout_retry_vs_compensation_serializes_operation` | unit + PostgreSQL | PASS |
 | Checkout | process could die after B2B unreserve and before tombstone commit | durable `PENDING → COMPENSATING → COMPENSATED` state machine; checkout rejects durable COMPENSATING | `test_checkout_compensation_crash_after_unreserve_before_tombstone_is_safe`, `test_checkout_retry_is_rejected_while_compensation_is_in_progress`, `test_compensating_intent_survives_restart_and_finishes`, `test_checkout_compensation_handles_ambiguous_unreserve_timeout`, `test_postgres_compensating_state_blocks_checkout_retry` | unit + PostgreSQL AsyncSession | PASS |
