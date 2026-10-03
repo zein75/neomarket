@@ -965,6 +965,48 @@ async def test_checkout_persists_compensation_when_unreserve_also_fails() -> Non
     assert session.committed is True
 
 
+async def test_checkout_compensation_never_reads_expired_cart_items_after_rollback() -> None:
+    """A real failed flush expires ORM rows; compensation uses its plain snapshot."""
+    user_id, product_id, sku_id = uuid4(), uuid4(), uuid4()
+    session = FakeSession()
+
+    class ExpiringCartItem(SimpleNamespace):
+        def __getattribute__(self, name):
+            if name in {"sku_id", "quantity"} and session.rolled_back:
+                raise AssertionError("compensation attempted to lazy-load an expired cart item")
+            return super().__getattribute__(name)
+
+    item = ExpiringCartItem(
+        id=uuid4(),
+        cart_id=uuid4(),
+        sku_id=sku_id,
+        product_id=product_id,
+        quantity=2,
+        unit_price=1000,
+    )
+    cart = _cart(user_id=user_id, items=[item])
+    FakeCartRepository.cart = cart
+    FakeB2BClient.products = [{
+        "id": str(product_id),
+        "title": "Phone",
+        "skus": [{"id": str(sku_id), "name": "128 GB", "price": 150, "active_quantity": 5}],
+    }]
+    session.fail_flush = True
+
+    with pytest.raises(RuntimeError, match="database write failed"):
+        await OrderService(session).checkout(
+            user_id=user_id,
+            cart_id=cart.id,
+            idempotency_key="checkout-expired-cart-item-compensation",
+            order_request=_order_request(),
+        )
+
+    assert FakeB2BClient.unreserve_calls == [{
+        "order_id": FakeB2BClient.reserve_calls[0]["order_id"],
+        "items": [{"sku_id": str(sku_id), "quantity": 2}],
+    }]
+
+
 async def test_pending_checkout_compensation_retries_after_b2b_recovers() -> None:
     order_id, sku_id = uuid4(), uuid4()
     FakeOrderRepository.pending_reservation_compensations[order_id] = SimpleNamespace(

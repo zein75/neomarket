@@ -78,6 +78,10 @@ class OrderService:
                 detail={"code": "ADDRESS_NOT_FOUND", "message": "Address not found"},
             )
         items = list(cart.items)
+        # A failed order flush rolls the session back and expires ORM instances.
+        # Keep the exact B2B payload as plain data before any transactional work
+        # so durable compensation never tries an async lazy refresh afterwards.
+        reservation_items = self._reservation_items(items)
 
         snapshots = await self._build_item_snapshots(items)
         self._validate_snapshots(items, snapshots)
@@ -89,7 +93,7 @@ class OrderService:
         try:
             await self._prepare_checkout_intent(
                 order_id=order_id,
-                items=items,
+                items=reservation_items,
                 request_fingerprint=request_fingerprint,
             )
             await self.order_repo.session.commit()
@@ -182,7 +186,9 @@ class OrderService:
                     # key. Their operation ids differ, so only the losing
                     # reservation is compensated.
                     await self._compensate_checkout_reservation(
-                        order_id, items, "idempotency key belongs to another buyer"
+                        order_id,
+                        reservation_items,
+                        "idempotency key belongs to another buyer",
                     )
                     raise HTTPException(
                         status_code=status.HTTP_404_NOT_FOUND,
@@ -221,7 +227,9 @@ class OrderService:
             # recovery worker even if direct compensation also fails.
             await self.order_repo.session.rollback()
             await self._compensate_checkout_reservation(
-                order_id, items, f"{type(checkout_error).__name__}: {checkout_error}"
+                order_id,
+                reservation_items,
+                f"{type(checkout_error).__name__}: {checkout_error}",
             )
             raise
 
@@ -682,10 +690,7 @@ class OrderService:
     ) -> None:
         await self.order_repo.queue_reservation_compensation(
             order_id=order_id,
-            items=[
-                {"sku_id": str(item.sku_id), "quantity": item.quantity}
-                for item in items
-            ],
+            items=self._reservation_items(items),
             error=error,
             next_retry_at=self._next_retry_at(1),
         )
@@ -704,10 +709,7 @@ class OrderService:
             return
         await self.order_repo.queue_reservation_compensation(
             order_id=order_id,
-            items=[
-                {"sku_id": str(item.sku_id), "quantity": item.quantity}
-                for item in items
-            ],
+            items=self._reservation_items(items),
             error="checkout reserve intent",
             next_retry_at=datetime.now(timezone.utc)
             + timedelta(seconds=CHECKOUT_INTENT_GRACE_SECONDS),
@@ -746,6 +748,21 @@ class OrderService:
             await self.order_repo.session.rollback()
             return
         await self._process_reservation_compensation(order_id)
+
+    @staticmethod
+    def _reservation_items(items: list[object]) -> list[dict[str, object]]:
+        """Materialize a B2B reservation payload without retaining ORM state."""
+        return [
+            {
+                "sku_id": str(item["sku_id"])
+                if isinstance(item, dict)
+                else str(item.sku_id),
+                "quantity": int(item["quantity"])
+                if isinstance(item, dict)
+                else int(item.quantity),
+            }
+            for item in items
+        ]
 
     async def _process_reservation_compensation(self, order_id: UUID) -> bool:
         """Run one durable, restart-safe unreserve attempt for an operation.
