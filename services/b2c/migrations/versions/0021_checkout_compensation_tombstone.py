@@ -1,6 +1,6 @@
 """Keep compensated ambiguous checkout operations as durable tombstones.
 
-Revision ID: 0021_checkout_compensation_tombstone
+Revision ID: 0021_compensation_tombstone
 Revises: 0020_checkout_reserve_intent
 """
 
@@ -8,7 +8,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = "0021_checkout_compensation_tombstone"
+revision = "0021_compensation_tombstone"
 down_revision = "0020_checkout_reserve_intent"
 branch_labels = None
 depends_on = None
