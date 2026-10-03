@@ -2,7 +2,7 @@
 
 ## Sources
 
-Audited application SHA: `2c5ca0d3df8d619e241107e1c1656cca3de1ed92`
+Audited application SHA: `d56e3037e88021f1bf03050684c2d67ee8dfd162`
 Canon SHA: `2ff93a4cebc119e860385b318ebd8753fda1d801`  
 Protocols SHA: `3b405c6844f26d2d7c4ea32a44ea2f419723e8d0`
 
@@ -13,7 +13,7 @@ High: 0
 Medium: 0  
 Low: 0
 
-The real PostgreSQL migration and behavioural concurrency gates passed on Docker PostgreSQL 16. Checkout now persists a pre-reserve intent and commits the Order inside the saga; cancellation commits `CANCEL_PENDING` before unreserve. An ambiguous reserve timeout is retained for recovery and, once unreserved, remains as a durable tombstone so B2B's cached reserve replay cannot create an unreserved order.
+The real PostgreSQL migration and behavioural concurrency gates passed on Docker PostgreSQL 16. Checkout now persists a pre-reserve intent and commits the Order inside the saga; cancellation commits `CANCEL_PENDING` before unreserve. Checkout finalization and the compensation worker now share an operation-level PostgreSQL advisory lock keyed by the deterministic checkout order id, eliminating retry-vs-worker unreserve races.
 
 ## Task 1 — Reserve / Unreserve
 
@@ -59,12 +59,12 @@ See [INTERNAL_API_COMPATIBILITY.md](INTERNAL_API_COMPATIBILITY.md) for method/he
 | Suite | Result |
 |---|---:|
 | B2B unit/regression | 134 passed; 3 PostgreSQL-gated cases run separately inside Docker |
-| B2C unit/regression | 114 passed; 2 PostgreSQL-gated cases run separately inside Docker (two additional timeout-compensation regressions) |
+| B2C unit/regression | 116 passed; 3 PostgreSQL-gated cases run separately inside Docker (including two deterministic race orders) |
 | Admin unit/regression | 16 passed |
 | PostgreSQL B2B migrations | PASS: head `0017_reserve_request_hash` |
 | PostgreSQL B2C migrations | PASS: clean and 0020→head upgrades both reach `0021_compensation_tombstone` |
 | PostgreSQL B2B behavioural concurrency | PASS: 3 passed |
-| PostgreSQL B2C behavioural concurrency | PASS: 2 passed |
+| PostgreSQL B2C behavioural concurrency | PASS: 3 passed, including retry-vs-compensation serialization |
 | Docker runtime E2E | PASS: healthy Admin/B2B/B2C/PostgreSQL/Redis stack; cart → checkout → replay → cancel → clear; soft/hard moderation cascades; seller hard-block 403; durable outbox and CANCEL_PENDING recovery after dependent-service restart. |
 
 ## OpenAPI contract check
@@ -82,11 +82,11 @@ No code-level critical or high finding remains. PostgreSQL migrations and dedica
 
 ## Final freeze verification
 
-- Runtime-tested application SHA: `2c5ca0d3df8d619e241107e1c1656cca3de1ed92`.
+- Runtime-tested application SHA: `d56e3037e88021f1bf03050684c2d67ee8dfd162`.
 - Docker PostgreSQL migration gates: clean upgrade and `0020_checkout_reserve_intent` → head both passed, reaching `0021_compensation_tombstone`.
 - Runtime commerce HTTP proof on the Docker stack: cart add/read → checkout `201` → same-key replay `200` → cancel `CANCELLED` → B2B reservation count `0` → cart clear `204` with an empty body.
 - Final GitHub Actions for the audited SHA are green: [B2B reservation](https://github.com/zein75/neomarket/actions/runs/37099371159), [B2C cart](https://github.com/zein75/neomarket/actions/runs/37099371160), and [B2C orders](https://github.com/zein75/neomarket/actions/runs/37099371152).
-- Final local suites actually run on the audited code: B2B `134 passed, 3 host-gated PostgreSQL cases`; B2C `114 passed, 2 host-gated PostgreSQL cases`; Admin `16 passed`. All five critical PostgreSQL cases ran inside Docker with no skips: B2B `3 passed`; B2C `2 passed`.
+- Final local suites actually run on the audited code: B2B `134 passed, 3 host-gated PostgreSQL cases`; B2C `116 passed, 3 host-gated PostgreSQL cases`; Admin `16 passed`. All six critical PostgreSQL cases ran inside Docker with no skips: B2B `3 passed`; B2C `3 passed`.
 
 ## Reproduction
 

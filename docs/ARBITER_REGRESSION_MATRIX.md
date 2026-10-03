@@ -1,6 +1,6 @@
 # Arbiter regression matrix
 
-Checked against application commit `2c5ca0d3df8d619e241107e1c1656cca3de1ed92` and authoritative canon/protocols SHAs recorded in the pre-submission report.
+Checked against application commit `d56e3037e88021f1bf03050684c2d67ee8dfd162` and authoritative canon/protocols SHAs recorded in the pre-submission report.
 
 | Task | Historical arbiter issue | Code fix | Regression test | Test type | Result |
 |---|---|---|---|---|---|
@@ -18,6 +18,7 @@ Checked against application commit `2c5ca0d3df8d619e241107e1c1656cca3de1ed92` an
 | Checkout | concurrent same-key IntegrityError | PostgreSQL idempotent replay | PostgreSQL checkout concurrency suite | PostgreSQL | PASS |
 | Checkout | reserve succeeded but local write failed | durable compensation row/retry | compensation fault-injection tests | integration | PASS |
 | Checkout | timeout response could hide successful reserve | pre-reserve durable intent, then compensation tombstone | `test_b2b_unavailable_returns_503`, `test_compensated_ambiguous_checkout_cannot_create_order_on_late_retry` | integration | PASS |
+| Checkout | retry raced worker and could create an unreserved Order | shared `order_id` advisory lock plus re-read under lock | `test_checkout_retry_racing_with_compensation_never_creates_unreserved_order`, `test_compensation_wins_race_leaves_tombstone_and_rejects_checkout`, `test_postgres_checkout_retry_vs_compensation_serializes_operation` | unit + PostgreSQL | PASS |
 | Cancel | stale cancellation status list | current cancelable status set | cancel status regression tests | unit | PASS |
 | Cancel | unloaded status history | eager order relationships | cancel serialization test | integration | PASS |
 | Cancel | unreserve failure lost intent | `CANCEL_PENDING` durable retry | cancel retry suite | PostgreSQL | PASS |

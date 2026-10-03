@@ -1,6 +1,6 @@
 # Internal API compatibility
 
-Audited against Protocols `3b405c6844f26d2d7c4ea32a44ea2f419723e8d0` and application code `2c5ca0d3df8d619e241107e1c1656cca3de1ed92`.
+Audited against Protocols `3b405c6844f26d2d7c4ea32a44ea2f419723e8d0` and application code `d56e3037e88021f1bf03050684c2d67ee8dfd162`.
 
 | Sender | Method / URL | Header | Payload | Receiver | Result |
 |---|---|---|---|---|---|
