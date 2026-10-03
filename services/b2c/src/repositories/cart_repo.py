@@ -36,6 +36,12 @@ class CartRepository(BaseRepository[Cart]):
             select(Cart)
             .where(Cart.id == cart_id)
             .options(selectinload(Cart.items))
+            # A cart created in this session starts with an eagerly initialized
+            # empty collection.  Adding CartItem via ``cart_id`` does not
+            # mutate that in-memory collection, so a normal selectinload would
+            # preserve stale ``items=[]`` and the POST /cart/items response
+            # would incorrectly omit the newly added line.
+            .execution_options(populate_existing=True)
         )
         return result.scalar_one_or_none()
 

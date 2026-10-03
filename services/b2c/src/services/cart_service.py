@@ -82,6 +82,13 @@ class CartService:
         auth_cart = await self.repo.get_by_user_id(user.id)
         if not auth_cart:
             auth_cart = await self._create_cart_once(user_id=user.id)
+            # ``create`` returns a newly-flushed Cart whose relationship is not
+            # loaded.  Accessing ``auth_cart.items`` below would trigger async
+            # lazy loading outside SQLAlchemy's greenlet bridge, causing login
+            # with a first-time guest cart to fail with MissingGreenlet.
+            auth_cart = await self.repo.get_with_items(auth_cart.id)
+            if not auth_cart:
+                raise RuntimeError("Created authenticated cart was not found")
         guest_cart = await self.repo.get_by_session_id(session_id)
         if guest_cart and guest_cart.id != auth_cart.id:
             await self._merge_guest_cart(auth_cart, guest_cart)

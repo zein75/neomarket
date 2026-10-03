@@ -345,6 +345,57 @@ async def test_guest_cart_merged_on_login() -> None:
 
 
 @pytest.mark.asyncio
+async def test_login_merge_loads_new_auth_cart_items_before_access() -> None:
+    """A newly-created SQLAlchemy cart has an unloaded ``items`` relation.
+
+    The real async ORM raises MissingGreenlet if the merge loop accesses it
+    before an eager reload.  This sentinel reproduces that distinction without
+    requiring a live database in the unit suite.
+    """
+    user = SimpleNamespace(id=uuid4())
+    guest_cart = _cart(session_id=GUEST_SESSION_ID)
+    guest_cart.items = [
+        _item(cart_id=guest_cart.id, product_id=uuid4(), sku_id=uuid4(), quantity=2)
+    ]
+
+    class NewlyCreatedCart:
+        def __init__(self) -> None:
+            self.id = uuid4()
+
+        @property
+        def items(self):
+            raise AssertionError("merge accessed an unloaded relation")
+
+    created = NewlyCreatedCart()
+
+    class ReloadingRepository(FakeCartRepository):
+        async def get_by_user_id(self, user_id: UUID):
+            return None
+
+        async def create(self, **kwargs):
+            return created
+
+        async def get_with_items(self, cart_id: UUID):
+            assert cart_id == created.id
+            auth_cart = _cart(user_id=user.id)
+            self.carts_by_id[auth_cart.id] = auth_cart
+            self.carts_by_user[user.id] = auth_cart
+            return auth_cart
+
+    FakeCartRepository.carts_by_session[GUEST_SESSION_ID] = guest_cart
+    FakeCartRepository.carts_by_id[guest_cart.id] = guest_cart
+    original_repository = cart_service_module.CartRepository
+    cart_service_module.CartRepository = ReloadingRepository
+    try:
+        merged = await CartService(FakeSession()).merge_guest_cart(user, GUEST_SESSION_ID)
+    finally:
+        cart_service_module.CartRepository = original_repository
+
+    assert len(merged.items) == 1
+    assert merged.items[0].quantity == 2
+
+
+@pytest.mark.asyncio
 async def test_login_automatically_merges_guest_cart(monkeypatch: pytest.MonkeyPatch) -> None:
     user_id = uuid4()
     product_id = uuid4()
