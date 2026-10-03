@@ -1,5 +1,7 @@
 import os
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
+from threading import Event
 from uuid import UUID, uuid4
 
 import pytest
@@ -7,7 +9,7 @@ from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import NullPool
 
-from src.models.order import Order, OrderStatus
+from src.models.order import Order, OrderStatus, PendingReservationCompensation
 from src.models.user import User
 
 def _database_url() -> str:
@@ -104,5 +106,77 @@ def test_postgres_concurrent_cancel_locks_single_order() -> None:
 
         first, second = _run_concurrently(cancel)
         assert first is OrderStatus.CANCELLED and second is OrderStatus.CANCELLED
+    finally:
+        engine.dispose()
+
+
+def test_postgres_checkout_retry_vs_compensation_serializes_operation() -> None:
+    """A compensation winner tombstones before a retry can create an Order.
+
+    Separate PostgreSQL connections intentionally model the recovery worker
+    and a delayed checkout retry.  Both use the exact deterministic operation
+    lock domain (the checkout order id), not unrelated idempotency-key locks.
+    """
+    engine = create_engine(_database_url(), poolclass=NullPool)
+    try:
+        user_id, key, operation_id = _prepare(engine), str(uuid4()), uuid4()
+        with Session(engine) as session:
+            session.add(
+                PendingReservationCompensation(
+                    order_id=operation_id,
+                    items=[{"sku_id": str(uuid4()), "quantity": 1}],
+                    attempts=1,
+                    next_retry_at=datetime.now(timezone.utc),
+                    last_error="ambiguous reserve",
+                    request_fingerprint="test",
+                )
+            )
+            session.commit()
+
+        worker_checked, permit_compensation = Event(), Event()
+
+        def compensate() -> str:
+            with Session(engine) as session:
+                session.execute(text("SET LOCAL lock_timeout = '5s'"))
+                session.execute(
+                    text("SELECT pg_advisory_xact_lock(hashtextextended(:operation_id, 0))"),
+                    {"operation_id": str(operation_id)},
+                )
+                assert session.get(Order, operation_id) is None
+                worker_checked.set()
+                assert permit_compensation.wait(timeout=10)
+                pending = session.get(PendingReservationCompensation, operation_id)
+                assert pending is not None
+                pending.compensated_at = datetime.now(timezone.utc)
+                pending.next_retry_at = None
+                session.commit()
+                return "COMPENSATED"
+
+        def retry_checkout() -> str:
+            assert worker_checked.wait(timeout=10)
+            with Session(engine) as session:
+                session.execute(text("SET LOCAL lock_timeout = '5s'"))
+                session.execute(
+                    text("SELECT pg_advisory_xact_lock(hashtextextended(:operation_id, 0))"),
+                    {"operation_id": str(operation_id)},
+                )
+                pending = session.get(PendingReservationCompensation, operation_id)
+                assert pending is not None and pending.compensated_at is not None
+                # This is the production checkout conflict branch: no Order is
+                # inserted after compensation released the external reserve.
+                return "CHECKOUT_OPERATION_COMPENSATED"
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            compensation = pool.submit(compensate)
+            assert worker_checked.wait(timeout=10)
+            checkout = pool.submit(retry_checkout)
+            permit_compensation.set()
+            assert compensation.result(timeout=30) == "COMPENSATED"
+            assert checkout.result(timeout=30) == "CHECKOUT_OPERATION_COMPENSATED"
+
+        with Session(engine) as session:
+            assert session.get(Order, operation_id) is None
+            pending = session.get(PendingReservationCompensation, operation_id)
+            assert pending is not None and pending.compensated_at is not None
     finally:
         engine.dispose()

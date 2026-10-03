@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timezone
 from types import SimpleNamespace
 from uuid import UUID, uuid4
@@ -103,6 +104,7 @@ class FakeSession:
         self.fail_flush = False
         self.fail_commit_at: int | None = None
         self.commit_calls = 0
+        self.holds_operation_lock = False
 
     def add(self, obj) -> None:
         self.added.append(obj)
@@ -114,12 +116,19 @@ class FakeSession:
 
     async def rollback(self) -> None:
         self.rolled_back = True
+        self._release_operation_lock()
 
     async def commit(self) -> None:
         self.commit_calls += 1
         if self.fail_commit_at == self.commit_calls:
             raise RuntimeError("database commit failed")
         self.committed = True
+        self._release_operation_lock()
+
+    def _release_operation_lock(self) -> None:
+        if self.holds_operation_lock and FakeOrderRepository.operation_lock is not None:
+            FakeOrderRepository.operation_lock.release()
+            self.holds_operation_lock = False
 
     async def delete(self, obj) -> None:
         return None
@@ -150,6 +159,7 @@ class FakeOrderRepository:
     locked_gets: list[UUID] = []
     race_order: Order | None = None
     raise_integrity_error = False
+    operation_lock: asyncio.Lock | None = None
 
     def __init__(self, session) -> None:
         self.session = session
@@ -279,6 +289,15 @@ class FakeOrderRepository:
     async def get_reservation_compensation(self, order_id):
         return self.pending_reservation_compensations.get(order_id)
 
+    async def get_reservation_compensation_for_update(self, order_id):
+        return await self.get_reservation_compensation(order_id)
+
+    async def lock_checkout_operation(self, order_id) -> None:
+        if type(self).operation_lock is None:
+            type(self).operation_lock = asyncio.Lock()
+        await type(self).operation_lock.acquire()
+        self.session.holds_operation_lock = True
+
     async def list_due_reservation_compensations(self, now, limit: int = 100):
         return [
             pending
@@ -325,6 +344,10 @@ class FakeB2BClient:
     reserve_error: HTTPException | None = None
     unreserve_error: HTTPException | None = None
     fulfill_error: HTTPException | None = None
+    reserve_started: asyncio.Event | None = None
+    reserve_continue: asyncio.Event | None = None
+    unreserve_started: asyncio.Event | None = None
+    unreserve_continue: asyncio.Event | None = None
 
     def __init__(self, base_url: str) -> None:
         self.base_url = base_url
@@ -344,12 +367,20 @@ class FakeB2BClient:
 
     async def reserve(self, payload: dict[str, object]):
         self.reserve_calls.append(payload)
+        if self.reserve_started is not None:
+            self.reserve_started.set()
+            assert self.reserve_continue is not None
+            await self.reserve_continue.wait()
         if self.reserve_error:
             raise self.reserve_error
         return {"status": "RESERVED", "order_id": payload["order_id"]}
 
     async def unreserve(self, payload: dict[str, object]):
         self.unreserve_calls.append(payload)
+        if self.unreserve_started is not None:
+            self.unreserve_started.set()
+            assert self.unreserve_continue is not None
+            await self.unreserve_continue.wait()
         if self.unreserve_error:
             raise self.unreserve_error
         return {"status": "UNRESERVED", "order_id": payload["order_id"]}
@@ -373,6 +404,7 @@ def patch_dependencies(monkeypatch):
     FakeOrderRepository.locked_gets = []
     FakeOrderRepository.race_order = None
     FakeOrderRepository.raise_integrity_error = False
+    FakeOrderRepository.operation_lock = None
     FakeAddressRepository.return_none = False
     FakeB2BClient.products = []
     FakeB2BClient.reserve_calls = []
@@ -381,6 +413,10 @@ def patch_dependencies(monkeypatch):
     FakeB2BClient.reserve_error = None
     FakeB2BClient.unreserve_error = None
     FakeB2BClient.fulfill_error = None
+    FakeB2BClient.reserve_started = None
+    FakeB2BClient.reserve_continue = None
+    FakeB2BClient.unreserve_started = None
+    FakeB2BClient.unreserve_continue = None
     monkeypatch.setattr(order_service_module, "CartRepository", FakeCartRepository)
     monkeypatch.setattr(order_service_module, "OrderRepository", FakeOrderRepository)
     monkeypatch.setattr(order_service_module, "AddressRepository", FakeAddressRepository)
@@ -966,6 +1002,108 @@ async def test_compensated_ambiguous_checkout_cannot_create_order_on_late_retry(
     assert exc.value.detail["code"] == "CHECKOUT_OPERATION_COMPENSATED"
     assert FakeB2BClient.reserve_calls == []
     assert FakeOrderRepository.created_orders == []
+
+
+async def test_checkout_retry_racing_with_compensation_never_creates_unreserved_order() -> None:
+    """The same operation lock makes the checkout-wins ordering deterministic."""
+    user_id, product_id, sku_id = uuid4(), uuid4(), uuid4()
+    request = _order_request()
+    cart = _cart(
+        user_id=user_id,
+        items=[_cart_item(sku_id=sku_id, product_id=product_id, quantity=2)],
+    )
+    FakeCartRepository.cart = cart
+    FakeB2BClient.products = [{
+        "id": str(product_id), "title": "Phone",
+        "skus": [{"id": str(sku_id), "name": "128 GB", "price": 150, "active_quantity": 5}],
+    }]
+    FakeB2BClient.reserve_started = asyncio.Event()
+    FakeB2BClient.reserve_continue = asyncio.Event()
+
+    checkout_session = FakeSession()
+    checkout_task = asyncio.create_task(
+        OrderService(checkout_session).checkout(
+            user_id=user_id,
+            cart_id=cart.id,
+            idempotency_key="checkout-race-checkout-wins",
+            order_request=request,
+        )
+    )
+    await FakeB2BClient.reserve_started.wait()
+    order_id = OrderService._checkout_operation_id(user_id, "checkout-race-checkout-wins")
+    pending = FakeOrderRepository.pending_reservation_compensations[order_id]
+    pending.next_retry_at = datetime.now(timezone.utc)
+
+    worker_task = asyncio.create_task(
+        OrderService(FakeSession()).retry_pending_reservation_compensations()
+    )
+    await asyncio.sleep(0)  # let the worker block on the already-held operation lock
+    assert not worker_task.done()
+
+    FakeB2BClient.reserve_continue.set()
+    order = await checkout_task
+    await worker_task
+
+    assert order.id in FakeOrderRepository.orders_by_id
+    assert FakeB2BClient.unreserve_calls == []
+
+
+async def test_compensation_wins_race_leaves_tombstone_and_rejects_checkout() -> None:
+    """A worker that wins the operation lock makes late checkout fail safely."""
+    user_id, product_id, sku_id = uuid4(), uuid4(), uuid4()
+    request = _order_request()
+    cart = _cart(
+        user_id=user_id,
+        items=[_cart_item(sku_id=sku_id, product_id=product_id, quantity=2)],
+    )
+    FakeCartRepository.cart = cart
+    FakeB2BClient.products = [{
+        "id": str(product_id), "title": "Phone",
+        "skus": [{"id": str(sku_id), "name": "128 GB", "price": 150, "active_quantity": 5}],
+    }]
+    order_id = OrderService._checkout_operation_id(user_id, "checkout-race-compensation-wins")
+    FakeOrderRepository.pending_reservation_compensations[order_id] = SimpleNamespace(
+        order_id=order_id,
+        items=[{"sku_id": str(sku_id), "quantity": 2}],
+        attempts=1,
+        next_retry_at=datetime.now(timezone.utc),
+        last_error="ambiguous reserve",
+        request_fingerprint=OrderService(FakeSession())._request_fingerprint(request),
+        compensated_at=None,
+    )
+    FakeB2BClient.unreserve_started = asyncio.Event()
+    FakeB2BClient.unreserve_continue = asyncio.Event()
+
+    worker_session = FakeSession()
+    worker_task = asyncio.create_task(
+        OrderService(worker_session).retry_pending_reservation_compensations()
+    )
+    await FakeB2BClient.unreserve_started.wait()
+    checkout_task = asyncio.create_task(
+        OrderService(FakeSession()).checkout(
+            user_id=user_id,
+            cart_id=cart.id,
+            idempotency_key="checkout-race-compensation-wins",
+            order_request=request,
+        )
+    )
+    await asyncio.sleep(0)
+    assert not checkout_task.done()
+
+    FakeB2BClient.unreserve_continue.set()
+    assert await worker_task == 1
+    await worker_session.commit()
+    with pytest.raises(HTTPException) as exc:
+        await checkout_task
+
+    assert exc.value.status_code == 409
+    assert exc.value.detail["code"] == "CHECKOUT_OPERATION_COMPENSATED"
+    assert order_id not in FakeOrderRepository.orders_by_id
+    assert FakeB2BClient.unreserve_calls == [{
+        "order_id": str(order_id),
+        "items": [{"sku_id": str(sku_id), "quantity": 2}],
+    }]
+    assert FakeOrderRepository.pending_reservation_compensations[order_id].compensated_at
 
 
 async def test_orders_list_returns_own_orders_paginated() -> None:

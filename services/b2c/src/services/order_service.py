@@ -95,10 +95,31 @@ class OrderService:
                 raise
             self._validate_checkout_intent(pending, request_fingerprint)
 
-        # A commit ends the advisory-lock transaction. Re-acquire it and look
-        # once more: a concurrent request may already have committed the order.
-        if lock_key is not None:
-            await lock_key(idempotency_key)
+        # The intent commit ends the idempotency-key transaction.  From this
+        # point checkout and the orphan-compensation worker must share the
+        # *operation* lock (the deterministic order id), otherwise the worker
+        # can observe no Order, then unreserve after a retry commits one.
+        operation_lock = getattr(self.order_repo, "lock_checkout_operation", None)
+        if operation_lock is not None:
+            await operation_lock(order_id)
+        pending_for_update = getattr(
+            self.order_repo, "get_reservation_compensation_for_update", None
+        )
+        pending = (
+            await pending_for_update(order_id)
+            if pending_for_update is not None
+            else await self.order_repo.get_reservation_compensation(order_id)
+        )
+        if pending is not None:
+            self._validate_checkout_intent(pending, request_fingerprint)
+            if getattr(pending, "compensated_at", None) is not None:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail={
+                        "code": "CHECKOUT_OPERATION_COMPENSATED",
+                        "message": "Checkout reservation was already compensated",
+                    },
+                )
         existing = await self.order_repo.get_by_idempotency_key(idempotency_key)
         if existing:
             if existing.user_id != user_id:
@@ -118,10 +139,16 @@ class OrderService:
             # intent for idempotent replay or worker compensation.
             if exc.status_code != status.HTTP_503_SERVICE_UNAVAILABLE:
                 await self._delete_checkout_intent(order_id, best_effort=True)
+            else:
+                # The intent was committed before the operation lock.  Release
+                # this request transaction/lock while retaining that durable
+                # record for a same-key retry or the recovery worker.
+                await self.order_repo.session.rollback()
             raise
         except Exception:
             # Transport exceptions have the same ambiguous outcome as a lost
             # response.  Never delete the only durable recovery record here.
+            await self.order_repo.session.rollback()
             raise
 
         total = sum(
@@ -432,8 +459,23 @@ class OrderService:
             datetime.now(timezone.utc), limit
         )
         for pending in pending_jobs:
+            operation_lock = getattr(self.order_repo, "lock_checkout_operation", None)
+            if operation_lock is not None:
+                await operation_lock(pending.order_id)
+            pending_for_update = getattr(
+                self.order_repo, "get_reservation_compensation_for_update", None
+            )
+            current = (
+                await pending_for_update(pending.order_id)
+                if pending_for_update is not None
+                else await self.order_repo.get_reservation_compensation(pending.order_id)
+            )
+            if current is None or getattr(current, "compensated_at", None) is not None:
+                continue
+            pending = current
             # A stale intent must never compensate an order that did commit
-            # after the worker originally listed the row.
+            # after the worker originally listed the row.  This re-check is
+            # deliberately after the shared operation lock.
             if await self.order_repo.get_with_items(pending.order_id):
                 await self.order_repo.delete_reservation_compensation(pending)
                 retried += 1

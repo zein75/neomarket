@@ -62,11 +62,18 @@ jobs:
           idempotency_key_does_not_return_another_users_order or
           checkout_compensates_reserve_when_persistence_fails or
           checkout_compensates_reserve_when_created_order_cannot_reload or
+          checkout_final_commit_failure_compensates_durable_reserve or
+          checkout_commit_failure_with_unreserve_failure_keeps_durable_intent or
+          compensated_ambiguous_checkout_cannot_create_order_on_late_retry or
+          checkout_retry_racing_with_compensation_never_creates_unreserved_order or
+          compensation_wins_race_leaves_tombstone_and_rejects_checkout or
           cancel_paid_order_transitions_to_cancelled or
           unreserve_failure_transitions_to_cancel_pending or
           cancel_assembling_order_transitions_to_cancelled or
           cancel_delivering_order_transitions_to_cancelled or
           cancel_delivered_order_returns_409 or
+          cancel_pending_is_committed_before_unreserve or
+          cancel_final_commit_failure_leaves_durable_pending_for_retry or
           other_user_order_returns_404"
       - name: Run PostgreSQL checkout and cancellation concurrency scenarios
         working-directory: services/b2c

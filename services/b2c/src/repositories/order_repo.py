@@ -92,6 +92,13 @@ class OrderRepository(BaseRepository[Order]):
             {"idempotency_key": idempotency_key},
         )
 
+    async def lock_checkout_operation(self, order_id: UUID) -> None:
+        """Serialize checkout finalization and orphan compensation for one saga."""
+        await self.session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended(:order_id, 0))"),
+            {"order_id": str(order_id)},
+        )
+
     async def list_by_user(self, user_id: UUID) -> list[Order]:
         result = await self.session.execute(
             select(Order)
@@ -218,6 +225,18 @@ class OrderRepository(BaseRepository[Order]):
         self, order_id: UUID
     ) -> PendingReservationCompensation | None:
         return await self.session.get(PendingReservationCompensation, order_id)
+
+    async def get_reservation_compensation_for_update(
+        self, order_id: UUID
+    ) -> PendingReservationCompensation | None:
+        """Re-read the durable saga state after acquiring its advisory lock."""
+        result = await self.session.execute(
+            select(PendingReservationCompensation)
+            .where(PendingReservationCompensation.order_id == order_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        return result.scalar_one_or_none()
 
     async def list_due_reservation_compensations(
         self,
