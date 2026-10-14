@@ -169,7 +169,7 @@ services:
     restart: unless-stopped
     security_opt: ["no-new-privileges:true"]
     cap_drop: [ALL]
-    cap_add: [CHOWN]
+    cap_add: [CHOWN, SETGID, SETUID]
     tmpfs: ["/var/cache/nginx", "/var/run"]
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
