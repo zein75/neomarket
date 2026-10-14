@@ -26,7 +26,7 @@ build:
 	docker compose build
 
 prod:
-	docker compose -f docker-compose.yaml -f docker-compose.prod.yaml up -d --build
+	docker compose --env-file /etc/neomarket/production.env -f docker-compose.prod.yaml up -d
 
 
 b2c-run:
