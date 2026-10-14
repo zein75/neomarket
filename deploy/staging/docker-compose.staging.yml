@@ -57,6 +57,7 @@ services:
     image: ${REGISTRY_IMAGE:?set REGISTRY_IMAGE}/b2b:${RELEASE_SHA:?set RELEASE_SHA}
     command: ["uv", "run", "--no-sync", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8002"]
     environment: &b2b-env
+      UV_CACHE_DIR: /tmp/uv-cache
       APP_ENV: production
       DATABASE_URL: postgresql+asyncpg://neomarket:${POSTGRES_PASSWORD}@postgres:5432/b2b
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
@@ -84,6 +85,7 @@ services:
     image: ${REGISTRY_IMAGE}/b2c:${RELEASE_SHA}
     command: ["uv", "run", "--no-sync", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8001"]
     environment: &b2c-env
+      UV_CACHE_DIR: /tmp/uv-cache
       APP_ENV: production
       DATABASE_URL: postgresql+asyncpg://neomarket:${POSTGRES_PASSWORD}@postgres:5432/b2c
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
@@ -111,6 +113,7 @@ services:
     image: ${REGISTRY_IMAGE}/admin:${RELEASE_SHA}
     command: ["uv", "run", "--no-sync", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8003"]
     environment: &admin-env
+      UV_CACHE_DIR: /tmp/uv-cache
       APP_ENV: production
       DATABASE_URL: postgresql+asyncpg://neomarket:${POSTGRES_PASSWORD}@postgres:5432/admin
       SECRET_KEY: ${ADMIN_SECRET_KEY:?}
