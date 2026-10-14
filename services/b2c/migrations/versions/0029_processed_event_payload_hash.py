@@ -4,7 +4,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = "0029_processed_event_payload_hash"
+revision = "0029_event_payload_hash"
 down_revision = "0028_refresh_sessions"
 branch_labels = None
 depends_on = None
