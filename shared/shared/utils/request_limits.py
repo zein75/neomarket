@@ -24,7 +24,11 @@ class RequestLimitsMiddleware(BaseHTTPMiddleware):
                     },
                 )
             content_type = request.headers.get("content-type", "").lower()
-            if content_length and not content_type.startswith("application/json"):
+            form_login = (
+                request.url.path in {"/auth/login", "/api/v1/auth/login"}
+                and content_type.startswith("application/x-www-form-urlencoded")
+            )
+            if content_length and not content_type.startswith("application/json") and not form_login:
                 return JSONResponse(
                     status_code=415,
                     content={

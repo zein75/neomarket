@@ -29,3 +29,20 @@ def test_rejects_oversized_mutation() -> None:
     )
     assert response.status_code == 413
     assert response.json()["code"] == "REQUEST_TOO_LARGE"
+
+
+def test_allows_form_login_payload() -> None:
+    app = _app()
+
+    @app.post("/auth/login")
+    async def login() -> dict[str, bool]:
+        return {"ok": True}
+
+    response = TestClient(app).post(
+        "/auth/login",
+        content="username=test%40example.com&password=secret",
+        headers={"content-type": "application/x-www-form-urlencoded"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"ok": True}
