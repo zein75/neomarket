@@ -11,6 +11,9 @@ ROOT=/opt/neomarket-staging
 SECRETS=/etc/neomarket/staging.env
 cd "$ROOT"
 [[ -r "$SECRETS" ]] || { echo "missing secrets $SECRETS" >&2; exit 1; }
+# The schema is mounted into the official postgres image and must be readable
+# by its non-root postgres user; it contains no credentials.
+chmod 0644 "$ROOT/init.sql"
 # Check resources before first deployment. Allow override only for an explicitly accepted lab experiment.
 if [[ "${ALLOW_LOW_MEMORY:-0}" != 1 ]]; then
   mem_kb="$(awk '/MemTotal:/ {print $2}' /proc/meminfo)"
