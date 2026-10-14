@@ -51,6 +51,17 @@ class ReservationService:
 
         lifecycle = await self._load_lifecycle(data.order_id, for_update=True)
         if lifecycle is not None and lifecycle.state != "NEW":
+            # A concurrent retry can observe the durable RESERVED lifecycle
+            # after the first transaction committed, while its operation row
+            # is not yet visible in the current session snapshot.  Replay the
+            # exact original response for the same request instead of
+            # misclassifying the idempotent retry as a terminal order.
+            if (
+                lifecycle.state == "RESERVED"
+                and lifecycle.fingerprint == request_hash
+                and lifecycle.result
+            ):
+                return self._decode_reservation_response(lifecycle.result)
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={"code": "ORDER_TERMINAL", "message": "Inventory order is already finalized"},
