@@ -483,7 +483,11 @@ class ReservationService:
                 request_payload=request_payload,
                 response=self._encode_unreserve_response(response),
             )
-            await self._mark_lifecycle_cancelled(data.order_id, request_hash, response)
+            await self._mark_lifecycle_cancelled(
+                data.order_id,
+                request_hash,
+                self._encode_unreserve_response(response),
+            )
             return response
         skus = await self.sku_repo.list_for_update(sku_ids)
         skus_by_id = {sku.id: sku for sku in skus}
@@ -560,7 +564,11 @@ class ReservationService:
 
         await self.reservation_repo.delete_many(to_delete)
         if len(to_delete) == len(reservations):
-            await self._mark_lifecycle_cancelled(data.order_id, request_hash, response)
+            await self._mark_lifecycle_cancelled(
+                data.order_id,
+                request_hash,
+                self._encode_unreserve_response(response),
+            )
         await self.reservation_repo.session.flush()
         return response
 
