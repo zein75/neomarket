@@ -1,6 +1,7 @@
 from uuid import UUID
+from secrets import compare_digest
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
 from fastapi import Security
 from fastapi.security import APIKeyHeader
 from fastapi.security import OAuth2PasswordBearer
@@ -11,6 +12,7 @@ from src.core.config import settings
 from src.core.security import decode_access_token
 from src.models.user import User
 from src.repositories.user_repo import UserRepository
+from shared.utils.service_auth import verify_service_token
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
@@ -19,8 +21,12 @@ service_key_scheme = APIKeyHeader(name="X-Service-Key", auto_error=False)
 
 async def verify_service_key(
     x_service_key: str | None = Security(service_key_scheme),
+    authorization: str | None = Header(default=None, alias="Authorization"),
 ) -> None:
-    if x_service_key != settings.service_key:
+    if authorization and authorization.lower().startswith("bearer ") and settings.trusted_service_public_keys:
+        if verify_service_token(authorization[7:].strip(), trusted_keys=settings.trusted_service_public_keys, audience="neomarket-b2c", allowed_subjects={"b2b", "admin"}):
+            return
+    if not x_service_key or not compare_digest(x_service_key, settings.service_key):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={

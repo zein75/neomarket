@@ -1,3 +1,6 @@
+import hashlib
+import json
+
 from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,7 +20,23 @@ class ModerationEventService:
 
     async def apply(self, event: ModerationDecisionEvent) -> dict[str, str]:
         idempotency_key = str(event.idempotency_key)
+        payload_hash = hashlib.sha256(
+            json.dumps(
+                event.model_dump(mode="json"), sort_keys=True, separators=(",", ":")
+            ).encode()
+        ).hexdigest()
         if await self.processed_event_repo.exists(idempotency_key):
+            get_hash = getattr(self.processed_event_repo, "get_payload_hash", None)
+            if get_hash is not None:
+                stored_hash = await get_hash(idempotency_key)
+                if stored_hash and stored_hash != payload_hash:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail={
+                            "code": "EVENT_ID_CONFLICT",
+                            "message": "event_id was reused with different payload",
+                        },
+                    )
             return {"status": "DUPLICATE"}
         product = await self.product_repo.get_with_skus(event.product_id)
         if not product:
@@ -46,7 +65,11 @@ class ModerationEventService:
             )
 
         try:
-            await self.processed_event_repo.mark_processed(idempotency_key)
+            mark_processed = self.processed_event_repo.mark_processed
+            try:
+                await mark_processed(idempotency_key, payload_hash)
+            except TypeError:
+                await mark_processed(idempotency_key)
         except IntegrityError:
             rollback = getattr(self.processed_event_repo.session, "rollback", None)
             if rollback:

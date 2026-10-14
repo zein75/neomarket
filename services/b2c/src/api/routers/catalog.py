@@ -1,6 +1,7 @@
+import base64
 from uuid import UUID
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query, status
 
 from src.schemas.catalog import (
     BreadcrumbsResponse,
@@ -13,13 +14,55 @@ from src.services.catalog_service import CatalogService
 router = APIRouter(tags=["catalog"])
 
 
+def _decode_catalog_cursor(cursor: str | None) -> int:
+    if not isinstance(cursor, str) or not cursor:
+        return 0
+    try:
+        raw = base64.urlsafe_b64decode(cursor.encode("ascii")).decode("ascii")
+        offset = int(raw)
+    except (ValueError, UnicodeDecodeError, base64.binascii.Error) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={"code": "INVALID_CURSOR", "message": "Invalid catalog cursor"},
+        ) from exc
+    if offset < 0 or offset > 10_000:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={"code": "INVALID_CURSOR", "message": "Invalid catalog cursor"},
+        )
+    return offset
+
+
+def _encode_catalog_cursor(offset: int) -> str:
+    return base64.urlsafe_b64encode(str(offset).encode("ascii")).decode("ascii")
+
+
+@router.get("/api/v1/catalog")
+async def list_catalog(
+    cursor: str | None = Query(None, max_length=1024),
+    limit: int = Query(20, ge=1, le=100),
+) -> dict[str, object]:
+    offset = _decode_catalog_cursor(cursor)
+    result = await CatalogService().list_products(limit=limit, offset=offset)
+    total = int(result.get("total_count", len(result.get("items", []))))
+    next_offset = offset + limit
+    has_more = next_offset < total
+    return {
+        "items": result.get("items", []),
+        "page": {
+            "has_more": has_more,
+            "next_cursor": _encode_catalog_cursor(next_offset) if has_more else None,
+        },
+    }
+
+
 @router.get("/api/v1/products")
 @router.get("/api/v1/catalog/products", include_in_schema=False)
 @router.get("/catalog/products", include_in_schema=False)
 async def list_products(
     limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-    page: int | None = Query(None, ge=1),
+    offset: int = Query(0, ge=0, le=10_000),
+    page: int | None = Query(None, ge=1, le=10_001),
     page_size: int | None = Query(None, ge=1, le=100),
     q: str | None = Query(None, max_length=200),
     search: str | None = Query(None, max_length=200),
@@ -30,7 +73,35 @@ async def list_products(
     price_max: int | None = Query(None, ge=0, alias="filter[price_max]"),
     in_stock: bool | None = Query(None, alias="filter[in_stock]"),
 ) -> dict[str, object]:
-    if page is not None:
+    allowed_sorts = {"popularity", "price_asc", "price_desc", "new", "newest"}
+    # Keep the explicit guard for direct callers as well as FastAPI's Query validation.
+    if isinstance(offset, int) and offset > 10_000:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "INVALID_OFFSET", "message": "offset exceeds the supported range"},
+        )
+    if isinstance(page, int) and page > 10_001:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "INVALID_PAGE", "message": "page exceeds the supported range"},
+        )
+    if sort not in allowed_sorts:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "INVALID_SORT", "message": "Unsupported sort option"},
+        )
+    if (
+        isinstance(price_min, int)
+        and isinstance(price_max, int)
+        and price_min > price_max
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "INVALID_PRICE_RANGE", "message": "price_min exceeds price_max"},
+        )
+    if sort == "newest":
+        sort = "new"
+    if isinstance(page, int):
         limit = page_size or limit
         offset = (page - 1) * limit
     return await CatalogService().list_products(
@@ -88,7 +159,7 @@ async def similar_products(
     product_id: UUID,
     category: UUID = Query(...),
     limit: int = Query(8, ge=1, le=20),
-    offset: int = Query(0, ge=0),
+    offset: int = Query(0, ge=0, le=10_000),
 ) -> ProductShortListResponse:
     return await CatalogService().similar_products(
         str(product_id),
@@ -98,7 +169,8 @@ async def similar_products(
     )
 
 
-@router.get("/api/v1/catalog/products/{product_id}")
+@router.get("/api/v1/catalog/{product_id}")
+@router.get("/api/v1/catalog/products/{product_id}", include_in_schema=False)
 @router.get("/api/v1/products/{product_id}", include_in_schema=False)
 @router.get("/catalog/products/{product_id}", include_in_schema=False)
 async def get_product(product_id: str) -> dict[str, object]:

@@ -1,0 +1,27 @@
+# Keep Docker build contexts small and free of local/audit artifacts.
+.git
+.github
+.agents
+.claude
+.idea
+.venv
+.uv-cache
+.pytest_cache
+.ruff_cache
+.tmp-*
+graphify-out
+neomarket-audit.zip
+docs
+operations
+scripts
+tests
+services/*/tests
+shared/tests
+infra
+nginx
+**/__pycache__
+**/*.pyc
+**/*.pyo
+.env
+.env.*
+!.env.example

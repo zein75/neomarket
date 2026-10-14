@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy import func, select, text
@@ -149,13 +149,20 @@ class OrderRepository(BaseRepository[Order]):
         self,
         order: Order,
         error: str,
+        next_retry_at: datetime | None = None,
     ) -> PendingFulfillment:
         pending = await self.get_pending_fulfillment(order.id)
         if pending is None:
-            pending = PendingFulfillment(order_id=order.id, attempts=1, last_error=error)
+            pending = PendingFulfillment(
+                order_id=order.id,
+                attempts=1,
+                next_retry_at=next_retry_at,
+                last_error=error,
+            )
             self.session.add(pending)
         else:
             pending.attempts += 1
+            pending.next_retry_at = next_retry_at
             pending.last_error = error
         await self.session.flush()
         return pending
@@ -167,8 +174,12 @@ class OrderRepository(BaseRepository[Order]):
     ) -> list[PendingFulfillment]:
         result = await self.session.execute(
             select(PendingFulfillment)
+            .where(
+                (PendingFulfillment.next_retry_at.is_(None))
+                | (PendingFulfillment.next_retry_at <= datetime.now(timezone.utc))
+            )
             .options(selectinload(PendingFulfillment.order).selectinload(Order.items))
-            .order_by(PendingFulfillment.updated_at.asc())
+            .order_by(PendingFulfillment.next_retry_at.asc().nullsfirst())
             .limit(limit)
         )
         return list(result.scalars().all())
@@ -184,6 +195,7 @@ class OrderRepository(BaseRepository[Order]):
         self,
         *,
         order_id: UUID,
+        buyer_id: UUID | None = None,
         items: list[dict[str, object]],
         error: str,
         next_retry_at: datetime,
@@ -193,6 +205,7 @@ class OrderRepository(BaseRepository[Order]):
         if pending is None:
             pending = PendingReservationCompensation(
                 order_id=order_id,
+                buyer_id=buyer_id,
                 items=items,
                 attempts=1,
                 next_retry_at=next_retry_at,
@@ -202,6 +215,8 @@ class OrderRepository(BaseRepository[Order]):
             )
             self.session.add(pending)
         else:
+            if buyer_id is not None:
+                pending.buyer_id = buyer_id
             pending.attempts += 1
             pending.next_retry_at = next_retry_at
             pending.last_error = error[:500]
@@ -209,6 +224,18 @@ class OrderRepository(BaseRepository[Order]):
                 pending.request_fingerprint = request_fingerprint
         await self.session.flush()
         return pending
+
+    async def get_checkout_operation(
+        self, operation_id: UUID, buyer_id: UUID
+    ) -> tuple[Order | None, PendingReservationCompensation | None]:
+        order = await self.get_user_order_with_items(operation_id, buyer_id)
+        pending = await self.session.scalar(
+            select(PendingReservationCompensation).where(
+                PendingReservationCompensation.order_id == operation_id,
+                PendingReservationCompensation.buyer_id == buyer_id,
+            )
+        )
+        return order, pending
 
     async def mark_reservation_compensated(
         self, pending: PendingReservationCompensation, *, when: datetime

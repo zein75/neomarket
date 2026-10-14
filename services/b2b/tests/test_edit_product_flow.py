@@ -222,6 +222,33 @@ async def test_reserves_preserved_after_sku_edit() -> None:
 
 
 @pytest.mark.asyncio
+async def test_sku_edit_cannot_drop_stock_below_reserved() -> None:
+    seller_id = uuid4()
+    product_id = uuid4()
+    sku = _sku(product_id=product_id, reserved_quantity=7)
+    sku.stock = 7
+    product = _product(
+        product_id=product_id,
+        seller_id=seller_id,
+        status=ProductStatus.MODERATED,
+        skus=[sku],
+    )
+    FakeProductRepository.product = product
+    FakeSKURepository.sku = sku
+
+    with pytest.raises(Exception) as exc_info:
+        await SKUService(FakeSession()).update(
+            sku.id,
+            seller_id,
+            SKUUpdate(stock=6),
+        )
+
+    assert exc_info.value.status_code == 409
+    assert exc_info.value.detail["code"] == "STOCK_BELOW_RESERVED"
+    assert sku.stock == 7
+
+
+@pytest.mark.asyncio
 async def test_edit_hard_blocked_returns_403() -> None:
     seller_id = uuid4()
     product = _product(seller_id=seller_id, status=ProductStatus.HARD_BLOCKED)

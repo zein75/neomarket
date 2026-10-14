@@ -1,0 +1,49 @@
+version: 1
+policy: transitional
+description: >-
+  Explicit inventory of pre-v2 routes that remain enabled for compatibility.
+  Every entry requires an owner and a removal target before production traffic
+  is enabled for the normative v2 surface.
+routes:
+  b2c:
+    - {method: GET, path: /api/v1/auth/me, owner: b2c, sunset: 2026-12-31}
+    - {method: POST, path: /api/v1/auth/register, owner: b2c, sunset: 2026-12-31}
+    - {method: POST, path: /api/v1/b2b/events, owner: b2c, sunset: 2026-12-31}
+    - {method: POST, path: /api/v1/banner-events, owner: b2c, sunset: 2026-12-31}
+    - {method: GET, path: /api/v1/breadcrumbs, owner: b2c, sunset: 2026-12-31}
+    - {method: DELETE, path: /api/v1/cart, owner: b2c, sunset: 2026-12-31}
+    - {method: POST, path: /api/v1/cart/merge, owner: b2c, sunset: 2026-12-31}
+    - {method: POST, path: /api/v1/cart/validate, owner: b2c, sunset: 2026-12-31}
+    - {method: GET, path: /api/v1/catalog/facets, owner: b2c, sunset: 2026-12-31}
+    - {method: GET, path: /api/v1/categories, owner: b2c, sunset: 2026-12-31}
+    - {method: GET, path: "/api/v1/categories/{category_id}", owner: b2c, sunset: 2026-12-31}
+    - {method: GET, path: "/api/v1/collections/{collection_id}/products", owner: b2c, sunset: 2026-12-31}
+    - {method: GET, path: /api/v1/favorites, owner: b2c, sunset: 2026-12-31}
+    - {method: DELETE, path: "/api/v1/favorites/{product_id}", owner: b2c, sunset: 2026-12-31}
+    - {method: POST, path: "/api/v1/favorites/{product_id}", owner: b2c, sunset: 2026-12-31}
+    - {method: DELETE, path: "/api/v1/favorites/{product_id}/subscribe", owner: b2c, sunset: 2026-12-31}
+    - {method: POST, path: "/api/v1/favorites/{product_id}/subscribe", owner: b2c, sunset: 2026-12-31}
+    - {method: GET, path: /api/v1/home/banners, owner: b2c, sunset: 2026-12-31}
+    - {method: GET, path: /api/v1/main/collections, owner: b2c, sunset: 2026-12-31}
+    - {method: GET, path: /api/v1/products, owner: b2c, sunset: 2026-12-31}
+    - {method: GET, path: "/api/v1/products/{product_id}/similar", owner: b2c, sunset: 2026-12-31}
+  b2b:
+    - {method: POST, path: /api/v1/fulfill, owner: b2b, sunset: 2026-12-31}
+    - {method: POST, path: /api/v1/invoices, owner: b2b, sunset: 2026-12-31}
+    - {method: GET, path: /api/v1/products, owner: b2b, sunset: 2026-12-31}
+    - {method: GET, path: "/api/v1/products/{product_id}", owner: b2b, sunset: 2026-12-31}
+    - {method: PATCH, path: "/api/v1/products/{product_id}", owner: b2b, sunset: 2026-12-31}
+    - {method: GET, path: "/api/v1/products/{product_id}/skus", owner: b2b, sunset: 2026-12-31}
+    - {method: GET, path: /api/v1/public/categories, owner: b2b, sunset: 2026-12-31}
+    - {method: GET, path: "/api/v1/public/categories/{category_id}", owner: b2b, sunset: 2026-12-31}
+    - {method: GET, path: /api/v1/public/products, owner: b2b, sunset: 2026-12-31}
+    - {method: POST, path: /api/v1/public/products/batch, owner: b2b, sunset: 2026-12-31}
+    - {method: GET, path: "/api/v1/public/products/{product_id}", owner: b2b, sunset: 2026-12-31}
+    - {method: GET, path: "/api/v1/public/products/{product_id}/similar", owner: b2b, sunset: 2026-12-31}
+    - {method: GET, path: "/api/v1/public/skus/{sku_id}", owner: b2b, sunset: 2026-12-31}
+    - {method: PUT, path: "/api/v1/seller/products/{product_id}", owner: b2b, sunset: 2026-12-31}
+    - {method: DELETE, path: "/api/v1/seller/skus/{sku_id}", owner: b2b, sunset: 2026-12-31}
+    - {method: PUT, path: "/api/v1/seller/skus/{sku_id}", owner: b2b, sunset: 2026-12-31}
+    - {method: POST, path: /api/v1/skus, owner: b2b, sunset: 2026-12-31}
+  admin:
+    - {method: POST, path: "/admin/v1/moderation/tickets/{ticket_id}/decisions/block", owner: admin, sunset: 2026-12-31}

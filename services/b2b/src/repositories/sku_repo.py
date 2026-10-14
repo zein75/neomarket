@@ -26,6 +26,12 @@ class SKURepository(BaseRepository[SKU]):
         )
         return result.scalar_one_or_none()
 
+    async def get_for_update(self, sku_id: UUID) -> SKU | None:
+        result = await self.session.execute(
+            select(SKU).where(SKU.id == sku_id).with_for_update()
+        )
+        return result.scalar_one_or_none()
+
     async def list_for_update(self, sku_ids: list[UUID]) -> list[SKU]:
         result = await self.session.execute(
             select(SKU)
@@ -54,6 +60,7 @@ class SKURepository(BaseRepository[SKU]):
             name=name,
             price=price,
             stock=stock,
+            on_hand=stock,
             images=images,
         )
         self.session.add(sku)

@@ -5,6 +5,7 @@ from uuid import NAMESPACE_URL, uuid5
 import httpx
 
 from src.core.config import settings
+from shared.utils.service_auth import service_headers
 
 
 class B2CClient:
@@ -49,7 +50,7 @@ class B2CClient:
             response = await client.post(
                 f"{self.base_url}/api/v1/b2b/events",
                 json=payload,
-                headers={"X-Service-Key": self.service_key},
+                headers=service_headers(settings, audience="neomarket-b2c", legacy_key=self.service_key),
             )
             if response.status_code == 409:
                 return
@@ -60,7 +61,7 @@ class B2CClient:
             response = await client.post(
                 f"{self.base_url}/api/v1/b2b/events",
                 json=payload,
-                headers={"X-Service-Key": self.service_key},
+                headers=service_headers(settings, audience="neomarket-b2c", legacy_key=self.service_key),
             )
             if response.status_code != 409:
                 response.raise_for_status()

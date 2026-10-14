@@ -4,6 +4,7 @@ import httpx
 from fastapi import HTTPException
 
 from src.core.config import settings
+from shared.utils.service_auth import service_headers
 
 
 class B2BClient:
@@ -21,14 +22,15 @@ class B2BClient:
             response = await self._client.get(
                 path,
                 params={k: v for k, v in params.items() if v is not None},
-                headers={"X-Service-Key": settings.service_key},
+                headers=service_headers(settings, audience="neomarket-b2b"),
             )
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
             raise HTTPException(
-                status_code=e.response.status_code, detail=str(e)
-            )
+                status_code=e.response.status_code,
+                detail={"code": "B2B_UPSTREAM_ERROR", "message": "B2B request failed"},
+            ) from e
         except httpx.RequestError:
             raise HTTPException(status_code=503, detail="B2B service unavailable")
 
@@ -37,18 +39,15 @@ class B2BClient:
             response = await self._client.post(
                 path,
                 json=payload,
-                headers={"X-Service-Key": settings.service_key},
+                headers=service_headers(settings, audience="neomarket-b2b"),
             )
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
-            detail: Any
-            try:
-                body = e.response.json()
-                detail = body.get("detail", body) if isinstance(body, dict) else body
-            except ValueError:
-                detail = str(e)
-            raise HTTPException(status_code=e.response.status_code, detail=detail)
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail={"code": "B2B_UPSTREAM_ERROR", "message": "B2B request failed"},
+            ) from e
         except httpx.RequestError:
             raise HTTPException(status_code=503, detail="B2B service unavailable")
 
@@ -107,12 +106,15 @@ class B2BClient:
                     }.items()
                     if v is not None
                 },
-                headers={"X-Service-Key": settings.service_key},
+                headers=service_headers(settings, audience="neomarket-b2b"),
             )
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
-            raise HTTPException(status_code=e.response.status_code, detail=str(e))
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail={"code": "B2B_UPSTREAM_ERROR", "message": "B2B request failed"},
+            ) from e
         except httpx.RequestError:
             raise HTTPException(status_code=503, detail="B2B service unavailable")
 
@@ -139,7 +141,7 @@ class B2BClient:
                 # service-key detail route below so CartService can still
                 # distinguish blocked, out-of-stock and deleted lines.
                 json={"product_ids": product_ids},
-                headers={"X-Service-Key": settings.service_key},
+                headers=service_headers(settings, audience="neomarket-b2b"),
             )
             response.raise_for_status()
             products = response.json()
@@ -156,7 +158,10 @@ class B2BClient:
                 products.append(hidden)
             return products
         except httpx.HTTPStatusError as e:
-            raise HTTPException(status_code=e.response.status_code, detail=str(e))
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail={"code": "B2B_UPSTREAM_ERROR", "message": "B2B request failed"},
+            ) from e
         except httpx.RequestError:
             raise HTTPException(status_code=503, detail="B2B service unavailable")
 

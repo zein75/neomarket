@@ -21,12 +21,16 @@ class BannerListResponse(BaseModel):
 
 
 class BannerEventCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     banner_id: UUID
     event: Literal["impression", "click"]
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class BannerEventsCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     events: list[BannerEventCreate]
 
 

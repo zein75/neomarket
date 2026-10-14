@@ -116,6 +116,51 @@ def test_receive_b2b_event_without_service_key_returns_401() -> None:
     }
 
 
+def test_catalog_envelope_is_durably_accepted() -> None:
+    event = {
+        "schema_version": 1,
+        "event_id": str(uuid4()),
+        "event_type": "product.deleted",
+        "producer": "b2b",
+        "aggregate_type": "product",
+        "aggregate_id": str(uuid4()),
+        "aggregate_version": 2,
+        "occurred_at": datetime.now(timezone.utc).isoformat(),
+        "correlation_id": str(uuid4()),
+        "payload": {"product_id": str(uuid4()), "deleted": True},
+    }
+    response = TestClient(app).post(
+        "/internal/v1/events/catalog",
+        headers={"X-Service-Key": "dev-service-key-change-in-production"},
+        json=event,
+    )
+
+    assert response.status_code == 202
+    assert response.json() == {"accepted": True}
+
+
+def test_catalog_envelope_rejects_wrong_producer() -> None:
+    event = {
+        "schema_version": 1,
+        "event_id": str(uuid4()),
+        "event_type": "product.deleted",
+        "producer": "admin",
+        "aggregate_type": "product",
+        "aggregate_id": str(uuid4()),
+        "aggregate_version": 1,
+        "occurred_at": datetime.now(timezone.utc).isoformat(),
+        "correlation_id": str(uuid4()),
+        "payload": {},
+    }
+    response = TestClient(app).post(
+        "/internal/v1/events/catalog",
+        headers={"X-Service-Key": "dev-service-key-change-in-production"},
+        json=event,
+    )
+
+    assert response.status_code == 400
+
+
 async def test_product_blocked_does_not_persist_cart_availability() -> None:
     sku_ids = [uuid4(), uuid4()]
     event = _product_event(sku_ids=sku_ids)

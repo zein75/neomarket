@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, Response, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
 from src.api.deps import get_db, verify_service_key
 from src.schemas.b2b_event import (
+    CatalogEventEnvelope,
     LegacyB2BEventRequest,
     ProductEventRequest,
     ProductEventResponse,
@@ -11,6 +13,26 @@ from src.schemas.b2b_event import (
 from src.services.b2b_event_service import B2BEventService
 
 router = APIRouter(tags=["b2b-events"])
+
+
+@router.post(
+    "/internal/v1/events/catalog",
+    response_model=ProductEventResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    responses={200: {"model": ProductEventResponse, "description": "Already applied"}},
+)
+async def receive_catalog_event(
+    event: CatalogEventEnvelope,
+    _: None = Depends(verify_service_key),
+    db: AsyncSession = Depends(get_db),
+) -> ProductEventResponse:
+    accepted = await B2BEventService(db).handle_catalog_event(event)
+    await db.commit()
+    payload = ProductEventResponse(accepted=accepted).model_dump(mode="json")
+    return JSONResponse(
+        status_code=status.HTTP_202_ACCEPTED if accepted else status.HTTP_200_OK,
+        content=payload,
+    )
 
 
 @router.post(

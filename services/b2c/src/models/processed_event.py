@@ -16,6 +16,7 @@ class ProcessedB2BEvent(Base):
         primary_key=True,
     )
     event: Mapped[str] = mapped_column(String(50), nullable=False)
+    payload_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     processed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

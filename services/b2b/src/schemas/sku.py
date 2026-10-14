@@ -1,13 +1,36 @@
 from datetime import datetime, timezone
+import ipaddress
+from urllib.parse import urlparse
 from typing import Any
 from uuid import NAMESPACE_URL, UUID, uuid5
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class SKUImageCreate(BaseModel):
-    url: str
+    model_config = ConfigDict(extra="forbid")
+
+    url: str = Field(max_length=2048)
     ordering: int = 0
+
+    @field_validator("url")
+    @classmethod
+    def require_https_url(cls, value: str) -> str:
+        parsed = urlparse(value)
+        if parsed.scheme.lower() != "https" or not parsed.hostname:
+            raise ValueError("image URL must use https")
+        host = parsed.hostname.lower().rstrip(".")
+        if host in {"localhost", "localhost.localdomain"} or host.endswith(".local"):
+            raise ValueError("image URL host is not public")
+        try:
+            address = ipaddress.ip_address(host)
+        except ValueError:
+            address = None
+        if address is not None and (
+            address.is_private or address.is_loopback or address.is_link_local
+        ):
+            raise ValueError("image URL host is not public")
+        return value
 
 
 class SKUImageResponse(BaseModel):
@@ -22,27 +45,69 @@ class SKUCharacteristic(BaseModel):
 
 
 class SKUCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     product_id: UUID
     name: str
-    price: int
+    price: int = Field(ge=0)
     discount: int = Field(default=0, ge=0)
     cost_price: int | None = None
     article: str | None = None
-    stock: int = 0
+    stock: int = Field(default=0, ge=0)
     images: list[SKUImageCreate] = Field(min_length=1)
     characteristics: list[SKUCharacteristic] = Field(default_factory=list)
 
 
 class SKUUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: str | None = None
-    price: int | None = None
+    price: int | None = Field(default=None, ge=0)
     discount: int | None = Field(default=None, ge=0)
     cost_price: int | None = None
     article: str | None = None
     characteristics: list[SKUCharacteristic] | None = None
-    stock: int | None = None
+    stock: int | None = Field(default=None, ge=0)
     images: list[SKUImageCreate] | None = None
     is_active: bool | None = None
+
+
+class SKUPatch(BaseModel):
+    """Strict canonical seller SKU patch; maps contract names to domain fields."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    price_minor: int | None = Field(default=None, ge=0)
+    currency: str | None = Field(default=None, pattern=r"^[A-Z]{3}$")
+    on_hand: int | None = Field(default=None, ge=0)
+    images: list[SKUImageCreate | str] | None = Field(default=None, max_length=20)
+    is_active: bool | None = None
+
+    @field_validator("images", mode="before")
+    @classmethod
+    def normalize_image_urls(cls, value: Any) -> Any:
+        if value is None:
+            return value
+        return [({"url": image} if isinstance(image, str) else image) for image in value]
+
+    @model_validator(mode="after")
+    def normalize_contract_fields(self) -> "SKUPatch":
+        if not self.model_fields_set:
+            raise ValueError("at least one SKU field is required")
+        return self
+
+
+class StockAdjustmentRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    delta: int = Field(ge=-10_000_000, le=10_000_000)
+    reason: str = Field(min_length=3, max_length=500)
+
+    @model_validator(mode="after")
+    def require_nonzero_delta(self) -> "StockAdjustmentRequest":
+        if self.delta == 0:
+            raise ValueError("delta must not be zero")
+        return self
 
 
 class SKUResponse(BaseModel):
@@ -102,8 +167,10 @@ class SKUResponse(BaseModel):
         if "stock_quantity" not in data and "stock" in data:
             data["stock_quantity"] = data["stock"]
         if data.get("active_quantity") is None:
+            on_hand = getattr(value, "on_hand", None)
             data["active_quantity"] = max(
-                data["stock_quantity"] - data.get("reserved_quantity", 0),
+                (data["stock_quantity"] if on_hand is None else on_hand)
+                - data.get("reserved_quantity", 0),
                 0,
             )
         data["images"] = cls._normalize_images(data.get("images", []), data.get("id"))

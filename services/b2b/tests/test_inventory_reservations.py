@@ -19,6 +19,7 @@ from src.models.product import ProductStatus
 from src.models.reservation import Reservation
 from src.models.reservation_operation import ReservationOperation
 from src.models.outbox_event import OutboxEvent
+from src.models.inventory_order_lifecycle import InventoryOrderLifecycle, ReservationLine
 from src.models.seller import Seller
 from src.models.sku import SKU
 from src.repositories.reservation_operation_repo import (
@@ -865,6 +866,12 @@ async def test_reserve_all_skus_succeeds_on_real_schema(
             .all()
         )
         outbox_events = session.query(OutboxEvent).all()
+        lifecycle = session.get(InventoryOrderLifecycle, order_id)
+        lifecycle_lines = (
+            session.query(ReservationLine)
+            .filter(ReservationLine.order_id == order_id)
+            .all()
+        )
 
         assert first == second
         assert sku_a is not None
@@ -883,6 +890,13 @@ async def test_reserve_all_skus_succeeds_on_real_schema(
         assert outbox_events[0].status == "PENDING"
         assert outbox_events[0].payload["payload"]["sku_id"] == str(sku_b_id)
         assert session.get(ReservationOperation, idempotency_key) is not None
+        assert lifecycle is not None
+        assert lifecycle.state == "RESERVED"
+        assert lifecycle.fingerprint == service._reserve_request_hash(request)
+        assert {(line.sku_id, line.quantity) for line in lifecycle_lines} == {
+            (sku_a_id, 2),
+            (sku_b_id, 3),
+        }
 
     engine.dispose()
 
@@ -924,6 +938,25 @@ def test_reserve_missing_service_key_returns_401() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 401
+
+
+def test_legacy_reservation_routes_are_not_exposed() -> None:
+    order_id = uuid4()
+    sku_id = uuid4()
+    client = TestClient(app)
+
+    create = client.post(
+        "/reservations",
+        json={
+            "order_id": str(order_id),
+            "sku_id": str(sku_id),
+            "quantity": 1,
+        },
+    )
+    cancel = client.delete(f"/reservations/{order_id}")
+
+    assert create.status_code == 404
+    assert cancel.status_code == 404
 
 
 async def _fake_db():

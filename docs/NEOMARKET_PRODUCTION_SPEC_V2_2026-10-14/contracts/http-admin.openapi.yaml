@@ -1,0 +1,631 @@
+openapi: 3.1.0
+info:
+  title: NeoMarket Admin API
+  version: 1.0.0
+  description: Private moderation and operator audit API; SSO MFA required. New independent NeoMarket production contract,
+    not derived from retired canon/protocols. Target design, not yet implemented.
+servers:
+- url: https://api.example.invalid
+  description: Deploy-specific HTTPS gateway; placeholder forbidden in production
+tags: []
+paths:
+  /admin/v1/moderation/tickets:
+    get:
+      tags:
+      - Moderation
+      operationId: listModerationTickets
+      summary: Private queue of moderation tickets
+      responses:
+        '200':
+          description: Ticket page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+      security:
+      - userBearer: []
+      parameters:
+      - name: cursor
+        in: query
+        schema:
+          type: string
+          maxLength: 1024
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+  /admin/v1/moderation/tickets/{ticket_id}:
+    get:
+      tags:
+      - Moderation
+      operationId: getModerationTicket
+      summary: Read ticket and revision
+      responses:
+        '200':
+          description: Ticket
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Not found
+      security:
+      - userBearer: []
+      parameters:
+      - name: ticket_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /admin/v1/moderation/tickets/{ticket_id}/claim:
+    post:
+      tags:
+      - Moderation
+      operationId: claimModerationTicket
+      summary: Atomic claim with fencing/lease
+      responses:
+        '200':
+          description: Ticket claimed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      security:
+      - userBearer: []
+      parameters:
+      - name: ticket_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /admin/v1/moderation/tickets/{ticket_id}/heartbeat:
+    post:
+      tags:
+      - Moderation
+      operationId: heartbeatModerationTicket
+      summary: Heartbeat claim
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                claim_token:
+                  type: string
+                  minLength: 1
+              additionalProperties: false
+              required:
+              - claim_token
+      security:
+      - userBearer: []
+      parameters:
+      - name: ticket_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /admin/v1/moderation/tickets/{ticket_id}/release:
+    post:
+      tags:
+      - Moderation
+      operationId: releaseModerationTicket
+      summary: Release claim
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                claim_token:
+                  type: string
+                  minLength: 1
+              additionalProperties: false
+              required:
+              - claim_token
+      security:
+      - userBearer: []
+      parameters:
+      - name: ticket_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /admin/v1/moderation/tickets/{ticket_id}/decisions:
+    post:
+      tags:
+      - Moderation
+      operationId: decideModerationTicket
+      summary: Approve or block claimed product revision
+      responses:
+        '202':
+          description: Decision persisted, awaiting apply
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecisionResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Validation'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecisionRequest'
+      security:
+      - userBearer: []
+      parameters:
+      - name: ticket_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /admin/v1/audit-events:
+    get:
+      tags:
+      - Audit
+      operationId: listAuditEvents
+      summary: Restricted immutable audit trail
+      responses:
+        '200':
+          description: Audit events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuditEvent'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+      security:
+      - userBearer: []
+      parameters:
+      - name: cursor
+        in: query
+        schema:
+          type: string
+          maxLength: 1024
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+  /internal/v1/events/products:
+    post:
+      tags:
+      - Events
+      operationId: ingestProductEvent
+      summary: Persist trusted versioned B2B product event
+      responses:
+        '202':
+          description: Durably accepted
+        '200':
+          description: Already applied
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Validation'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventEnvelope'
+      security:
+      - mutualTLS: []
+        serviceBearer: []
+  /admin/v1/blocking-reasons:
+    get:
+      operationId: listBlockingReasons
+      summary: Read approved blocking reasons
+      tags:
+      - Moderation
+      security:
+      - userBearer: []
+      responses:
+        '200':
+          description: Reasons
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BlockingReason'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+  /admin/v1/moderation/tickets/{ticket_id}/history:
+    get:
+      operationId: getTicketHistory
+      summary: Immutable ticket decisions and history
+      tags:
+      - Moderation
+      security:
+      - userBearer: []
+      responses:
+        '200':
+          description: Ticket history
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not found
+      parameters:
+      - name: ticket_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+components:
+  securitySchemes:
+    userBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    serviceBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    mutualTLS:
+      type: mutualTLS
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+            retryable:
+              type: boolean
+          additionalProperties: false
+          required:
+          - code
+          - message
+          - retryable
+        request_id:
+          type: string
+          format: uuid
+      additionalProperties: false
+      required:
+      - error
+      - request_id
+    IdempotentConflict:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      additionalProperties: false
+    PageInfo:
+      type: object
+      properties:
+        next_cursor:
+          type:
+          - string
+          - 'null'
+        has_more:
+          type: boolean
+      additionalProperties: false
+      required:
+      - has_more
+    OperationStatus:
+      type: object
+      properties:
+        operation_id:
+          type: string
+          format: uuid
+        state:
+          type: string
+          enum:
+          - PENDING
+          - COMPLETED
+          - FAILED
+          - RECONCILE_REQUIRED
+        order_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        updated_at:
+          type: string
+          format: date-time
+      additionalProperties: false
+      required:
+      - operation_id
+      - state
+      - updated_at
+    Ok:
+      type: object
+      properties:
+        status:
+          type: string
+      additionalProperties: false
+      required:
+      - status
+    EventEnvelope:
+      $ref: ./event-envelope-v1.schema.json
+    Ticket:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        product_id:
+          type: string
+          format: uuid
+        product_revision:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum:
+          - PENDING
+          - IN_REVIEW
+          - APPROVED
+          - BLOCKED
+          - HARD_BLOCKED
+          - SUPERSEDED
+        moderator_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        claim_token:
+          type:
+          - string
+          - 'null'
+        lease_expires_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        priority:
+          type: integer
+          minimum: 0
+      additionalProperties: false
+      required:
+      - id
+      - product_id
+      - product_revision
+      - status
+      - priority
+    TicketPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Ticket'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+      additionalProperties: false
+      required:
+      - items
+      - page
+    ClaimResult:
+      type: object
+      properties:
+        ticket:
+          $ref: '#/components/schemas/Ticket'
+        claim_token:
+          type: string
+          minLength: 1
+      additionalProperties: false
+      required:
+      - ticket
+      - claim_token
+    DecisionRequest:
+      type: object
+      properties:
+        action:
+          type: string
+          enum:
+          - APPROVE
+          - BLOCK
+          - HARD_BLOCK
+        reason_code:
+          type:
+          - string
+          - 'null'
+        comment:
+          type:
+          - string
+          - 'null'
+          maxLength: 3000
+        claim_token:
+          type: string
+          minLength: 1
+        product_revision:
+          type: integer
+          minimum: 1
+      additionalProperties: false
+      required:
+      - action
+      - claim_token
+      - product_revision
+    DecisionResult:
+      type: object
+      properties:
+        decision_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - DECISION_PENDING_APPLY
+          - APPLIED
+          - STALE_DECISION
+        ticket_id:
+          type: string
+          format: uuid
+      additionalProperties: false
+      required:
+      - decision_id
+      - status
+      - ticket_id
+    AuditEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        actor_id:
+          type: string
+          format: uuid
+        action:
+          type: string
+        target_id:
+          type: string
+          format: uuid
+        occurred_at:
+          type: string
+          format: date-time
+        correlation_id:
+          type: string
+          format: uuid
+      additionalProperties: false
+      required:
+      - id
+      - actor_id
+      - action
+      - target_id
+      - occurred_at
+      - correlation_id
+    BlockingReason:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - code
+      - title
+      - hard_block
+      - is_active
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          maxLength: 64
+        title:
+          type: string
+          maxLength: 255
+        description:
+          type:
+          - string
+          - 'null'
+        hard_block:
+          type: boolean
+        is_active:
+          type: boolean
+  responses:
+    Unauthorized:
+      description: Unauthenticated
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Not authorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: State/identity conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Validation:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unavailable:
+      description: Retryable dependency failure
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

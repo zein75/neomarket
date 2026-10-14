@@ -4,6 +4,7 @@ import httpx
 from fastapi import HTTPException
 
 from src.core.config import settings
+from shared.utils.service_auth import service_headers
 
 
 class B2BClient:
@@ -15,7 +16,7 @@ class B2BClient:
                 response = await client.post(
                     f"{settings.b2b_base_url.rstrip('/')}/api/v1/moderation/events",
                     json=event,
-                    headers={"X-Service-Key": settings.service_key},
+                    headers=service_headers(settings, audience="neomarket-b2b"),
                 )
                 response.raise_for_status()
         except httpx.HTTPStatusError as exc:

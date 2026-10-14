@@ -5,8 +5,10 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: postgres
-    ports:
-      - "5434:5432"
+    # Database is reachable only on the compose network; expose it explicitly
+    # for service-to-service traffic without publishing a host port.
+    expose:
+      - "5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -18,8 +20,8 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    expose:
+      - "6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -32,8 +34,8 @@ services:
     build:
       context: .
       dockerfile: services/admin/Dockerfile
-    ports:
-      - "8003:8003"
+    expose:
+      - "8003"
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/admin
       B2B_BASE_URL: http://b2b:8002

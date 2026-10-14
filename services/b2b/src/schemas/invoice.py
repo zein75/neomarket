@@ -5,13 +5,18 @@ from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 
 class InvoiceItemCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     sku_id: UUID
-    quantity: int = Field(gt=0)
+    quantity: int = Field(gt=0, le=100)
 
 
 class InvoiceCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     items: list[InvoiceItemCreate] = Field(
-        validation_alias=AliasChoices("items", "invoice_items")
+        validation_alias=AliasChoices("items", "invoice_items"),
+        max_length=100,
     )
 
 

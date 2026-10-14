@@ -1,17 +1,40 @@
 import re
+import ipaddress
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import urlparse
 from uuid import NAMESPACE_URL, UUID, uuid5
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from src.models.product import ProductStatus
 from src.schemas.sku import SKUCharacteristic, SKUResponse
 
 
 class ProductImageCreate(BaseModel):
-    url: str
+    model_config = ConfigDict(extra="forbid")
+
+    url: str = Field(max_length=2048)
     ordering: int = 0
+
+    @field_validator("url")
+    @classmethod
+    def require_public_https(cls, value: str) -> str:
+        parsed = urlparse(value)
+        if parsed.scheme.lower() != "https" or not parsed.hostname:
+            raise ValueError("image URL must use https")
+        host = parsed.hostname.lower().rstrip(".")
+        if host in {"localhost", "localhost.localdomain"} or host.endswith(".local"):
+            raise ValueError("image URL host is not public")
+        try:
+            address = ipaddress.ip_address(host)
+        except ValueError:
+            address = None
+        if address is not None and (
+            address.is_private or address.is_loopback or address.is_link_local
+        ):
+            raise ValueError("image URL host is not public")
+        return value
 
 
 class ProductImageResponse(BaseModel):
@@ -38,6 +61,8 @@ class ProductCreate(BaseModel):
 
 
 class ProductUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     title: str | None = None
     description: str | None = None
     category_id: UUID | None = None
@@ -45,6 +70,29 @@ class ProductUpdate(BaseModel):
     characteristics: list[Characteristic] | None = None
     category: str | None = None
     is_active: bool | None = None
+
+
+class ProductPatch(BaseModel):
+    """Strict canonical PATCH body from the B2B HTTP contract."""
+
+    model_config = ConfigDict(extra="forbid")
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = Field(default=None, max_length=20_000)
+    category_id: UUID | None = None
+    images: list[ProductImageCreate | str] | None = Field(default=None, max_length=20)
+
+    @field_validator("images", mode="before")
+    @classmethod
+    def normalize_image_urls(cls, value: Any) -> Any:
+        if value is None:
+            return value
+        return [({"url": image} if isinstance(image, str) else image) for image in value]
+
+    @model_validator(mode="after")
+    def require_change(self) -> "ProductPatch":
+        if not self.model_fields_set:
+            raise ValueError("at least one product field is required")
+        return self
 
 
 class ProductResponse(BaseModel):
@@ -199,6 +247,7 @@ class SKUPublicResponse(BaseModel):
             data = dict(value)
         else:
             stock = getattr(value, "stock")
+            on_hand = getattr(value, "on_hand", None)
             reserved = getattr(value, "reserved_quantity", 0)
             data = {
                 "id": getattr(value, "id"),
@@ -206,7 +255,10 @@ class SKUPublicResponse(BaseModel):
                 "name": getattr(value, "name"),
                 "price": getattr(value, "price"),
                 "stock_quantity": getattr(value, "stock"),
-                "active_quantity": max(stock - reserved, 0),
+                "active_quantity": max(
+                    (stock if on_hand is None else on_hand) - reserved,
+                    0,
+                ),
                 "images": getattr(value, "images", []),
                 "is_active": getattr(value, "is_active"),
             }
@@ -262,7 +314,9 @@ class ProductPublicPaginatedResponse(BaseModel):
 
 
 class ProductPublicBatchRequest(BaseModel):
-    product_ids: list[UUID] = Field(min_length=1)
+    model_config = ConfigDict(extra="forbid")
+
+    product_ids: list[UUID] = Field(min_length=1, max_length=100)
 
 
 class BlockingReasonResponse(BaseModel):

@@ -311,6 +311,31 @@ async def test_blocked_product_shown_with_blocked_reason() -> None:
 
 
 @pytest.mark.asyncio
+async def test_deleted_product_is_unavailable_and_excluded_from_subtotal() -> None:
+    cart = _cart(session_id=GUEST_SESSION_ID)
+    product_id = uuid4()
+    sku_id = uuid4()
+    cart.items = [_item(cart_id=cart.id, product_id=product_id, sku_id=sku_id, quantity=2)]
+    FakeCartRepository.carts_by_id[cart.id] = cart
+    FakeB2BClient.products = [{
+        "id": str(product_id),
+        "title": "Keyboard",
+        "deleted": True,
+        "skus": [{
+            "id": str(sku_id), "name": "Black", "price": 12500,
+            "active_quantity": 7, "images": [],
+        }],
+    }]
+
+    response = await CartService(FakeSession()).get_enriched_cart(cart.id)
+
+    assert response["items"][0]["is_available"] is False
+    assert response["items"][0]["unavailable_reason"] == "PRODUCT_DELISTED"
+    assert response["items"][0]["line_total"] == 0
+    assert response["subtotal"] == 0
+
+
+@pytest.mark.asyncio
 async def test_guest_cart_merged_on_login() -> None:
     user_id = uuid4()
     product_id = uuid4()
@@ -603,8 +628,9 @@ def test_delete_cart_item_addresses_item_by_sku_id() -> None:
     finally:
         app.dependency_overrides.clear()
 
-    assert response.status_code == 204
-    assert response.content == b""
+    assert response.status_code == 200
+    assert response.json()["items"] == []
+    assert response.json()["subtotal"] == 0
     assert cart.items == []
 
 

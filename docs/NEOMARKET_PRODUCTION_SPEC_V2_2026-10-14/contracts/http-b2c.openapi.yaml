@@ -1,0 +1,998 @@
+openapi: 3.1.0
+info:
+  title: NeoMarket B2C API
+  version: 1.0.0
+  description: Customer public API and catalog/order behavior. All monetary amounts minor integer units. New independent NeoMarket
+    production contract, not derived from retired canon/protocols. Target design, not yet implemented.
+servers:
+- url: https://api.example.invalid
+  description: Deploy-specific HTTPS gateway; placeholder forbidden in production
+tags: []
+paths:
+  /api/v1/catalog:
+    get:
+      tags:
+      - Catalog
+      operationId: listCatalog
+      summary: Public active approved catalog
+      responses:
+        '200':
+          description: Catalog
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogPage'
+        '422':
+          $ref: '#/components/responses/Validation'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+      security: []
+      parameters:
+      - name: cursor
+        in: query
+        schema:
+          type: string
+          maxLength: 1024
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+  /api/v1/catalog/{product_id}:
+    get:
+      tags:
+      - Catalog
+      operationId: getProduct
+      summary: Public product detail
+      responses:
+        '200':
+          description: Product
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductSummary'
+        '404':
+          description: Not found
+        '503':
+          $ref: '#/components/responses/Unavailable'
+      security: []
+      parameters:
+      - name: product_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /api/v1/auth/login:
+    post:
+      tags:
+      - Auth
+      operationId: authLogin
+      summary: Login
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSession'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/Validation'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      security: []
+  /api/v1/auth/refresh:
+    post:
+      tags:
+      - Auth
+      operationId: authRefresh
+      summary: Refresh
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSession'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/Validation'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      security: []
+  /api/v1/auth/logout:
+    post:
+      tags:
+      - Auth
+      operationId: logout
+      summary: Invalidate active session
+      responses:
+        '204':
+          description: Logged out
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      security:
+      - userBearer: []
+  /api/v1/cart:
+    get:
+      tags:
+      - Cart
+      operationId: getCart
+      summary: Read cart
+      responses:
+        '200':
+          description: Cart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      security:
+      - userBearer: []
+  /api/v1/cart/items:
+    post:
+      tags:
+      - Cart
+      operationId: addCartItem
+      summary: Add item to cart
+      responses:
+        '200':
+          description: Cart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Validation'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CartItemInput'
+      security:
+      - userBearer: []
+  /api/v1/cart/items/{item_id}:
+    patch:
+      tags:
+      - Cart
+      operationId: updateCartItem
+      summary: Update qty
+      responses:
+        '200':
+          description: Cart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                quantity:
+                  type: integer
+                  minimum: 1
+                  maximum: 100
+              additionalProperties: false
+              required:
+              - quantity
+      security:
+      - userBearer: []
+      parameters:
+      - name: item_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      tags:
+      - Cart
+      operationId: removeCartItem
+      summary: Remove cart item
+      responses:
+        '200':
+          description: Updated cart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      security:
+      - userBearer: []
+      parameters:
+      - name: item_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /api/v1/orders:
+    post:
+      tags:
+      - Orders
+      operationId: createOrder
+      summary: Create durable checkout, reserve inventory or accept pending state
+      responses:
+        '201':
+          description: New order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '200':
+          description: Idempotent replay
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '202':
+          description: Persisted pending operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutAccepted'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Validation'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckoutRequest'
+      security:
+      - userBearer: []
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags:
+      - Orders
+      operationId: listOrders
+      summary: Buyer orders only
+      responses:
+        '200':
+          description: Orders
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      security:
+      - userBearer: []
+      parameters:
+      - name: cursor
+        in: query
+        schema:
+          type: string
+          maxLength: 1024
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+  /api/v1/orders/{order_id}:
+    get:
+      tags:
+      - Orders
+      operationId: getOrder
+      summary: Owned order
+      responses:
+        '200':
+          description: Order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Not found
+      security:
+      - userBearer: []
+      parameters:
+      - name: order_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /api/v1/orders/{order_id}/cancel:
+    post:
+      tags:
+      - Orders
+      operationId: cancelOrder
+      summary: Cancel order using durable saga
+      responses:
+        '202':
+          description: Cancellation pending
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '200':
+          description: Final idempotent response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Not found
+        '409':
+          $ref: '#/components/responses/Conflict'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelRequest'
+      security:
+      - userBearer: []
+      parameters:
+      - name: order_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /api/v1/checkout-operations/{operation_id}:
+    get:
+      tags:
+      - Orders
+      operationId: getCheckoutOperation
+      summary: Poll persisted checkout operation
+      responses:
+        '200':
+          description: Operation state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Not found
+      security:
+      - userBearer: []
+      parameters:
+      - name: operation_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /api/v1/addresses:
+    get:
+      tags:
+      - Account
+      operationId: getAddresses
+      summary: List own addresses
+      responses:
+        '200':
+          description: Addresses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Address'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      security:
+      - userBearer: []
+    post:
+      tags:
+      - Account
+      operationId: createAddress
+      summary: Save buyer address
+      responses:
+        '201':
+          description: New address
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Address'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/Validation'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddressInput'
+      security:
+      - userBearer: []
+  /api/v1/addresses/{address_id}:
+    delete:
+      tags:
+      - Account
+      operationId: deleteAddress
+      summary: Remove owned address
+      responses:
+        '204':
+          description: Removed
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Not found
+      security:
+      - userBearer: []
+      parameters:
+      - name: address_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /internal/v1/events/catalog:
+    post:
+      tags:
+      - Internal events
+      operationId: ingestCatalogEvent
+      summary: Persist verified B2B catalog event in inbox
+      responses:
+        '202':
+          description: Durably accepted
+        '200':
+          description: Already applied
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Validation'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventEnvelope'
+      security:
+      - mutualTLS: []
+        serviceBearer: []
+  /api/v1/auth/reset-request:
+    post:
+      operationId: requestPasswordReset
+      summary: Reset email request (local-auth mode only)
+      tags:
+      - Auth
+      security: []
+      responses:
+        '202':
+          description: Accepted
+        '422':
+          description: Validation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetRequest'
+  /api/v1/auth/reset-confirm:
+    post:
+      operationId: confirmPasswordReset
+      summary: Complete single-use reset (local-auth mode only)
+      tags:
+      - Auth
+      security: []
+      responses:
+        '204':
+          description: Password updated
+        '409':
+          description: Expired or used reset token
+        '422':
+          description: Validation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetConfirm'
+components:
+  securitySchemes:
+    userBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    serviceBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    mutualTLS:
+      type: mutualTLS
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+            retryable:
+              type: boolean
+          additionalProperties: false
+          required:
+          - code
+          - message
+          - retryable
+        request_id:
+          type: string
+          format: uuid
+      additionalProperties: false
+      required:
+      - error
+      - request_id
+    IdempotentConflict:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      additionalProperties: false
+    PageInfo:
+      type: object
+      properties:
+        next_cursor:
+          type:
+          - string
+          - 'null'
+        has_more:
+          type: boolean
+      additionalProperties: false
+      required:
+      - has_more
+    OperationStatus:
+      type: object
+      properties:
+        operation_id:
+          type: string
+          format: uuid
+        state:
+          type: string
+          enum:
+          - PENDING
+          - COMPLETED
+          - FAILED
+          - RECONCILE_REQUIRED
+        order_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        updated_at:
+          type: string
+          format: date-time
+      additionalProperties: false
+      required:
+      - operation_id
+      - state
+      - updated_at
+    Ok:
+      type: object
+      properties:
+        status:
+          type: string
+      additionalProperties: false
+      required:
+      - status
+    Money:
+      type: object
+      properties:
+        amount_minor:
+          type: integer
+          minimum: 0
+        currency:
+          type: string
+          pattern: ^[A-Z]{3}$
+      additionalProperties: false
+      required:
+      - amount_minor
+      - currency
+    ProductSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          maxLength: 255
+        min_price_minor:
+          type: integer
+          minimum: 0
+        currency:
+          type: string
+          pattern: ^[A-Z]{3}$
+        available:
+          type: boolean
+        revision:
+          type: integer
+          minimum: 1
+      additionalProperties: false
+      required:
+      - id
+      - title
+      - min_price_minor
+      - currency
+      - available
+      - revision
+    CatalogPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductSummary'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+      additionalProperties: false
+      required:
+      - items
+      - page
+    CartItemInput:
+      type: object
+      properties:
+        sku_id:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 100
+      additionalProperties: false
+      required:
+      - sku_id
+      - quantity
+    CartItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        sku_id:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+        unit_price_minor:
+          type: integer
+          minimum: 0
+        currency:
+          type: string
+      additionalProperties: false
+      required:
+      - id
+      - sku_id
+      - quantity
+      - unit_price_minor
+      - currency
+    Cart:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItem'
+        currency:
+          type: string
+      additionalProperties: false
+      required:
+      - id
+      - items
+      - currency
+    CheckoutRequest:
+      type: object
+      properties:
+        cart_id:
+          type: string
+          format: uuid
+        address_id:
+          type: string
+          format: uuid
+        delivery_method:
+          type: string
+          maxLength: 64
+      additionalProperties: false
+      required:
+      - cart_id
+      - address_id
+      - delivery_method
+    OrderItem:
+      type: object
+      properties:
+        sku_id:
+          type: string
+          format: uuid
+        product_id:
+          type: string
+          format: uuid
+        product_title:
+          type: string
+        sku_name:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+        unit_price_minor:
+          type: integer
+          minimum: 0
+        line_total_minor:
+          type: integer
+          minimum: 0
+      additionalProperties: false
+      required:
+      - sku_id
+      - product_id
+      - product_title
+      - sku_name
+      - quantity
+      - unit_price_minor
+      - line_total_minor
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - CREATED
+          - CONFIRMED
+          - ASSEMBLING
+          - DELIVERING
+          - DELIVERY_FINALIZING
+          - DELIVERED
+          - CANCEL_PENDING
+          - CANCELLED
+          - RETURN_REVIEW
+        payment_status:
+          type: string
+          enum:
+          - NOT_REQUIRED
+          - PENDING
+          - AUTHORIZED
+          - CAPTURED
+          - FAILED
+          - REFUND_PENDING
+          - REFUNDED
+        total_amount_minor:
+          type: integer
+          minimum: 0
+        currency:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        version:
+          type: integer
+          minimum: 0
+        created_at:
+          type: string
+          format: date-time
+      additionalProperties: false
+      required:
+      - id
+      - status
+      - payment_status
+      - total_amount_minor
+      - currency
+      - items
+      - version
+      - created_at
+    OrderPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Order'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+      additionalProperties: false
+      required:
+      - items
+      - page
+    CancelRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 500
+      additionalProperties: false
+    CheckoutAccepted:
+      type: object
+      properties:
+        operation_id:
+          type: string
+          format: uuid
+        state:
+          type: string
+          enum:
+          - PENDING
+        poll_url:
+          type: string
+      additionalProperties: false
+      required:
+      - operation_id
+      - state
+      - poll_url
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 1
+      additionalProperties: false
+      required:
+      - email
+      - password
+    AuthSession:
+      type: object
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          enum:
+          - bearer
+        expires_in:
+          type: integer
+          minimum: 1
+      additionalProperties: false
+      required:
+      - access_token
+      - token_type
+      - expires_in
+    RefreshRequest:
+      type: object
+      properties:
+        refresh_token:
+          type: string
+          minLength: 1
+      additionalProperties: false
+      required:
+      - refresh_token
+    AddressInput:
+      type: object
+      properties:
+        label:
+          type: string
+          maxLength: 100
+        address_line:
+          type: string
+          maxLength: 500
+      additionalProperties: false
+      required:
+      - label
+      - address_line
+    Address:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        address_line:
+          type: string
+      additionalProperties: false
+      required:
+      - id
+      - label
+      - address_line
+    EventEnvelope:
+      $ref: ./event-envelope-v1.schema.json
+    ResetRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - email
+      properties:
+        email:
+          type: string
+          format: email
+    ResetConfirm:
+      type: object
+      additionalProperties: false
+      required:
+      - reset_token
+      - new_password
+      properties:
+        reset_token:
+          type: string
+          minLength: 1
+        new_password:
+          type: string
+          minLength: 12
+  responses:
+    Unauthorized:
+      description: Unauthenticated
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Not authorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: State/identity conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Validation:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unavailable:
+      description: Retryable dependency failure
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

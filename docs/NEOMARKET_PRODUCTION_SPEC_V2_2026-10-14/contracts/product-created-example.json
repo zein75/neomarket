@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "event_id": "c2b30000-0000-4000-8000-000000000001",
+  "event_type": "product.created",
+  "producer": "b2b",
+  "aggregate_type": "product",
+  "aggregate_id": "c2b30000-0000-4000-8000-000000000002",
+  "aggregate_version": 1,
+  "occurred_at": "2026-10-14T12:00:00Z",
+  "correlation_id": "c2b30000-0000-4000-8000-000000000003",
+  "causation_id": null,
+  "payload": {
+    "product_id": "c2b30000-0000-4000-8000-000000000002",
+    "seller_id": "c2b30000-0000-4000-8000-000000000004",
+    "revision": 1,
+    "deleted": false,
+    "product": {
+      "id": "c2b30000-0000-4000-8000-000000000002",
+      "title": "Sample",
+      "skus": []
+    },
+    "event_reason": null
+  }
+}

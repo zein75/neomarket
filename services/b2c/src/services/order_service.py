@@ -2,6 +2,7 @@ import hashlib
 import json
 import logging
 from datetime import datetime, timedelta, timezone
+import inspect
 from uuid import UUID
 from uuid import NAMESPACE_URL, uuid4, uuid5
 
@@ -93,6 +94,7 @@ class OrderService:
         try:
             await self._prepare_checkout_intent(
                 order_id=order_id,
+                buyer_id=user_id,
                 items=reservation_items,
                 request_fingerprint=request_fingerprint,
             )
@@ -187,6 +189,7 @@ class OrderService:
                     # reservation is compensated.
                     await self._compensate_checkout_reservation(
                         order_id,
+                        user_id,
                         reservation_items,
                         "idempotency key belongs to another buyer",
                     )
@@ -228,6 +231,7 @@ class OrderService:
             await self.order_repo.session.rollback()
             await self._compensate_checkout_reservation(
                 order_id,
+                user_id,
                 reservation_items,
                 f"{type(checkout_error).__name__}: {checkout_error}",
             )
@@ -400,10 +404,7 @@ class OrderService:
         await self.order_repo.session.flush()
         fulfilled = await self._try_fulfill(order)
         if not fulfilled:
-            await self.order_repo.queue_fulfillment_retry(
-                order,
-                "B2B fulfill failed",
-            )
+            await self._queue_fulfillment_retry(order, "B2B fulfill failed", 1)
         return order
 
     async def retry_pending_fulfillments(self, limit: int = 100) -> int:
@@ -421,9 +422,8 @@ class OrderService:
                 await self.order_repo.delete_pending_fulfillment(pending)
                 retried += 1
             else:
-                await self.order_repo.queue_fulfillment_retry(
-                    order,
-                    "B2B fulfill retry failed",
+                await self._queue_fulfillment_retry(
+                    order, "B2B fulfill retry failed", pending.attempts + 1
                 )
         return retried
 
@@ -478,6 +478,23 @@ class OrderService:
             CANCEL_RETRY_MAX_SECONDS,
         )
         order.cancel_retry_at = datetime.now(timezone.utc) + timedelta(seconds=delay)
+
+    @staticmethod
+    def _fulfillment_retry_at(attempt: int) -> datetime:
+        delay = min(
+            CANCEL_RETRY_BASE_SECONDS * (2 ** max(attempt - 1, 0)),
+            CANCEL_RETRY_MAX_SECONDS,
+        )
+        return datetime.now(timezone.utc) + timedelta(seconds=delay)
+
+    async def _queue_fulfillment_retry(
+        self, order: Order, error: str, attempt: int
+    ) -> None:
+        queue = self.order_repo.queue_fulfillment_retry
+        if "next_retry_at" in inspect.signature(queue).parameters:
+            await queue(order, error, next_retry_at=self._fulfillment_retry_at(attempt))
+        else:
+            await queue(order, error)
 
     async def _build_item_snapshots(
         self,
@@ -685,20 +702,27 @@ class OrderService:
         self,
         *,
         order_id: UUID,
+        buyer_id: UUID | None = None,
         items: list[object],
         error: str,
     ) -> None:
-        await self.order_repo.queue_reservation_compensation(
-            order_id=order_id,
-            items=self._reservation_items(items),
-            error=error,
-            next_retry_at=self._next_retry_at(1),
-        )
+        kwargs = {
+            "order_id": order_id,
+            "items": self._reservation_items(items),
+            "error": error,
+            "next_retry_at": self._next_retry_at(1),
+        }
+        if buyer_id is not None and "buyer_id" in inspect.signature(
+            self.order_repo.queue_reservation_compensation
+        ).parameters:
+            kwargs["buyer_id"] = buyer_id
+        await self.order_repo.queue_reservation_compensation(**kwargs)
 
     async def _prepare_checkout_intent(
         self,
         *,
         order_id: UUID,
+        buyer_id: UUID,
         items: list[object],
         request_fingerprint: str,
     ) -> None:
@@ -707,14 +731,19 @@ class OrderService:
             self._validate_checkout_intent(pending, request_fingerprint)
             self._raise_if_checkout_operation_compensating(pending)
             return
-        await self.order_repo.queue_reservation_compensation(
-            order_id=order_id,
-            items=self._reservation_items(items),
-            error="checkout reserve intent",
-            next_retry_at=datetime.now(timezone.utc)
+        kwargs = {
+            "order_id": order_id,
+            "items": self._reservation_items(items),
+            "error": "checkout reserve intent",
+            "next_retry_at": datetime.now(timezone.utc)
             + timedelta(seconds=CHECKOUT_INTENT_GRACE_SECONDS),
-            request_fingerprint=request_fingerprint,
-        )
+            "request_fingerprint": request_fingerprint,
+        }
+        if "buyer_id" in inspect.signature(
+            self.order_repo.queue_reservation_compensation
+        ).parameters:
+            kwargs["buyer_id"] = buyer_id
+        await self.order_repo.queue_reservation_compensation(**kwargs)
 
     async def _delete_checkout_intent(
         self, order_id: UUID, *, best_effort: bool = False
@@ -731,7 +760,11 @@ class OrderService:
                 logger.exception("Could not remove checkout intent %s", order_id)
 
     async def _compensate_checkout_reservation(
-        self, order_id: UUID, items: list[object], error: str
+        self,
+        order_id: UUID,
+        buyer_id: UUID | None,
+        items: list[object],
+        error: str,
     ) -> None:
         # The intent was committed before reserve.  Make any direct
         # compensation use the same durable PENDING -> COMPENSATING ->
@@ -739,6 +772,7 @@ class OrderService:
         # after B2B success could resurrect an unreserved order on retry.
         await self._queue_reservation_compensation(
             order_id=order_id,
+            buyer_id=buyer_id,
             items=items,
             error=error,
         )

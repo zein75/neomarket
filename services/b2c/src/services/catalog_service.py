@@ -8,6 +8,7 @@ from src.core.config import settings
 
 
 ALLOWED_SORTS = {"price_asc", "price_desc", "popularity", "new"}
+MAX_FACET_PRODUCTS = 10_000
 
 
 class CatalogService:
@@ -258,8 +259,12 @@ class CatalogService:
         products: list[dict[str, Any]] = []
         limit = 100
         offset = 0
+        pages = 0
 
         while True:
+            pages += 1
+            if pages > MAX_FACET_PRODUCTS // limit:
+                return products[:MAX_FACET_PRODUCTS]
             payload = await self._load_products(limit=limit, offset=offset)
             items, total_count, response_limit, response_offset = self._catalog_page(
                 payload,
@@ -270,6 +275,8 @@ class CatalogService:
             next_offset = response_offset + response_limit
             if not items or next_offset >= total_count:
                 return products
+            if next_offset <= offset:
+                return products[:MAX_FACET_PRODUCTS]
             offset = next_offset
 
     async def _load_products(self, **params: Any) -> list[dict[str, Any]] | dict[str, Any]:

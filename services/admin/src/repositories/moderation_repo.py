@@ -1,10 +1,10 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.models.moderation import BlockingReason, ModerationCard
+from src.models.moderation import BlockingReason, ModerationCard, ModerationStatus
 
 from .base import BaseRepository
 
@@ -21,11 +21,40 @@ class ModerationRepository(BaseRepository[ModerationCard]):
         )
         return result.scalar_one_or_none()
 
+    async def get_with_skus_for_update(self, card_id: UUID) -> ModerationCard | None:
+        result = await self.session.execute(
+            select(ModerationCard)
+            .where(ModerationCard.id == card_id)
+            .options(selectinload(ModerationCard.skus))
+            .with_for_update()
+        )
+        return result.scalar_one_or_none()
+
     async def get_by_product_id(self, product_id: UUID) -> ModerationCard | None:
         result = await self.session.execute(
             select(ModerationCard).where(ModerationCard.product_id == product_id)
         )
         return result.scalar_one_or_none()
+
+    async def list_tickets(
+        self,
+        *,
+        limit: int,
+        offset: int,
+        status: ModerationStatus | None = None,
+    ) -> tuple[list[ModerationCard], int]:
+        query = select(ModerationCard)
+        count_query = select(func.count()).select_from(ModerationCard)
+        if status is not None:
+            query = query.where(ModerationCard.status == status)
+            count_query = count_query.where(ModerationCard.status == status)
+        total = int((await self.session.execute(count_query)).scalar_one())
+        result = await self.session.execute(
+            query.order_by(ModerationCard.queue_priority.desc(), ModerationCard.created_at)
+            .offset(offset)
+            .limit(limit)
+        )
+        return list(result.scalars().all()), total
 
     async def delete(self, card: ModerationCard) -> None:
         await self.session.delete(card)

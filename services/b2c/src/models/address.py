@@ -23,5 +23,9 @@ class Address(Base, TimestampMixin):
     recipient_phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     is_default: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     comment: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Canonical public B2C address representation. Legacy structured columns
+    # remain populated for existing checkout snapshots.
+    label: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    address_line: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     user = relationship("User", back_populates="addresses")

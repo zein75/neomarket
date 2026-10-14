@@ -13,6 +13,8 @@ from .order import (
     PendingFulfillment,
     PendingReservationCompensation,
 )
+from .password_reset import PasswordResetToken
+from .refresh_session import RefreshSession
 from .processed_event import ProcessedB2BEvent
 
 __all__ = [
@@ -35,5 +37,7 @@ __all__ = [
     "OrderStatusHistory",
     "PendingFulfillment",
     "PendingReservationCompensation",
+    "PasswordResetToken",
+    "RefreshSession",
     "ProcessedB2BEvent",
 ]

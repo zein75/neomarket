@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NeoMarket moderation decision event v1",
+  "allOf": [
+    {
+      "$ref": "event-envelope-v1.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "producer": {
+          "const": "admin"
+        },
+        "aggregate_type": {
+          "const": "moderation_ticket"
+        },
+        "event_type": {
+          "enum": [
+            "moderation.approved",
+            "moderation.blocked",
+            "moderation.hard_blocked"
+          ]
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "product_id",
+            "reviewed_revision",
+            "decision_id",
+            "ticket_id",
+            "actor_id",
+            "action"
+          ],
+          "properties": {
+            "product_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "reviewed_revision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "decision_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "ticket_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "actor_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "action": {
+              "enum": [
+                "APPROVE",
+                "BLOCK",
+                "HARD_BLOCK"
+              ]
+            },
+            "reason_code": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 64
+            },
+            "comment": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 3000
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$id": "https://contracts.neomarket.example.invalid/moderation-event-v1.schema.json"
+}

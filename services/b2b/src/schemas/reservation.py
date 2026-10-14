@@ -4,40 +4,33 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class ReservationCreate(BaseModel):
-    sku_id: UUID
-    order_id: UUID
-    quantity: int
-
-
-class ReservationResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: UUID
-    sku_id: UUID
-    order_id: UUID
-    quantity: int
-
-
 class ReserveItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     sku_id: UUID
-    quantity: int = Field(gt=0)
+    quantity: int = Field(gt=0, le=100)
 
 
 class ReserveRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     order_id: UUID
     idempotency_key: UUID
-    items: list[ReserveItem] = Field(min_length=1)
+    items: list[ReserveItem] = Field(min_length=1, max_length=100)
 
 
 class UnreserveRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     order_id: UUID
-    items: list[ReserveItem] = Field(min_length=1)
+    items: list[ReserveItem] = Field(min_length=1, max_length=100)
 
 
 class FulfillRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     order_id: UUID
-    items: list[ReserveItem] | None = None
+    items: list[ReserveItem] | None = Field(default=None, max_length=100)
 
 
 class InventoryResponse(BaseModel):

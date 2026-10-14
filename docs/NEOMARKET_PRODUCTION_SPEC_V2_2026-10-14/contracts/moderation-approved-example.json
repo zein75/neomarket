@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "event_id": "c2b30000-0000-4000-8000-000000000005",
+  "event_type": "moderation.approved",
+  "producer": "admin",
+  "aggregate_type": "moderation_ticket",
+  "aggregate_id": "c2b30000-0000-4000-8000-000000000006",
+  "aggregate_version": 1,
+  "occurred_at": "2026-10-14T13:00:00Z",
+  "correlation_id": "c2b30000-0000-4000-8000-000000000003",
+  "causation_id": "c2b30000-0000-4000-8000-000000000001",
+  "payload": {
+    "product_id": "c2b30000-0000-4000-8000-000000000002",
+    "reviewed_revision": 1,
+    "decision_id": "c2b30000-0000-4000-8000-000000000007",
+    "ticket_id": "c2b30000-0000-4000-8000-000000000006",
+    "actor_id": "c2b30000-0000-4000-8000-000000000008",
+    "action": "APPROVE",
+    "reason_code": null,
+    "comment": null
+  }
+}

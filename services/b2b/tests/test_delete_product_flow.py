@@ -19,6 +19,14 @@ class FakeSession:
         return None
 
 
+class OutboxSession(FakeSession):
+    def __init__(self) -> None:
+        self.events = []
+
+    def add(self, value: object) -> None:
+        self.events.append(value)
+
+
 def _sku(product_id: UUID) -> SimpleNamespace:
     return SimpleNamespace(
         id=uuid4(),
@@ -102,6 +110,16 @@ class FakeModerationClient:
 class FakeB2CClient:
     deleted_events: list[dict[str, object]] = []
 
+    def build_product_deleted_event(self, product: object) -> dict[str, object]:
+        return {
+            "event": "PRODUCT_DELETED",
+            "idempotency_key": str(product.id),
+            "date": "2026-01-01T00:00:00+00:00",
+            "product_id": str(product.id),
+            "sku_ids": [str(sku.id) for sku in product.skus],
+            "reason": "PRODUCT_DELETED",
+        }
+
     async def send_product_deleted(self, product: object) -> None:
         self.deleted_events.append(
             {
@@ -175,6 +193,20 @@ async def test_delete_emits_product_deleted_to_b2c() -> None:
             },
         }
     ]
+
+
+@pytest.mark.asyncio
+async def test_delete_persists_b2c_event_in_outbox_for_persistent_session() -> None:
+    seller_id = uuid4()
+    product = _product(seller_id=seller_id)
+    FakeProductRepository.products = [product]
+    session = OutboxSession()
+
+    await ProductService(session).delete(product.id, seller_id)
+
+    assert FakeB2CClient.deleted_events == []
+    assert len(session.events) == 1
+    assert session.events[0].event_type == "PRODUCT_DELETED"
 
 
 @pytest.mark.asyncio

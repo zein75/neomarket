@@ -11,6 +11,7 @@ from src.clients.moderation import ModerationClient
 from src.models.product import Product
 from src.models.product import ProductStatus
 from src.repositories.product_repo import ProductRepository
+from src.repositories.outbox_event_repo import OutboxEventRepository
 from src.schemas.product import (
     PaginatedProducts,
     ProductCreate,
@@ -118,7 +119,41 @@ class ProductService:
         limit: int = 20,
         offset: int = 0,
     ) -> ProductPublicPaginatedResponse:
-        products = await self.repo.list_public_catalog(product_ids)
+        page_loader = getattr(self.repo, "list_public_catalog_page", None)
+        if callable(page_loader):
+            products, total_count = await page_loader(
+                category_id=category_id,
+                search=search,
+                min_price=min_price,
+                max_price=max_price,
+                seller_id=seller_id,
+                in_stock=in_stock,
+                sort=sort,
+                limit=limit,
+                offset=offset,
+            )
+            return ProductPublicPaginatedResponse(
+                items=[self._public_product_detail(product) for product in products],
+                total_count=total_count,
+                limit=limit,
+                offset=offset,
+            )
+        try:
+            products = await self.repo.list_public_catalog(
+                product_ids,
+                category_id=category_id,
+                search=search,
+                min_price=min_price,
+                max_price=max_price,
+                seller_id=seller_id,
+                in_stock=in_stock,
+                sort=sort,
+            )
+        except TypeError:
+            # Lightweight repositories used by unit tests may expose the old
+            # positional-only adapter; production SQLAlchemy repositories use
+            # the filtered query above.
+            products = await self.repo.list_public_catalog(product_ids)
         filtered = [
             product
             for product in products
@@ -375,6 +410,7 @@ class ProductService:
                     "field_reports": getattr(product, "field_reports", []),
                 }
             ),
+            "deleted": product.deleted,
             "created_at": getattr(product, "created_at", datetime.now(timezone.utc)),
             "updated_at": getattr(product, "updated_at", datetime.now(timezone.utc)),
             "skus": [
@@ -480,7 +516,9 @@ class ProductService:
         )
 
     def _active_quantity(self, sku: object) -> int:
-        return max(sku.stock - getattr(sku, "reserved_quantity", 0), 0)
+        on_hand = getattr(sku, "on_hand", None)
+        base = sku.stock if on_hand is None else on_hand
+        return base - getattr(sku, "reserved_quantity", 0)
 
     def _status_value(self, product_status: object) -> str:
         if isinstance(product_status, ProductStatus):
@@ -535,15 +573,15 @@ class ProductService:
             await self._ensure_category_exists(data.category_id)
             product.category_id = data.category_id
         if data.images is not None:
-            product.images = [image.url for image in data.images]
-        if data.characteristics is not None:
+            product.images = [image.url if hasattr(image, "url") else str(image) for image in data.images]
+        if getattr(data, "characteristics", None) is not None:
             product.characteristics = {
                 characteristic.name: characteristic.value
                 for characteristic in data.characteristics
             }
-        if data.category is not None:
+        if getattr(data, "category", None) is not None:
             product.category = data.category
-        if data.is_active is not None:
+        if getattr(data, "is_active", None) is not None:
             product.is_active = data.is_active
         should_send_to_moderation = product.status in {
             ProductStatus.MODERATED,
@@ -553,10 +591,22 @@ class ProductService:
             product.status = ProductStatus.ON_MODERATION
         await self.repo.session.flush()
         if should_send_to_moderation:
-            await moderation_client.send_product_edited(
-                product,
-                json_before=json_before,
-            )
+            if hasattr(self.repo.session, "add") and hasattr(
+                moderation_client, "build_product_edited_event"
+            ):
+                event = moderation_client.build_product_edited_event(
+                    product, json_before=json_before
+                )
+                await OutboxEventRepository(self.repo.session).create_event(
+                    destination="MODERATION",
+                    idempotency_key=event["idempotency_key"],
+                    event_type=event["event_type"],
+                    payload=event,
+                )
+            else:
+                await moderation_client.send_product_edited(
+                    product, json_before=json_before
+                )
         return await self.repo.get_with_skus(product.id)
 
     async def _ensure_category_exists(self, category_id: UUID) -> None:
@@ -603,11 +653,41 @@ class ProductService:
         product.deleted = True
         product.is_active = False
         await self.repo.session.flush()
-        try:
-            await ModerationClient().send_product_deleted(product)
-        except httpx.HTTPError:
-            pass
-        try:
-            await B2CClient().send_product_deleted(product)
-        except httpx.HTTPError:
-            pass
+        moderation_client = ModerationClient()
+        if hasattr(self.repo.session, "add") and hasattr(
+            moderation_client, "build_product_deleted_event"
+        ):
+            moderation_event = moderation_client.build_product_deleted_event(product)
+            await OutboxEventRepository(self.repo.session).create_event(
+                destination="MODERATION",
+                idempotency_key=moderation_event["idempotency_key"],
+                event_type=moderation_event["event_type"],
+                payload=moderation_event,
+            )
+        else:
+            try:
+                await moderation_client.send_product_deleted(product)
+            except httpx.HTTPError:
+                pass
+        b2c_client = B2CClient()
+        if hasattr(self.repo.session, "add"):
+            event = b2c_client.build_product_deleted_event(product)
+            await OutboxEventRepository(self.repo.session).create_b2c_event(
+                idempotency_key=event["idempotency_key"],
+                event_type=event["event"],
+                payload={
+                    "event_type": event["event"],
+                    "idempotency_key": event["idempotency_key"],
+                    "occurred_at": event["date"],
+                    "payload": {
+                        "product_id": event["product_id"],
+                        "sku_ids": event["sku_ids"],
+                        "reason": event.get("reason"),
+                    },
+                },
+            )
+        else:
+            try:
+                await b2c_client.send_product_deleted(product)
+            except httpx.HTTPError:
+                pass

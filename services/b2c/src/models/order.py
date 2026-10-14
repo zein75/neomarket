@@ -18,6 +18,7 @@ class OrderStatus(enum.Enum):
     PAID = "PAID"
     ASSEMBLING = "ASSEMBLING"
     DELIVERING = "DELIVERING"
+    DELIVERY_FINALIZING = "DELIVERY_FINALIZING"
     DELIVERED = "DELIVERED"
     CANCELLED = "CANCELLED"
     CANCEL_PENDING = "CANCEL_PENDING"
@@ -117,6 +118,9 @@ class PendingFulfillment(Base, TimestampMixin):
         primary_key=True,
     )
     attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    next_retry_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
     last_error: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     order: Mapped["Order"] = relationship("Order")
@@ -135,6 +139,9 @@ class PendingReservationCompensation(Base, TimestampMixin):
 
     order_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True
+    )
+    buyer_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True, index=True
     )
     items: Mapped[list[dict[str, object]]] = mapped_column(JSON, nullable=False)
     request_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True)

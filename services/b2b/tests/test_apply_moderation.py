@@ -217,6 +217,38 @@ def test_soft_block_accepts_protocol_field_path_and_default_hard_block(monkeypat
     assert product.field_reports[0]["field_name"] == "images[0]"
 
 
+def test_blocked_event_accepts_null_field_reports(monkeypatch) -> None:
+    product = _product()
+    FakeProductRepository.product = product
+
+    async def fake_db():
+        yield FakeSession()
+
+    async def fake_reason(_client, reason_id: str):
+        return {"id": reason_id, "title": "Image is blurry", "comment": "Image is blurry"}
+
+    monkeypatch.setattr(moderation_router.ModerationClient, "get_blocking_reason", fake_reason)
+    app.dependency_overrides[moderation_router.get_db] = fake_db
+    try:
+        response = TestClient(app).post(
+            "/api/v1/moderation/events",
+            headers={"X-Service-Key": "dev-service-key-change-in-production"},
+            json={
+                "idempotency_key": str(uuid4()),
+                "event_type": "BLOCKED",
+                "product_id": str(product.id),
+                "occurred_at": "2026-09-18T12:00:00Z",
+                "blocking_reason_id": str(uuid4()),
+                "field_reports": None,
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 204
+    assert product.field_reports == []
+
+
 def test_blocked_without_reason_is_rejected_by_contract_validator() -> None:
     product = _product()
     FakeProductRepository.product = product

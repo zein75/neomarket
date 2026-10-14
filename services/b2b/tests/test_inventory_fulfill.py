@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from src.api.routers import reservations as reservations_router
@@ -107,6 +108,26 @@ async def test_fulfill_decreases_reserved_quantity() -> None:
     assert response["status"] == "FULFILLED"
     assert response["processed_at"] is not None
     assert sku.reserved_quantity == 0
+
+
+@pytest.mark.asyncio
+async def test_fulfill_rejects_inconsistent_inventory_instead_of_clamping() -> None:
+    order_id = uuid4()
+    sku = _sku(stock=2, reserved_quantity=2)
+    FakeSKURepository.skus = {sku.id: sku}
+    FakeReservationRepository.reservations_by_order = {
+        order_id: [_reservation(order_id=order_id, sku_id=sku.id, quantity=3)]
+    }
+
+    with pytest.raises(HTTPException) as error:
+        await ReservationService(FakeSession()).fulfill(
+            FulfillRequest(order_id=order_id)
+        )
+
+    assert error.value.status_code == 409
+    assert error.value.detail["code"] == "INVENTORY_CORRUPTION"
+    assert sku.stock == 2
+    assert sku.reserved_quantity == 2
 
 
 @pytest.mark.asyncio

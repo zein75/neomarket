@@ -1,0 +1,27 @@
+﻿risk_id,priority,baseline_finding,spec_requirement,acceptance_tests,implementation_steps,status,required_evidence
+P0-01,P0,Подмена роли модератора: нет проверки личности,SEC-002/SEC-003,SEC-T01;SEC-T02,0.3,OPEN / NOT VERIFIED,CI artifact + actual staging test + review sign-off
+P0-02,P0,Незащищённые legacy-запросы к складу,SEC-004/INV-DM-004,SEC-T04;INV-T01,0.2,OPEN / NOT VERIFIED,CI artifact + actual staging test + review sign-off
+P0-03,P0,Опасная инфраструктурная экспозиция данных,SEC-004/OPS-001,SEC-T07;OPS-T01,0.1,OPEN / NOT VERIFIED,CI artifact + actual staging test + review sign-off
+P0-04,P0,Несовместимость B2B → Admin event payload: штатная публикация вызывает KeyError,EVT-001/EVT-002,EVT-T01,2.1,OPEN / NOT VERIFIED,CI artifact + actual staging test + review sign-off
+P0-05,P0,Модерация не умеет заводить карточки из событий; очередь практически не собрана,MOD-001,EVT-T09;EVT-T11,2.3,OPEN / NOT VERIFIED,CI artifact + actual staging test + review sign-off
+P0-06,P0,Нет подтверждённого восстановления БД/аварийного восстановления,DR-002/DR-004,DR-T01;DR-T02,0.4,OPEN / NOT VERIFIED,CI artifact + actual staging test + review sign-off
+P1-07,P1,Отправка межсервисных событий до commit локальной БД,EVT-002/DB-001,EVT-T04;EVT-T03,2.2,OPEN / NOT VERIFIED,CI artifact + actual staging test + review sign-off
+P1-08,P1,Опасная гонка позднего reserve с уже успешным unreserve,INV-DM-005/ORD-003,INV-T03;ORD-T02,1.2;3.1,OPEN / NOT VERIFIED,CI artifact + actual staging test + review sign-off
+P1-09,P1,Инварианты остатков не защищены при UPDATE SKU,INV-DM-003/DB-002,INV-T02;INV-T09,1.3,OPEN / NOT VERIFIED,CI artifact + actual staging test + review sign-off
+P1-10,P1,Идемпотентность reserve истекает при живых резервах,INV-DM-004/INV-DM-007,INV-T04;INV-T05,1.2,OPEN / NOT VERIFIED,CI artifact + actual staging test + review sign-off
+P1-11,P1,Контур завершения заказа (DELIVERED → fulfill) не подключён,ORD-005,ORD-T08;ORD-T09,3.3,OPEN / NOT VERIFIED,CI artifact + actual staging test + review sign-off
+P1-12,P1,Worker скрывает ошибки и не допускает управляемого масштабирования,EVT-002/OPS-002,EVT-T03;OPS-T02,2.2;4.3,OPEN / NOT VERIFIED,CI artifact + actual staging test + review sign-off
+P1-13,P1,Dev-секреты и JWT по умолчанию,SEC-002/SEC-004,SEC-T01;SEC-T08,0.3,OPEN / NOT VERIFIED,CI artifact + actual staging test + review sign-off
+P1-14,P1,Нет защиты входа от перебора и расходования ресурсов,SEC-005,SEC-T06,4.1,OPEN / NOT VERIFIED,CI artifact + actual staging test + review sign-off
+P1-15,P1,Каталог загружает и фильтрует всё в памяти,OPS-005/API-006,API-T03;PERF-T01,4.2,OPEN / NOT VERIFIED,CI artifact + actual staging test + review sign-off
+P1-16,P1,API-contract drift и незаконченные функции,API-001/API-007,API-T01,4.1,OPEN / NOT VERIFIED,CI artifact + actual staging test + review sign-off
+P1-17,P1,Production Compose фактически является dev-конфигурацией,OPS-001/OPS-002,OPS-T01;OPS-T04,4.3,OPEN / NOT VERIFIED,CI artifact + actual staging test + review sign-off
+P1-18,P1,Наблюдаемость и readiness отсутствуют как система,OBS-001/OBS-002,OPS-T03;OBS-T01,4.4,OPEN / NOT VERIFIED,CI artifact + actual staging test + review sign-off
+P1-19,P1,Внутренние схемы БД не гарантируют допустимость данных,DB-002/INV-DM-003,INV-T09;MIG-T04,1.1,OPEN / NOT VERIFIED,CI artifact + actual staging test + review sign-off
+P2-20,P2,Нет полноценных security gates в CI/CD,OPS-003,SEC-T09;API-T01,4.3,OPEN / NOT VERIFIED,CI artifact + actual staging test + review sign-off
+P2-21,P2,Отсутствует защищённый audit trail действий модераторов,MOD-002/SEC-006,EVT-T08;OBS-T06,2.3,OPEN / NOT VERIFIED,CI artifact + actual staging test + review sign-off
+P2-22,P2,Ссылки на изображения почти не валидируются,SEC-005,API-T04,1.3;4.1,OPEN / NOT VERIFIED,CI artifact + actual staging test + review sign-off
+P2-23,P2,Неполный lifecycle аутентификации и персональных данных,SEC-002/SEC-006,SEC-T05;ORD-T12,4.1,OPEN / NOT VERIFIED,CI artifact + actual staging test + review sign-off
+P2-24,P2,Неуправляемое накопление данных и операционный долг,DB-005,MIG-T02;OPS-T03,4.4,OPEN / NOT VERIFIED,CI artifact + actual staging test + review sign-off
+P2-25,P2,Неодинаковые error envelopes и риск утечки подробностей,API-006,API-T02,4.1,OPEN / NOT VERIFIED,CI artifact + actual staging test + review sign-off
+P2-26,P2,Supply chain и runtime hardening,OPS-002/OPS-003,SEC-T09;OPS-T01,4.3,OPEN / NOT VERIFIED,CI artifact + actual staging test + review sign-off

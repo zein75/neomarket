@@ -1,15 +1,18 @@
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.clients.b2c import B2CClient
-from src.models.reservation import Reservation
+from src.clients.moderation import ModerationClient
 from src.models.product import ProductStatus
+from src.models.inventory_order_lifecycle import InventoryOrderLifecycle, ReservationLine
+from src.models.inventory_ledger import InventoryLedger
 from src.repositories.fulfilled_order_repo import FulfilledOrderRepository
 from src.repositories.reservation_operation_repo import ReservationOperationRepository
 from src.repositories.reservation_repo import ReservationRepository
@@ -18,7 +21,6 @@ from src.repositories.unreserve_operation_repo import UnreserveOperationReposito
 from src.repositories.sku_repo import SKURepository
 from src.schemas.reservation import (
     FulfillRequest,
-    ReservationCreate,
     ReserveRequest,
     ReserveItem,
     UnreserveRequest,
@@ -26,6 +28,7 @@ from src.schemas.reservation import (
 
 
 class ReservationService:
+    MAX_OUTBOX_ATTEMPTS = 12
     def __init__(self, session: AsyncSession) -> None:
         self.reservation_repo = ReservationRepository(session)
         self.reservation_operation_repo = ReservationOperationRepository(session)
@@ -33,24 +36,6 @@ class ReservationService:
         self.fulfilled_order_repo = FulfilledOrderRepository(session)
         self.outbox_repo = OutboxEventRepository(session)
         self.unreserve_operation_repo = UnreserveOperationRepository(session)
-
-    async def create(self, data: ReservationCreate) -> Reservation:
-        sku = await self.sku_repo.get_by_id(data.sku_id)
-        if not sku or not sku.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="SKU not found"
-            )
-        if sku.stock < data.quantity:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="Insufficient stock"
-            )
-        sku.stock -= data.quantity
-        await self.sku_repo.session.flush()
-        return await self.reservation_repo.create(
-            sku_id=data.sku_id,
-            order_id=data.order_id,
-            quantity=data.quantity,
-        )
 
     async def reserve(self, data: ReserveRequest) -> dict[str, object]:
         idempotency_key = str(data.idempotency_key)
@@ -63,6 +48,13 @@ class ReservationService:
                 return await self._existing_reservation_result(existing, request_hash)
             await self.reservation_operation_repo.session.delete(existing)
             await self.reservation_operation_repo.session.flush()
+
+        lifecycle = await self._load_lifecycle(data.order_id, for_update=True)
+        if lifecycle is not None and lifecycle.state != "NEW":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"code": "ORDER_TERMINAL", "message": "Inventory order is already finalized"},
+            )
 
         sku_ids = [item.sku_id for item in data.items]
         if len(set(sku_ids)) != len(sku_ids):
@@ -84,6 +76,9 @@ class ReservationService:
                     "message": "One or more SKUs are unavailable",
                 },
             )
+
+        for sku in skus:
+            self._assert_inventory_consistent(sku)
 
         # Re-check after the SKU locks: a concurrent retry may have completed
         # the same idempotent operation while this request was waiting.
@@ -169,6 +164,13 @@ class ReservationService:
                     for item in response_items
                 ],
             }
+            self._record_reserved_lifecycle(
+                order_id=data.order_id,
+                request_hash=request_hash,
+                items=data.items,
+                response=response,
+                reserved_at=reserved_at,
+            )
             # Persist the exact first response in the same transaction as the
             # inventory mutation. Retries must not derive remaining_stock from
             # the current SKU state.
@@ -226,6 +228,45 @@ class ReservationService:
                 except Exception:  # noqa: BLE001 - keep the event pending for retry
                     pass
         return self._decode_reservation_response(response)
+
+    def _record_reserved_lifecycle(
+        self,
+        *,
+        order_id: UUID,
+        request_hash: str,
+        items: list[ReserveItem],
+        response: dict[str, object],
+        reserved_at: datetime,
+    ) -> None:
+        """Write the durable inventory state in the same DB transaction.
+
+        Lightweight test doubles do not expose ``add``; the existing
+        reservation tables remain the compatibility path for those tests.
+        Real SQLAlchemy sessions always provide ``add``.
+        """
+        add = getattr(self.reservation_repo.session, "add", None)
+        if add is None:
+            return
+        add(
+            InventoryOrderLifecycle(
+                order_id=order_id,
+                fingerprint=request_hash,
+                state="RESERVED",
+                version=1,
+                reserved_at=reserved_at,
+                source="b2c-order",
+                result=response,
+            )
+        )
+        for item in items:
+            add(
+                ReservationLine(
+                    order_id=order_id,
+                    sku_id=item.sku_id,
+                    quantity=item.quantity,
+                    state="ACTIVE",
+                )
+            )
 
     async def _existing_reservation_result(
         self, operation: object, request_hash: str
@@ -318,14 +359,60 @@ class ReservationService:
 
     async def retry_pending_outbox(self, limit: int = 100) -> int:
         delivered = 0
-        for event in await self.outbox_repo.list_pending(limit):
+        claim = getattr(self.outbox_repo, "claim_pending", None)
+        if claim is not None:
+            events = await claim(worker_id="b2b-outbox", limit=limit)
+        else:
+            events = await self.outbox_repo.list_pending(limit)
+        for event in events:
             event.attempts += 1
+            if event.attempts > self.MAX_OUTBOX_ATTEMPTS:
+                event.status = "DEAD"
+                event.last_error = "OUTBOX_MAX_ATTEMPTS_EXCEEDED"
+                event.lease_owner = None
+                event.lease_until = None
+                continue
+            if getattr(event, "payload_sha256", None):
+                actual_hash = hashlib.sha256(
+                    json.dumps(
+                        event.payload, sort_keys=True, separators=(",", ":")
+                    ).encode()
+                ).hexdigest()
+                if actual_hash != event.payload_sha256:
+                    event.status = "DEAD"
+                    event.last_error = "OUTBOX_PAYLOAD_HASH_MISMATCH"
+                    event.lease_owner = None
+                    event.lease_until = None
+                    continue
             try:
                 if event.destination == "B2C":
                     await B2CClient().send_outbox_event(event.payload)
+                elif event.destination == "MODERATION":
+                    await ModerationClient()._post_event(event.payload)
+                else:
+                    event.status = "DEAD"
+                    event.last_error = "OUTBOX_UNKNOWN_DESTINATION"
+                    event.lease_owner = None
+                    event.lease_until = None
+                    continue
                 event.status = "SENT"
+                event.lease_owner = None
+                event.lease_until = None
+                event.last_error = None
                 delivered += 1
-            except Exception:  # noqa: BLE001 - keep the event pending for recovery
+            except Exception as exc:  # noqa: BLE001 - keep the event pending for recovery
+                # Keep the first failure immediately retryable for backwards
+                # compatibility; subsequent failures enter exponential backoff.
+                event.status = "PENDING" if event.attempts == 1 else "RETRY"
+                event.lease_owner = None
+                event.lease_until = None
+                event.last_error = str(exc)[:500]
+                event.next_retry_at = (
+                    None
+                    if event.attempts == 1
+                    else datetime.now(timezone.utc)
+                    + timedelta(seconds=min(900, 2 ** min(event.attempts, 10)))
+                )
                 continue
         await self.outbox_repo.session.flush()
         return delivered
@@ -355,6 +442,13 @@ class ReservationService:
                 )
             return self._decode_unreserve_response(existing_operation.response)
 
+        lifecycle = await self._load_lifecycle(data.order_id, for_update=True)
+        if lifecycle is not None and lifecycle.state == "FULFILLED":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"code": "ORDER_TERMINAL", "message": "Fulfilled order cannot be unreserved"},
+            )
+
         sku_ids = [item.sku_id for item in data.items]
         if len(set(sku_ids)) != len(sku_ids):
             raise HTTPException(
@@ -378,6 +472,7 @@ class ReservationService:
                 request_payload=request_payload,
                 response=self._encode_unreserve_response(response),
             )
+            await self._mark_lifecycle_cancelled(data.order_id, request_hash, response)
             return response
         skus = await self.sku_repo.list_for_update(sku_ids)
         skus_by_id = {sku.id: sku for sku in skus}
@@ -403,6 +498,8 @@ class ReservationService:
                         "message": "Cannot unreserve more than reserved",
                     },
                 )
+            if sku.reserved_quantity < item.quantity:
+                raise self._inventory_corruption()
 
         response = {
             "status": "UNRESERVED",
@@ -441,8 +538,18 @@ class ReservationService:
             reservation.quantity -= item.quantity
             if reservation.quantity == 0:
                 to_delete.append(reservation)
+                await self._mark_line_state(data.order_id, item.sku_id, "RELEASED")
+
+            await self._record_reserved_delta(
+                order_id=data.order_id,
+                sku_id=item.sku_id,
+                delta_reserved=-item.quantity,
+                reason="UNRESERVE",
+            )
 
         await self.reservation_repo.delete_many(to_delete)
+        if len(to_delete) == len(reservations):
+            await self._mark_lifecycle_cancelled(data.order_id, request_hash, response)
         await self.reservation_repo.session.flush()
         return response
 
@@ -452,6 +559,19 @@ class ReservationService:
                 "status": "FULFILLED",
                 "order_id": data.order_id,
                 "processed_at": datetime.now(timezone.utc),
+            }
+
+        lifecycle = await self._load_lifecycle(data.order_id, for_update=True)
+        if lifecycle is not None and lifecycle.state == "CANCELLED":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"code": "ORDER_TERMINAL", "message": "Cancelled order cannot be fulfilled"},
+            )
+        if lifecycle is not None and lifecycle.state == "FULFILLED":
+            return {
+                "status": "FULFILLED",
+                "order_id": data.order_id,
+                "processed_at": lifecycle.terminal_at or datetime.now(timezone.utc),
             }
 
         reservations = await self.reservation_repo.list_by_order(data.order_id)
@@ -468,14 +588,31 @@ class ReservationService:
         skus_by_id = {sku.id: sku for sku in skus}
         for reservation in reservations:
             sku = skus_by_id.get(reservation.sku_id)
-            if sku:
-                sku.stock = max(sku.stock - reservation.quantity, 0)
-                sku.reserved_quantity = max(
-                    sku.reserved_quantity - reservation.quantity,
-                    0,
-                )
+            if sku is None:
+                raise self._inventory_corruption()
+            self._assert_inventory_consistent(sku)
+            if (
+                sku.stock < reservation.quantity
+                or sku.reserved_quantity < reservation.quantity
+            ):
+                raise self._inventory_corruption()
+            sku.stock -= reservation.quantity
+            if getattr(sku, "on_hand", None) is not None:
+                sku.on_hand -= reservation.quantity
+            sku.reserved_quantity -= reservation.quantity
+            await self._record_reserved_delta(
+                order_id=data.order_id,
+                sku_id=reservation.sku_id,
+                delta_on_hand=-reservation.quantity,
+                delta_reserved=-reservation.quantity,
+                reason="FULFILL",
+            )
+            await self._mark_line_state(
+                data.order_id, reservation.sku_id, "FULFILLED"
+            )
         await self.reservation_repo.delete_many(reservations)
         await self.fulfilled_order_repo.mark_fulfilled(data.order_id)
+        await self._mark_lifecycle_fulfilled(data.order_id)
         await self.reservation_repo.session.flush()
         return {
             "status": "FULFILLED",
@@ -483,22 +620,117 @@ class ReservationService:
             "processed_at": datetime.now(timezone.utc),
         }
 
-    async def cancel_by_order(self, order_id: UUID) -> None:
-        reservations = await self.reservation_repo.list_by_order(order_id)
-        if not reservations:
-            return
-        await self.unreserve(
-            UnreserveRequest(
-                order_id=order_id,
-                items=[
-                    ReserveItem(sku_id=item.sku_id, quantity=item.quantity)
-                    for item in reservations
-                ],
-            )
+    def _active_quantity(self, sku: object) -> int:
+        on_hand = getattr(sku, "on_hand", None)
+        base = sku.stock if on_hand is None else on_hand
+        return base - getattr(sku, "reserved_quantity", 0)
+
+    @staticmethod
+    def _assert_inventory_consistent(sku: object) -> None:
+        stock = int(getattr(sku, "stock", 0))
+        reserved = int(getattr(sku, "reserved_quantity", 0))
+        if stock < 0 or reserved < 0 or reserved > stock:
+            raise ReservationService._inventory_corruption()
+
+    @staticmethod
+    def _inventory_corruption() -> HTTPException:
+        return HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "INVENTORY_CORRUPTION",
+                "message": "Inventory state is inconsistent",
+            },
         )
 
-    def _active_quantity(self, sku: object) -> int:
-        return max(sku.stock - getattr(sku, "reserved_quantity", 0), 0)
+    async def _load_lifecycle(
+        self, order_id: UUID, *, for_update: bool = False
+    ) -> InventoryOrderLifecycle | None:
+        execute = getattr(self.reservation_repo.session, "execute", None)
+        if execute is None:
+            return None
+        query = select(InventoryOrderLifecycle).where(
+            InventoryOrderLifecycle.order_id == order_id
+        )
+        if for_update:
+            query = query.with_for_update()
+        result = await execute(query)
+        return result.scalar_one_or_none()
+
+    async def _mark_lifecycle_cancelled(
+        self,
+        order_id: UUID,
+        request_hash: str,
+        response: dict[str, object],
+    ) -> None:
+        lifecycle = await self._load_lifecycle(order_id)
+        if lifecycle is None:
+            add = getattr(self.reservation_repo.session, "add", None)
+            if add is None:
+                return
+            add(
+                InventoryOrderLifecycle(
+                    order_id=order_id,
+                    fingerprint=request_hash,
+                    state="CANCELLED",
+                    version=1,
+                    terminal_at=datetime.now(timezone.utc),
+                    source="b2c-order",
+                    result=response,
+                )
+            )
+            return
+        lifecycle.state = "CANCELLED"
+        lifecycle.version += 1
+        lifecycle.terminal_at = datetime.now(timezone.utc)
+        lifecycle.result = response
+
+    async def _mark_lifecycle_fulfilled(self, order_id: UUID) -> None:
+        lifecycle = await self._load_lifecycle(order_id)
+        if lifecycle is None:
+            return
+        lifecycle.state = "FULFILLED"
+        lifecycle.version += 1
+        lifecycle.terminal_at = datetime.now(timezone.utc)
+
+    async def _mark_line_state(self, order_id: UUID, sku_id: UUID, state: str) -> None:
+        execute = getattr(self.reservation_repo.session, "execute", None)
+        if execute is None:
+            return
+        result = await execute(
+            select(ReservationLine).where(
+                ReservationLine.order_id == order_id,
+                ReservationLine.sku_id == sku_id,
+            )
+        )
+        line = result.scalar_one_or_none()
+        if line is not None:
+            line.state = state
+
+    async def _record_reserved_delta(
+        self,
+        *,
+        order_id: UUID,
+        sku_id: UUID,
+        reason: str,
+        delta_reserved: int = 0,
+        delta_on_hand: int = 0,
+    ) -> None:
+        add = getattr(self.reservation_repo.session, "add", None)
+        if add is None:
+            return
+        add(
+            InventoryLedger(
+                event_id=uuid4(),
+                order_id=order_id,
+                sku_id=sku_id,
+                delta_on_hand=delta_on_hand,
+                delta_reserved=delta_reserved,
+                reason=reason,
+                actor_type="b2c-order",
+                occurred_at=datetime.now(timezone.utc),
+                correlation_id=str(order_id),
+            )
+        )
 
     def _reservation_failure_reason(
         self,

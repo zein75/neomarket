@@ -320,7 +320,10 @@ def test_blocking_reasons_route_returns_hard_block_catalog() -> None:
 
     app.dependency_overrides[moderation_router.get_db] = fake_db
     try:
-        response = TestClient(app).get("/api/v1/blocking-reasons?hard_block=true")
+        response = TestClient(app).get(
+            "/api/v1/blocking-reasons?hard_block=true",
+            headers={"X-Moderator-Id": str(uuid4())},
+        )
     finally:
         app.dependency_overrides.clear()
 

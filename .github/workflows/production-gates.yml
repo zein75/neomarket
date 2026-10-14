@@ -1,0 +1,142 @@
+name: Production gates
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.11.28"
+          enable-cache: true
+      - run: uv sync --all-packages --locked
+      - run: uv lock --check
+      - run: uv run ruff check shared/shared services/b2b/src services/b2c/src services/admin/src
+      - run: uv run python docs/NEOMARKET_PRODUCTION_SPEC_V2_2026-10-14/qa/validate_spec.py
+      - run: uv run python scripts/check_openapi_routes.py
+      - name: Validate production Compose
+        env:
+          POSTGRES_IMAGE: postgres:16-alpine@sha256:0000000000000000000000000000000000000000000000000000000000000000
+          REDIS_IMAGE: redis:7-alpine@sha256:0000000000000000000000000000000000000000000000000000000000000000
+          NGINX_IMAGE: nginx:1.27-alpine@sha256:0000000000000000000000000000000000000000000000000000000000000000
+        run: docker compose -f docker-compose.yaml -f docker-compose.prod.yaml config --quiet
+      - name: Build production images
+        run: |
+          docker build --file services/b2b/Dockerfile --tag neomarket-b2b:ci .
+          docker build --file services/b2c/Dockerfile --tag neomarket-b2c:ci .
+          docker build --file services/admin/Dockerfile --tag neomarket-admin:ci .
+      - name: Generate release manifest
+        shell: pwsh
+        run: |
+          $env:B2B_IMAGE_DIGEST = (docker image inspect neomarket-b2b:ci --format '{{.Id}}')
+          $env:B2C_IMAGE_DIGEST = (docker image inspect neomarket-b2c:ci --format '{{.Id}}')
+          $env:ADMIN_IMAGE_DIGEST = (docker image inspect neomarket-admin:ci --format '{{.Id}}')
+          ./scripts/release_manifest.ps1 -OutputPath release-manifest.json
+          $manifest = Get-Content release-manifest.json -Raw | ConvertFrom-Json
+          foreach ($image in @($manifest.image_digests.b2b, $manifest.image_digests.b2c, $manifest.image_digests.admin)) {
+            if ([string]::IsNullOrWhiteSpace($image)) { throw "Release manifest is missing an image digest" }
+          }
+          foreach ($service in @("b2b", "b2c", "admin")) {
+            if (-not $manifest.migration_heads.$service) { throw "Release manifest is missing migration head for $service" }
+          }
+          if ($manifest.contract_sha256.PSObject.Properties.Count -lt 3) { throw "Release manifest is missing contract hashes" }
+      - name: Upload release manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-manifest-${{ github.sha }}
+          path: release-manifest.json
+          if-no-files-found: error
+      - name: B2C tests
+        run: uv run pytest -q services/b2c/tests
+        env:
+          PYTHONPATH: services/b2c:shared
+      - name: B2B tests
+        run: uv run pytest -q services/b2b/tests
+        env:
+          PYTHONPATH: services/b2b:shared
+      - name: Admin tests
+        run: uv run pytest -q services/admin/tests
+        env:
+          PYTHONPATH: services/admin:shared
+      - name: Shared and repository tests
+        run: uv run pytest -q shared/tests tests
+        env:
+          PYTHONPATH: shared
+      - name: Write verification manifest
+        shell: pwsh
+        run: |
+          $manifest = [ordered]@{
+            git_sha = "${{ github.sha }}"
+            status = "passed"
+            workflow = "${{ github.workflow }}"
+            run_id = "${{ github.run_id }}"
+            generated_at_utc = [DateTime]::UtcNow.ToString("o")
+          }
+          $manifest | ConvertTo-Json | Set-Content -Encoding utf8 verification-manifest.json
+      - name: Upload verification manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification-manifest-${{ github.sha }}
+          path: verification-manifest.json
+          if-no-files-found: error
+
+  security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Filesystem vulnerability scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Build images for image vulnerability scan
+        run: |
+          docker build --file services/b2b/Dockerfile --tag neomarket-b2b:scan .
+          docker build --file services/b2c/Dockerfile --tag neomarket-b2c:scan .
+          docker build --file services/admin/Dockerfile --tag neomarket-admin:scan .
+      - name: B2B image vulnerability scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: neomarket-b2b:scan
+          scan-type: image
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: B2C image vulnerability scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: neomarket-b2c:scan
+          scan-type: image
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Admin image vulnerability scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: neomarket-admin:scan
+          scan-type: image
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"

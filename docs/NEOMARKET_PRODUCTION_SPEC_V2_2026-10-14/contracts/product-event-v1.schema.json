@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NeoMarket product event v1",
+  "allOf": [
+    {
+      "$ref": "event-envelope-v1.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "event_type": {
+          "enum": [
+            "product.created",
+            "product.updated",
+            "product.deleted"
+          ]
+        },
+        "producer": {
+          "const": "b2b"
+        },
+        "aggregate_type": {
+          "const": "product"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "product_id",
+            "seller_id",
+            "revision",
+            "deleted"
+          ],
+          "properties": {
+            "product_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "seller_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "revision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "deleted": {
+              "type": "boolean"
+            },
+            "product": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": true
+            },
+            "event_reason": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 500
+            }
+          }
+        }
+      },
+      "if": {
+        "properties": {
+          "event_type": {
+            "enum": [
+              "product.created",
+              "product.updated"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "required": [
+              "product"
+            ],
+            "properties": {
+              "product": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$id": "https://contracts.neomarket.example.invalid/product-event-v1.schema.json"
+}

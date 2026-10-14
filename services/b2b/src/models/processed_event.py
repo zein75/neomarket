@@ -14,3 +14,4 @@ class ProcessedEvent(Base, TimestampMixin):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     idempotency_key: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
+    payload_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)

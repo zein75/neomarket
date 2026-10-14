@@ -7,6 +7,8 @@ from alembic import context
 
 from src.models.base import Base
 from src.models.moderation import BlockingReason, ModerationCard, ModerationSKU  # noqa: F401
+from src.models.moderation_outbox_event import ModerationOutboxEvent  # noqa: F401
+from src.models.processed_product_event import ProcessedProductEvent  # noqa: F401
 
 config = context.config
 

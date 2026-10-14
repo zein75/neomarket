@@ -6,6 +6,7 @@ from uuid import NAMESPACE_URL, uuid4, uuid5
 import httpx
 
 from src.core.config import settings
+from shared.utils.service_auth import service_headers
 
 
 class ModerationClient:
@@ -40,7 +41,7 @@ class ModerationClient:
             response = await client.post(
                 f"{self.base_url}/api/v1/b2b/events",
                 json=event,
-                headers={"X-Service-Key": self.service_key},
+                headers=service_headers(settings, audience="neomarket-admin", legacy_key=self.service_key),
             )
             if response.status_code == 409:
                 return
@@ -51,7 +52,7 @@ class ModerationClient:
         async with httpx.AsyncClient(timeout=settings.moderation_timeout_seconds) as client:
             response = await client.get(
                 f"{self.base_url}/api/v1/blocking-reasons",
-                headers={"X-Service-Key": self.service_key},
+                headers=service_headers(settings, audience="neomarket-admin", legacy_key=self.service_key),
             )
             response.raise_for_status()
         for reason in response.json():

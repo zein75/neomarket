@@ -17,21 +17,44 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 def create_access_token(subject: str) -> str:
+    now = datetime.now(timezone.utc)
     expire = datetime.now(timezone.utc) + timedelta(
         minutes=settings.access_token_expire_minutes
     )
     return jwt.encode(
-        {"sub": subject, "exp": expire},
+        {
+            "sub": subject,
+            "iat": now,
+            "nbf": now,
+            "exp": expire,
+            "iss": settings.jwt_issuer,
+            "aud": settings.jwt_audience,
+        },
         settings.secret_key,
         algorithm=settings.algorithm,
+        headers={"kid": settings.jwt_kid},
     )
 
 
 def decode_access_token(token: str) -> str | None:
     try:
+        header = jwt.get_unverified_header(token)
+        if header.get("kid") != settings.jwt_kid:
+            return None
         payload = jwt.decode(
-            token, settings.secret_key, algorithms=[settings.algorithm]
+            token,
+            settings.secret_key,
+            algorithms=[settings.algorithm],
+            issuer=settings.jwt_issuer,
+            audience=settings.jwt_audience,
+            options={
+                "require_sub": True,
+                "require_iat": True,
+                "require_nbf": True,
+                "require_exp": True,
+            },
         )
-        return payload.get("sub")
+        subject = payload.get("sub")
+        return str(subject) if subject else None
     except JWTError:
         return None

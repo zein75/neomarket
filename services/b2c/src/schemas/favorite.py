@@ -14,6 +14,8 @@ class FavoriteResponse(BaseModel):
 
 
 class FavoriteAdd(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     product_id: UUID
 
 
@@ -25,6 +27,8 @@ class FavoriteListResponse(BaseModel):
 
 
 class ProductSubscriptionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     notify_on: list[str]
 
 

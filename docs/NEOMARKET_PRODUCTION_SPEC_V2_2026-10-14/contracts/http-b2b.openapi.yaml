@@ -1,0 +1,926 @@
+openapi: 3.1.0
+info:
+  title: NeoMarket B2B API
+  version: 1.0.0
+  description: Seller product API and protected internal inventory interface. New independent NeoMarket production contract,
+    not derived from retired canon/protocols. Target design, not yet implemented.
+servers:
+- url: https://api.example.invalid
+  description: Deploy-specific HTTPS gateway; placeholder forbidden in production
+tags: []
+paths:
+  /api/v1/seller/products:
+    post:
+      tags:
+      - Products
+      operationId: createProduct
+      summary: Create product pending moderation
+      responses:
+        '201':
+          description: Product
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/Validation'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductInput'
+      security:
+      - userBearer: []
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags:
+      - Products
+      operationId: listSellerProducts
+      summary: Own seller products
+      responses:
+        '200':
+          description: Products
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      security:
+      - userBearer: []
+      parameters:
+      - name: cursor
+        in: query
+        schema:
+          type: string
+          maxLength: 1024
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+  /api/v1/seller/products/{product_id}:
+    get:
+      tags:
+      - Products
+      operationId: getSellerProduct
+      summary: Own seller product
+      responses:
+        '200':
+          description: Product
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Not found
+      security:
+      - userBearer: []
+      parameters:
+      - name: product_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    patch:
+      tags:
+      - Products
+      operationId: updateProduct
+      summary: Patch product after revision check
+      responses:
+        '200':
+          description: Product
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Validation'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductPatch'
+      security:
+      - userBearer: []
+      parameters:
+      - name: product_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+    delete:
+      tags:
+      - Products
+      operationId: deleteProduct
+      summary: Soft delete product
+      responses:
+        '202':
+          description: Deletion event persisted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      security:
+      - userBearer: []
+      parameters:
+      - name: product_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /api/v1/seller/products/{product_id}/skus:
+    post:
+      tags:
+      - SKU
+      operationId: createSku
+      summary: Create seller SKU
+      responses:
+        '201':
+          description: SKU
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sku'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Validation'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SkuInput'
+      security:
+      - userBearer: []
+      parameters:
+      - name: product_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /api/v1/seller/skus/{sku_id}:
+    patch:
+      tags:
+      - SKU
+      operationId: updateSku
+      summary: Update owned SKU without breaking reserves
+      responses:
+        '200':
+          description: SKU
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sku'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Validation'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SkuPatch'
+      security:
+      - userBearer: []
+      parameters:
+      - name: sku_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getSellerSku
+      summary: Read seller-owned SKU
+      tags:
+      - SKU
+      security:
+      - userBearer: []
+      responses:
+        '200':
+          description: SKU
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sku'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not found
+      parameters:
+      - name: sku_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /api/v1/seller/skus/{sku_id}/stock-adjustments:
+    post:
+      tags:
+      - SKU
+      operationId: adjustStock
+      summary: Audit-able stock change
+      responses:
+        '200':
+          description: SKU
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sku'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Validation'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StockAdjustmentRequest'
+      security:
+      - userBearer: []
+      parameters:
+      - name: sku_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /api/v1/seller/products/{product_id}/moderation-status:
+    get:
+      tags:
+      - Products
+      operationId: getModerationStatus
+      summary: Read own moderation state
+      responses:
+        '200':
+          description: Product moderation status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Not found
+      security:
+      - userBearer: []
+      parameters:
+      - name: product_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /internal/v1/inventory/reserve:
+    post:
+      tags:
+      - Inventory
+      operationId: reserveInventory
+      summary: Atomic reserve by order_id and fingerprint
+      responses:
+        '201':
+          description: New reserve
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryResult'
+        '200':
+          description: Same operation replay
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Validation'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReserveRequest'
+      security:
+      - mutualTLS: []
+        serviceBearer: []
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /internal/v1/inventory/unreserve:
+    post:
+      tags:
+      - Inventory
+      operationId: unreserveInventory
+      summary: Terminal cancellation or cancel-before-reserve tombstone
+      responses:
+        '200':
+          description: Cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Validation'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UnreserveRequest'
+      security:
+      - mutualTLS: []
+        serviceBearer: []
+  /internal/v1/inventory/fulfill:
+    post:
+      tags:
+      - Inventory
+      operationId: fulfillInventory
+      summary: Exactly-once business effect of fulfillment
+      responses:
+        '200':
+          description: Fulfilled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Validation'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FulfillRequest'
+      security:
+      - mutualTLS: []
+        serviceBearer: []
+  /internal/v1/inventory/orders/{order_id}:
+    get:
+      tags:
+      - Inventory
+      operationId: getInventoryOrder
+      summary: Read-only inventory lifecycle for reconciliation
+      responses:
+        '200':
+          description: Inventory order state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Not found
+      security:
+      - mutualTLS: []
+        serviceBearer: []
+      parameters:
+      - name: order_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /internal/v1/events/moderation:
+    post:
+      tags:
+      - Internal events
+      operationId: ingestModerationEvent
+      summary: Apply verified Admin decision into inbox
+      responses:
+        '202':
+          description: Durably accepted
+        '200':
+          description: Already applied
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Validation'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventEnvelope'
+      security:
+      - mutualTLS: []
+        serviceBearer: []
+components:
+  securitySchemes:
+    userBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    serviceBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    mutualTLS:
+      type: mutualTLS
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+            retryable:
+              type: boolean
+          additionalProperties: false
+          required:
+          - code
+          - message
+          - retryable
+        request_id:
+          type: string
+          format: uuid
+      additionalProperties: false
+      required:
+      - error
+      - request_id
+    IdempotentConflict:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      additionalProperties: false
+    PageInfo:
+      type: object
+      properties:
+        next_cursor:
+          type:
+          - string
+          - 'null'
+        has_more:
+          type: boolean
+      additionalProperties: false
+      required:
+      - has_more
+    OperationStatus:
+      type: object
+      properties:
+        operation_id:
+          type: string
+          format: uuid
+        state:
+          type: string
+          enum:
+          - PENDING
+          - COMPLETED
+          - FAILED
+          - RECONCILE_REQUIRED
+        order_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        updated_at:
+          type: string
+          format: date-time
+      additionalProperties: false
+      required:
+      - operation_id
+      - state
+      - updated_at
+    Ok:
+      type: object
+      properties:
+        status:
+          type: string
+      additionalProperties: false
+      required:
+      - status
+    SkuInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        price_minor:
+          type: integer
+          minimum: 0
+        currency:
+          type: string
+          pattern: ^[A-Z]{3}$
+        on_hand:
+          type: integer
+          minimum: 0
+        images:
+          type: array
+          items:
+            type: string
+            format: uri
+            maxLength: 2048
+          maxItems: 20
+      additionalProperties: false
+      required:
+      - name
+      - price_minor
+      - currency
+      - on_hand
+    Sku:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        product_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        price_minor:
+          type: integer
+          minimum: 0
+        currency:
+          type: string
+        on_hand:
+          type: integer
+          minimum: 0
+        reserved_quantity:
+          type: integer
+          minimum: 0
+        is_active:
+          type: boolean
+      additionalProperties: false
+      required:
+      - id
+      - product_id
+      - name
+      - price_minor
+      - currency
+      - on_hand
+      - reserved_quantity
+      - is_active
+    ProductInput:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 20000
+        category_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        images:
+          type: array
+          items:
+            type: string
+            format: uri
+            maxLength: 2048
+          maxItems: 20
+      additionalProperties: false
+      required:
+      - title
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        seller_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - PENDING_MODERATION
+          - APPROVED
+          - BLOCKED
+          - HARD_BLOCKED
+          - DELETED
+        revision:
+          type: integer
+          minimum: 1
+        is_active:
+          type: boolean
+        skus:
+          type: array
+          items:
+            $ref: '#/components/schemas/Sku'
+      additionalProperties: false
+      required:
+      - id
+      - seller_id
+      - title
+      - status
+      - revision
+      - is_active
+      - skus
+    ProductPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+      additionalProperties: false
+      required:
+      - items
+      - page
+    StockAdjustmentRequest:
+      type: object
+      properties:
+        delta:
+          type: integer
+          minimum: -10000000
+          maximum: 10000000
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 500
+      additionalProperties: false
+      required:
+      - delta
+      - reason
+    ReserveItem:
+      type: object
+      properties:
+        sku_id:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 100
+      additionalProperties: false
+      required:
+      - sku_id
+      - quantity
+    ReserveRequest:
+      type: object
+      properties:
+        order_id:
+          type: string
+          format: uuid
+        request_fingerprint:
+          type: string
+          pattern: ^[a-f0-9]{64}$
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReserveItem'
+          minItems: 1
+          maxItems: 100
+      additionalProperties: false
+      required:
+      - order_id
+      - request_fingerprint
+      - items
+    UnreserveRequest:
+      type: object
+      properties:
+        order_id:
+          type: string
+          format: uuid
+      additionalProperties: false
+      required:
+      - order_id
+    FulfillRequest:
+      type: object
+      properties:
+        order_id:
+          type: string
+          format: uuid
+      additionalProperties: false
+      required:
+      - order_id
+    InventoryQuoteItem:
+      type: object
+      properties:
+        sku_id:
+          type: string
+          format: uuid
+        product_id:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+        unit_price_minor:
+          type: integer
+          minimum: 0
+        currency:
+          type: string
+          pattern: ^[A-Z]{3}$
+        product_revision:
+          type: integer
+          minimum: 1
+      additionalProperties: false
+      required:
+      - sku_id
+      - product_id
+      - quantity
+      - unit_price_minor
+      - currency
+      - product_revision
+    InventoryResult:
+      type: object
+      properties:
+        order_id:
+          type: string
+          format: uuid
+        state:
+          type: string
+          enum:
+          - RESERVED
+          - CANCELLED
+          - FULFILLED
+        revision:
+          type: integer
+          minimum: 0
+        processed_at:
+          type: string
+          format: date-time
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InventoryQuoteItem'
+      additionalProperties: false
+      required:
+      - order_id
+      - state
+      - revision
+      - processed_at
+      - items
+    EventEnvelope:
+      $ref: ./event-envelope-v1.schema.json
+    ProductPatch:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 20000
+        category_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        images:
+          type: array
+          items:
+            type: string
+            format: uri
+            maxLength: 2048
+          maxItems: 20
+    SkuPatch:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        price_minor:
+          type: integer
+          minimum: 0
+        currency:
+          type: string
+          pattern: ^[A-Z]{3}$
+        on_hand:
+          type: integer
+          minimum: 0
+        images:
+          type: array
+          items:
+            type: string
+            format: uri
+            maxLength: 2048
+          maxItems: 20
+        is_active:
+          type: boolean
+  responses:
+    Unauthorized:
+      description: Unauthenticated
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Not authorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: State/identity conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Validation:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unavailable:
+      description: Retryable dependency failure
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

@@ -3,15 +3,19 @@ from uuid import UUID
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CartItemAdd(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     sku_id: UUID
     quantity: int = Field(gt=0)
 
 
 class CartItemUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     quantity: int = Field(gt=0)
 
 

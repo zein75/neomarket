@@ -8,19 +8,35 @@ from src.models.order import OrderStatus
 
 
 class OrderItemSnapshot(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     sku_id: UUID
     quantity: int = Field(ge=1)
     unit_price: int = Field(ge=0)
 
 
 class OrderCreateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    # Canonical checkout fields.
+    cart_id: UUID | None = None
     address_id: UUID
-    payment_method_id: UUID
+    delivery_method: str | None = Field(default=None, max_length=64)
+    # Kept for local payment mode compatibility during the v1 rollout.
+    payment_method_id: UUID | None = None
     comment: str | None = Field(default=None, max_length=1000)
-    items_snapshot: list[OrderItemSnapshot] | None = None
+    items_snapshot: list[OrderItemSnapshot] | None = Field(default=None, max_length=100)
+
+    @model_validator(mode="after")
+    def validate_checkout_mode(self) -> "OrderCreateRequest":
+        if self.delivery_method is None and self.payment_method_id is None:
+            raise ValueError("delivery_method is required")
+        return self
 
 
 class CancelOrderRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     reason: str | None = Field(default=None, max_length=500)
 
 
@@ -137,6 +153,13 @@ class OrderPaginatedResponse(BaseModel):
     total_count: int
     limit: int
     offset: int
+
+
+class CheckoutOperationStatus(BaseModel):
+    operation_id: UUID
+    state: str
+    order_id: UUID | None = None
+    updated_at: datetime
 
 
 class OrderDetailItemResponse(BaseModel):

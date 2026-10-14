@@ -1,6 +1,6 @@
 from uuid import UUID, uuid4
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -125,6 +125,16 @@ class ProductRepository(BaseRepository[Product]):
     async def list_public_catalog(
         self,
         product_ids: list[UUID] | None = None,
+        *,
+        category_id: UUID | None = None,
+        search: str | None = None,
+        min_price: int | None = None,
+        max_price: int | None = None,
+        seller_id: UUID | None = None,
+        in_stock: bool | None = None,
+        sort: str | None = None,
+        limit: int | None = None,
+        offset: int = 0,
     ) -> list[Product]:
         query = (
             select(Product)
@@ -136,8 +146,109 @@ class ProductRepository(BaseRepository[Product]):
         )
         if product_ids is not None:
             query = query.where(Product.id.in_(product_ids))
+        active_quantity = func.coalesce(SKU.on_hand, SKU.stock) - SKU.reserved_quantity
+        active_sku = and_(SKU.is_active == True, active_quantity > 0)  # noqa: E712
+        if category_id is not None:
+            query = query.where(Product.category_id == category_id)
+        if seller_id is not None:
+            query = query.where(Product.seller_id == seller_id)
+        if search:
+            pattern = f"%{search.lower()}%"
+            query = query.where(
+                or_(func.lower(Product.title).like(pattern), func.lower(Product.description).like(pattern))
+            )
+        if in_stock is True:
+            query = query.where(select(SKU.id).where(SKU.product_id == Product.id, active_sku).exists())
+        public_price = (
+            select(func.min(SKU.price))
+            .where(SKU.product_id == Product.id, active_sku)
+            .scalar_subquery()
+        )
+        if min_price is not None:
+            query = query.where(public_price >= min_price)
+        if max_price is not None:
+            query = query.where(public_price <= max_price)
+        if sort == "price_asc":
+            query = query.order_by(public_price.asc().nullslast())
+        elif sort == "price_desc":
+            query = query.order_by(public_price.desc().nullslast())
+        elif sort == "new":
+            query = query.order_by(Product.created_at.desc())
+        if limit is not None:
+            query = query.offset(offset).limit(limit)
         result = await self.session.execute(query)
         return list(result.scalars().all())
+
+    async def list_public_catalog_page(
+        self,
+        *,
+        category_id: UUID | None = None,
+        search: str | None = None,
+        min_price: int | None = None,
+        max_price: int | None = None,
+        seller_id: UUID | None = None,
+        in_stock: bool | None = None,
+        sort: str | None = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[Product], int]:
+        """Fetch a filtered page and total count without loading the full catalog."""
+        query = self._public_catalog_query(
+            category_id=category_id,
+            search=search,
+            min_price=min_price,
+            max_price=max_price,
+            seller_id=seller_id,
+            in_stock=in_stock,
+            sort=sort,
+        )
+        total = await self.session.scalar(select(func.count()).select_from(query.subquery()))
+        result = await self.session.execute(query.offset(offset).limit(limit))
+        return list(result.scalars().all()), int(total or 0)
+
+    def _public_catalog_query(
+        self,
+        *,
+        category_id: UUID | None,
+        search: str | None,
+        min_price: int | None,
+        max_price: int | None,
+        seller_id: UUID | None,
+        in_stock: bool | None,
+        sort: str | None,
+    ):
+        active_quantity = func.coalesce(SKU.on_hand, SKU.stock) - SKU.reserved_quantity
+        active_sku = and_(SKU.is_active == True, active_quantity > 0)  # noqa: E712
+        query = select(Product).where(
+            Product.status == "MODERATED", Product.deleted == False  # noqa: E712
+        )
+        if category_id is not None:
+            query = query.where(Product.category_id == category_id)
+        if seller_id is not None:
+            query = query.where(Product.seller_id == seller_id)
+        if search:
+            pattern = f"%{search.lower()}%"
+            query = query.where(
+                or_(func.lower(Product.title).like(pattern), func.lower(Product.description).like(pattern))
+            )
+        if in_stock is True:
+            query = query.where(select(SKU.id).where(SKU.product_id == Product.id, active_sku).exists())
+        public_price = (
+            select(func.min(SKU.price))
+            .where(SKU.product_id == Product.id, active_sku)
+            .scalar_subquery()
+        )
+        if min_price is not None:
+            query = query.where(public_price >= min_price)
+        if max_price is not None:
+            query = query.where(public_price <= max_price)
+        if sort == "price_asc":
+            query = query.order_by(public_price.asc().nullslast())
+        elif sort == "price_desc":
+            query = query.order_by(public_price.desc().nullslast())
+        elif sort == "new":
+            query = query.order_by(Product.created_at.desc())
+        return query.options(selectinload(Product.skus))
 
     async def list_cart_products(self, product_ids: list[UUID]) -> list[Product]:
         """Load requested non-deleted products for B2C cart enrichment.
