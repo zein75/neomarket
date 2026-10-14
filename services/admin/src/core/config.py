@@ -17,6 +17,10 @@ class Settings:
     service_name: str = os.getenv("SERVICE_NAME", "admin")
     service_private_key: str = os.getenv("SERVICE_PRIVATE_KEY", "")
     trusted_service_public_keys: str = os.getenv("TRUSTED_SERVICE_PUBLIC_KEYS", "")
+    oidc_issuer: str = os.getenv("OIDC_ISSUER", "")
+    oidc_jwks_url: str = os.getenv("OIDC_JWKS_URL", "")
+    oidc_audience: str = os.getenv("OIDC_AUDIENCE", "neomarket-admin-api")
+    oidc_required_amr: str = os.getenv("OIDC_REQUIRED_AMR", "mfa")
     service_key_id: str = os.getenv("SERVICE_KEY_ID", "managed-v1")
     b2b_timeout_seconds: float = float(os.getenv("B2B_TIMEOUT_SECONDS", "3.0"))
     moderation_claim_ttl_seconds: int = int(os.getenv("MODERATION_CLAIM_TTL_SECONDS", "900"))
@@ -40,6 +44,8 @@ class Settings:
                 raise RuntimeError("DATABASE_URL must not use default credentials")
             if not self.service_private_key or not self.trusted_service_public_keys:
                 raise RuntimeError("SERVICE_PRIVATE_KEY and TRUSTED_SERVICE_PUBLIC_KEYS are required in production")
+            if not self.oidc_issuer or not self.oidc_jwks_url or not self.oidc_audience:
+                raise RuntimeError("OIDC_ISSUER, OIDC_JWKS_URL and OIDC_AUDIENCE are required in production")
 
 
 settings = Settings()

@@ -32,6 +32,8 @@ def service_headers(
             headers={"kid": getattr(settings, "service_key_id", "managed-v1")},
         )
         return {"Authorization": f"Bearer {token}"}
+    if str(getattr(settings, "app_env", "development")).lower() in {"production", "prod"}:
+        raise RuntimeError("SERVICE_PRIVATE_KEY is required in production; legacy X-Service-Key is disabled")
     return {"X-Service-Key": legacy_key or settings.service_key}
 
 

@@ -89,6 +89,55 @@ jobs:
           path: verification-manifest.json
           if-no-files-found: error
 
+  integration:
+    name: PostgreSQL/Redis integration and concurrency gates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci_test_password_only
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d postgres"
+          --health-interval 5s --health-timeout 3s --health-retries 15
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 15
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: ci
+      PGPASSWORD: ci_test_password_only
+      # B2B tests use this URL directly; B2C concurrency tests derive /b2c.
+      NEOMARKET_POSTGRES_TEST_URL: postgresql+asyncpg://ci:ci_test_password_only@127.0.0.1:5432/b2b
+      REDIS_URL: redis://127.0.0.1:6379/0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.11.28"
+          enable-cache: true
+          python-version: "3.12"
+      - name: Run migrations and release-critical concurrency tests
+        shell: bash
+        run: bash ci/postgres-integration.sh
+      - name: Run B2C fault and lifecycle scenarios
+        shell: bash
+        env:
+          PYTHONPATH: services/b2c:shared
+        run: >-
+          uv run --frozen pytest -q services/b2c/tests/test_orders.py
+          -k "timeout or webhook or fulfill or compensation or cancel"
+
   security:
     runs-on: ubuntu-latest
     timeout-minutes: 10

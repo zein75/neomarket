@@ -26,6 +26,11 @@ async def verify_service_key(
     if authorization and authorization.lower().startswith("bearer ") and settings.trusted_service_public_keys:
         if verify_service_token(authorization[7:].strip(), trusted_keys=settings.trusted_service_public_keys, audience="neomarket-b2c", allowed_subjects={"b2b", "admin"}):
             return
+    if settings.app_env.lower() in {"production", "prod"}:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "SERVICE_TOKEN_REQUIRED", "message": "Signed service token is required"},
+        )
     if not x_service_key or not compare_digest(x_service_key, settings.service_key):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
