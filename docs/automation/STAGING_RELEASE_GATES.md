@@ -6,7 +6,7 @@ The latest source and disposable-PostgreSQL verification is [`admin-gates-202610
 
 **Current status:** `BLOCKED`.
 
-Latest checker run on the current source/runtime record is [`release-check-45ebbae-20261020T151000Z.json`](evidence/staging/release-check-45ebbae-20261020T151000Z.json). It reports 202 required cases and zero of the three required independent manifests. The deployed application image is immutable SHA `45ebbae37cb5104decf7a586e767a55cd41cd0cf`.
+Latest checker run on the current source/runtime record is [`release-check-6681e512c9d439e5cc37db13d504b23e0a899c85-20261020.json`](evidence/staging/release-check-6681e512c9d439e5cc37db13d504b23e0a899c85-20261020.json). It reports 202 required cases and zero of the three required independent manifests. The deployed application image is immutable SHA `45ebbae37cb5104decf7a586e767a55cd41cd0cf`.
 
 | Gate | Status | Evidence |
 |---|---|---|
