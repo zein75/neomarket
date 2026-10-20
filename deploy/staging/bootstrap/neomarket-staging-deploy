@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ROOT=/opt/neomarket-staging
+STATE=/var/lib/neomarket-staging
+SECRETS=/etc/neomarket/staging.env
+RELEASE_CONFIG=/etc/neomarket/staging-release.conf
+REQUEST="$STATE/requests/release.sha"
+LOG=/var/log/neomarket-staging/deploy.log
+LOCK=/run/lock/neomarket-staging-deploy.lock
+
+[[ "$EUID" -eq 0 ]] || { echo 'Root-only deployment wrapper.' >&2; exit 1; }
+[[ -r "$SECRETS" ]] || { echo "Missing $SECRETS" >&2; exit 1; }
+[[ -r "$RELEASE_CONFIG" ]] || { echo "Missing $RELEASE_CONFIG" >&2; exit 1; }
+[[ -r "$REQUEST" ]] || { echo "Missing release request $REQUEST" >&2; exit 1; }
+[[ -f "$ROOT/compose/docker-compose.staging.yml" ]] || { echo 'Root-owned Compose manifest is missing.' >&2; exit 1; }
+
+REGISTRY_IMAGE="$(sed -n 's/^REGISTRY_IMAGE=//p' "$RELEASE_CONFIG")"
+RELEASE_SHA="$(tr -d '[:space:]' < "$REQUEST")"
+[[ "$REGISTRY_IMAGE" =~ ^ghcr\.io/[a-z0-9][a-z0-9_.-]*/[a-z0-9][a-z0-9_.-]*$ ]] || { echo 'Invalid fixed registry image.' >&2; exit 1; }
+[[ "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'Invalid release SHA.' >&2; exit 1; }
+
+exec 9>"$LOCK"
+flock -n 9 || { echo 'Another deployment is already running.' >&2; exit 1; }
+install -o root -g root -m 0640 /dev/null "$LOG"
+exec > >(tee -a "$LOG") 2>&1
+
+printf 'REGISTRY_IMAGE=%s\nRELEASE_SHA=%s\n' "$REGISTRY_IMAGE" "$RELEASE_SHA" > "$ROOT/.release.env.tmp"
+chown root:root "$ROOT/.release.env.tmp"
+chmod 0644 "$ROOT/.release.env.tmp"
+mv -f "$ROOT/.release.env.tmp" "$ROOT/.release.env"
+
+COMPOSE=(docker compose --project-name neomarket-staging --env-file "$SECRETS" --env-file "$ROOT/.release.env" -f "$ROOT/compose/docker-compose.staging.yml")
+if [[ -f /etc/neomarket/registry-docker-config/config.json ]]; then
+  export DOCKER_CONFIG=/etc/neomarket/registry-docker-config
+fi
+python3 "$ROOT/compose/prepare_keycloak_realm.py"
+"${COMPOSE[@]}" config --quiet
+"${COMPOSE[@]}" config --format json | python3 -c '
+import json,sys
+services=json.load(sys.stdin)["services"]
+for name,cfg in services.items():
+    for p in cfg.get("ports",[]):
+        published=str(p.get("published", ""))
+        host_ip=p.get("host_ip")
+        if name != "gateway" or host_ip != "127.0.0.1" or published != "8080":
+            raise SystemExit(f"unexpected published port: {name} {p}")
+print("Port exposure gate: PASS")
+'
+"${COMPOSE[@]}" pull b2b b2c admin admin-worker storefront seller-frontend admin-frontend
+"${COMPOSE[@]}" up -d --wait postgres admin-postgres redis
+python3 "$ROOT/compose/prepare_admin_db_isolation.py"
+"${COMPOSE[@]}" --profile migrate run --rm b2b-migrate
+"${COMPOSE[@]}" --profile migrate run --rm b2c-migrate
+"${COMPOSE[@]}" --profile migrate run --rm admin-migrate
+"${COMPOSE[@]}" up -d --wait --no-deps b2b b2c admin admin-worker b2b-taxonomy-worker b2c-recovery-worker
+"${COMPOSE[@]}" up -d --wait storefront seller-frontend admin-frontend gateway
+bash "$ROOT/compose/smoke.sh"
+printf '%s\n' "$RELEASE_SHA" > "$ROOT/last-successful-sha"
+chown root:root "$ROOT/last-successful-sha"
+chmod 0644 "$ROOT/last-successful-sha"
+printf 'DEPLOY_SUCCESS sha=%s\n' "$RELEASE_SHA"

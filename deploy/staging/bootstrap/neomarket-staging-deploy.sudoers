@@ -1,0 +1,2 @@
+neomarket-deploy ALL=(root) NOPASSWD: /usr/local/sbin/neomarket-staging-deploy
+neomarket-deploy ALL=(root) NOPASSWD: /usr/local/sbin/neomarket-staging-status

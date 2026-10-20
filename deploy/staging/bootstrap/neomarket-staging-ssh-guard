@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+request="${SSH_ORIGINAL_COMMAND:-}"
+if [[ "$request" =~ ^neomarket-staging-request[[:space:]]([0-9a-f]{40})$ ]]; then
+  printf '%s\n' "${BASH_REMATCH[1]}" > /var/lib/neomarket-staging/requests/release.sha
+  chmod 0600 /var/lib/neomarket-staging/requests/release.sha
+  exec sudo -n /usr/local/sbin/neomarket-staging-deploy
+fi
+if [[ "$request" == 'neomarket-staging-status' ]]; then
+  exec sudo -n /usr/local/sbin/neomarket-staging-status
+fi
+echo 'Only a validated staging release request is allowed.' >&2
+exit 126
