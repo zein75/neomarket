@@ -6,6 +6,8 @@ SSH access is working again through `market-staging` as `ter0o`. The read-only a
 
 The pinned staging release `45ebbae37cb5104decf7a586e767a55cd41cd0cf` responds healthy for Admin and B2B. Admin OIDC remains intentionally fail-closed: `GET /api/auth/login` returns `503 {"error":"Admin OIDC is not configured"}` because the Keycloak MFA AMR/ACR mapping is still not configured. Keycloak discovery is reachable and advertises only ACR `0` and `1`.
 
+The local-only Admin demo-auth escape hatch is disabled in staging: `GET /api/auth/demo` returns `404 ADMIN_DEMO_DISABLED` with `Cache-Control: no-store`. Evidence: [`admin-demo-disabled-45ebbae-20261020T1533Z.json`](evidence/staging/admin-demo-disabled-45ebbae-20261020T1533Z.json).
+
 The source audit confirms that AT-100, AT-104 and AT-105 still lack an authoritative configured search projection, cache invalidation contract, and rebuild/reconciliation/rollback contract. They remain blocked; no provider or semantics were invented.
 
 The current Admin/backend/frontend gate rerun is recorded in [`admin-gates-20261020`](evidence/admin-gates-20261020/REPORT.md): Admin unit `58 passed, 65 skipped`, Admin PostgreSQL `63 passed, 2 skipped`, B2B `285 passed, 38 skipped`, B2C `154 passed, 10 deselected`, Admin OpenAPI `76` operations, B2B internal OpenAPI `12` operations, and Admin frontend typecheck/build all pass. These are source and disposable-database checks; they do not replace the unavailable authenticated Keycloak browser gate.
