@@ -2,7 +2,7 @@
 
 ## Version
 
-- Runtime release: \`cba15c1aa57641677dc57d1692da8bc38d5f8ac5\`
+- Runtime release: \`ee079032cfd234ddd3232c4dfc74fc84b1a5bc22\`
 - Server: \`192.168.0.112\`
 - Gateway: \`127.0.0.1:18080\`
 - Environment: isolated staging
@@ -35,11 +35,14 @@ Evidence files:
 - \`evidence/staging/csp-fonts-82e1253-20261020.json\`
 - \`evidence/staging/status-cba15c1-20261020.txt\`
 - \`evidence/staging/seller-state-matrix-cba15c1-20261020.json\`
+- \`evidence/staging/status-ee07903-20261020.txt\`
+- \`evidence/staging/clamav-ee079032-20261020.json\`
 
-The Compose release `cba15c1` keeps ClamAV private and adds container-scoped
-DNS for the signature updater. The container remains healthy, but the staging
-network still cannot resolve/reach `database.clamav.net`; signature freshness
-is therefore an open operational blocker and no media-scan gate is promoted.
+The Compose release `ee079032` keeps the application network internal and adds
+a dedicated egress-only network for ClamAV updates. The scanner is healthy and
+a real EICAR sample was detected while a clean sample returned OK. The updater
+reaches the CDN but is currently rejected with HTTP 403/cooldown, so signature
+freshness remains an operational blocker and no media-scan gate is promoted.
 
 Authenticated Seller state sweep on the same release covered 15 real routes:
 all returned HTTP 200 with no page errors. Orders showed the truthful empty

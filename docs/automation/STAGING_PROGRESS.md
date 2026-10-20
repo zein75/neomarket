@@ -1,4 +1,4 @@
-# Staging progress
+﻿# Staging progress
 
 **Latest verification:** 2026-10-20 (local regression and frontend release checks)
 
@@ -33,12 +33,12 @@ Independent local checks on the current checkout:
 
 **Current release status: BLOCKED.** Production readiness is not asserted while browser, backup/restore, authenticated QA, visual, and full security evidence are missing.
 
-### ClamAV updater investigation — 2026-10-20 18:55 local
+### ClamAV updater investigation вЂ” 2026-10-20 18:55 local
 
 - Compose release `cba15c1aa57641677dc57d1692da8bc38d5f8ac5` adds explicit DNS servers only to the private ClamAV container; static Compose security remains PASS and the full stack redeployed healthy.
 - Runtime logs still report `Could not resolve hostname database.clamav.net` and `Update failed for database: daily`. The scanner process itself is healthy, but signature freshness is unavailable on this staging network. Media storage/antivirus remains PARTIAL and no false PASS is recorded.
 
-### CSP font asset verification — 2026-10-20 18:48 local
+### CSP font asset verification вЂ” 2026-10-20 18:48 local
 
 - Release `82e12533be6e06b24a08f9ab2febc13e4589505d` passed CI, all six image builds, migration checks, and restricted staging deployment with `SMOKE PASS`.
 - The enforced CSP now permits the Google font stylesheet/font origins already referenced by the three frontend shells. Real Chromium checks against Storefront, Seller and Admin returned HTTP 200, no CSP/font console violations, and no page errors. Evidence: `docs/automation/evidence/staging/csp-fonts-82e1253-20261020.json`.
@@ -59,7 +59,7 @@ The acceptance checker still returns `BLOCKED` (`202` required cases, `0` of `3`
 
 An additional real-browser smoke covered 24 public Storefront, Seller and Admin entrypoints across desktop, tablet and mobile; every response was HTTP 200 with a visible `<main>`. Report: `evidence/staging/public-browser-20261020.json`.
 
-### Latest protected status and Admin boundary run вЂ” 2026-10-20 17:15 local
+### Latest protected status and Admin boundary run РІР‚вЂќ 2026-10-20 17:15 local
 
 - The forced-command CI deploy key first captured status on SHA `c073e7446d6d639f73644a1b68d2110ed234b325`; this is historical evidence only. The current protected deployment is SHA `3a1e7e9505fc76716322aa2ea9d97a4eff30672f`, with current status in `docs/automation/evidence/staging/status-20261020T1721Z.txt`.
 - A fresh Chromium Playwright run against real `admin.neomarket.test` passed 72 anonymous protected-page and forged-cookie checks across desktop/tablet/mobile with the trusted Caddy local CA. This does not satisfy authenticated Admin acceptance or release manifests.
@@ -82,7 +82,7 @@ An additional real-browser smoke covered 24 public Storefront, Seller and Admin 
 - Admin anonymous boundary passed 72/72 across desktop/tablet/mobile, and CSRF boundary passed 3/3. Evidence: `admin-anonymous-boundary-fbbd473.json`, `admin-csrf-boundary-fbbd473.json`.
 - Gateway probes returned Storefront/Seller 200, Admin anonymous redirect 307, Keycloak 302, Admin health 200 and protected moderation 401. Evidence: `docs/automation/evidence/staging/gateway-routes-20261020T1801Z.txt`.
 
-### Authenticated Seller follow-up — 2026-10-20
+### Authenticated Seller follow-up вЂ” 2026-10-20
 
 - Release `fbbd47372974678638ed0cc48967fa73e4a3d3a8` passed verify/integration and all six immutable image builds, then completed the restricted staging deployment with healthy services and `SMOKE PASS`.
 - Fixed Seller middleware session validation to call the internal `NEOMARKET_B2B_URL/auth/me` service route instead of recursively calling the public BFF origin from inside the frontend container. This removed false login redirects on private Seller pages.
@@ -96,3 +96,32 @@ An additional real-browser smoke covered 24 public Storefront, Seller and Admin 
 - Fixture cleanup fix is deployed. The prior fixture was deleted successfully, and a fresh isolated `create` followed by `destroy` returned `deleted=true`. Evidence: `docs/automation/evidence/staging/qa-fixture-create-destroy-c1ba25c.txt`.
 - Current Admin boundary run passed 72/72 and CSRF run passed 3/3 on this SHA. Evidence: `docs/automation/evidence/staging/admin-anonymous-boundary-c1ba25c.json`, `admin-csrf-boundary-c1ba25c.json`.
 - Authenticated Keycloak/MFA remains unverified; release checker still requires three independent authenticated manifests.
+
+### Current staging release 5eb9fc6 and repeat boundary - 2026-10-20 13:06Z
+
+- CI run `39426955193` passed for SHA `5eb9fc6d6aec94da79c7ff62385b39f191b87e0c`; protected deploy completed and all required containers reported healthy.
+- Gateway probes returned Storefront/Seller 200, Admin anonymous 307 and health 200, Keycloak 302. Evidence: `docs/automation/evidence/staging/status-20261020T130602Z.txt` and `gateway-routes-20261020T130602Z.txt`.
+- Chromium staging Admin anonymous boundary passed 72/72 across desktop/tablet/mobile; CSRF boundary passed 3/3. Evidence: `admin-anonymous-boundary-5eb9fc6.json` and `admin-csrf-boundary-5eb9fc6.json`.
+- The LAN DNS change did not produce fresh ClamAV CDN signatures: service is healthy, but `freshclam` logs still show `Could not resolve hostname`; media gate remains PARTIAL.
+
+### Current staging release ee079032 - 2026-10-20 13:11Z
+
+- CI run `39427746198` completed successfully for SHA `ee079032cfd234ddd3232c4dfc74fc84b1a5bc22`; all six immutable images, PostgreSQL migration/concurrency checks and static checks passed.
+- Protected deployment completed and all required services, workers, gateway and Keycloak reported healthy. Evidence: `docs/automation/evidence/staging/status-ee07903-20261020.txt`.
+- ClamAV now uses the private `backend` network plus a dedicated non-internal `egress` network. A real EICAR sample returned `Eicar-Test-Signature FOUND`; a clean sample returned `OK`. Evidence: `docs/automation/evidence/staging/clamav-ee079032-20261020.json`.
+- Freshclam reaches the upstream CDN but receives HTTP 403 and enters CDN cooldown. Signature freshness and full media quarantine/upload evidence remain PARTIAL; this is not marked PASS.
+
+### Deployment confirmation for ee07903 - 2026-10-20 13:10Z
+
+- CI run `39427746198` passed for SHA `ee079032cfd234ddd3232c4dfc74fc84b1a5bc22`; protected deploy completed and all required containers are healthy.
+- Gateway probes passed on this SHA. Evidence: `docs/automation/evidence/staging/status-20261020T131059Z.txt` and `gateway-routes-20261020T131059Z.txt`.
+- The commit changes only ClamAV updater egress. Anonymous Admin 72/72 and CSRF 3/3 browser evidence remains from immediately preceding code-equivalent `5eb9fc6`; authenticated OIDC/MFA and three manifests remain blocked.
+
+### Current staging release cba15c1 and repeat boundary - 2026-10-20 12:54Z
+
+- CI run `39425351572` passed for SHA `cba15c1aa57641677dc57d1692da8bc38d5f8ac5`; protected deployment completed with all services healthy and `deploy_sha=cba15c1` in API readiness logs.
+- Fresh protected status and gateway probes pass for Storefront/Seller/Admin/Keycloak. Evidence: `docs/automation/evidence/staging/status-20261020T125422Z.txt` and `gateway-routes-20261020T125422Z.txt`.
+- Chromium staging Admin anonymous boundary passed 72/72 across desktop/tablet/mobile; CSRF boundary passed 3/3. Evidence: `admin-anonymous-boundary-cba15c1.json` and `admin-csrf-boundary-cba15c1.json`.
+- Admin unit/integration suite passed 56 with 65 environment-gated skips. Keycloak discovery still advertises only ACR `0`/`1`; authenticated MFA/OIDC and the three independent manifests remain blocked.
+
+

@@ -1,0 +1,11 @@
+﻿{
+    "result":  "BLOCKED",
+    "required_cases":  202,
+    "issues":  [
+                   "Exactly 3 independent manifests required, found 0"
+               ],
+    "issue_count":  1,
+    "commit":  "ee079032cfd234ddd3232c4dfc74fc84b1a5bc22",
+    "environment":  "staging",
+    "observedAt":  "2026-10-20T13:13:32.9104306Z"
+}

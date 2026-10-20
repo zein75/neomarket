@@ -1,0 +1,11 @@
+﻿{
+    "commit":  "ee079032cfd234ddd3232c4dfc74fc84b1a5bc22",
+    "environment":  "staging",
+    "observedAt":  "2026-10-20T13:11:35.1613773Z",
+    "service":  "clamd",
+    "health":  "healthy",
+    "eicar":  "MALWARE_DETECTED",
+    "cleanSample":  "OK",
+    "updater":  "BLOCKED_BY_CLAMAV_CDN_403",
+    "note":  "Scanner daemon is reachable and functional; signature refresh is blocked by upstream CDN cooldown/403 and remains a release blocker for freshness."
+}
