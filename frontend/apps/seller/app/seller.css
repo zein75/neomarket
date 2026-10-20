@@ -125,3 +125,4 @@ body>.seller-tenant-switcher{position:fixed;top:10px;right:238px;z-index:30;widt
   body:has(.seller-dashboard)>.seller-logout,body:has(.seller-dashboard)>.seller-logout-all{position:static;display:block;width:calc(100% - 240px);margin:14px 14px 0 226px}
   .seller-dashboard .seller-topbar{padding-right:14px}
 }
+.seller-logout:focus-visible{outline:3px solid var(--cobalt);outline-offset:2px}.seller-logout-all:focus-visible{outline:3px solid var(--cobalt);outline-offset:2px}
