@@ -1,0 +1,24 @@
+NeoMarket staging Seller BFF / private-export functional run
+
+Environment: staging
+Runtime commit: 45ebbae37cb5104decf7a586e767a55cd41cd0cf
+Run date: 2026-10-20
+Target: https://seller.neomarket.test via the staging Caddy gateway
+Browser project: desktop-chromium
+
+Invocation:
+NEOMARKET_SELLER_URL=https://seller.neomarket.test
+playwright test tests/seller-bff-problem-details.spec.ts tests/seller-private-export.spec.ts --project=desktop-chromium
+
+Transport note: the local Playwright API request context used a loopback CONNECT proxy to route seller.neomarket.test to 192.168.0.112 and explicitly allowed the staging Caddy internal CA for this functional run. Certificate validation was separately verified in the browser runs recorded in axe-45ebbae-cert-rerun and keyboard-45ebbae-cert-rerun.
+
+Result: 5 passed, 6 skipped, 0 failed.
+Passed:
+- Seller BFF anonymous route errors return the typed RFC 7807 envelope.
+- Seller auth mutation errors return the shared Problem Details envelope.
+- Seller inventory validation returns a correlated RFC 7807 error.
+- Seller BFF preserves a valid request ID.
+- Anonymous clients cannot read private Seller data and are redirected from the dashboard.
+
+Skipped:
+- Retry/export cases requiring the local retry fixture; the protected staging SSH guard does not expose that fixture.
