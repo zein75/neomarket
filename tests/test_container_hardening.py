@@ -1,7 +1,10 @@
 from pathlib import Path
 
+import yaml
+
 
 ROOT = Path(__file__).resolve().parents[1]
+APP_SERVICES = ("admin", "admin-worker", "b2c", "b2c-recovery-worker", "b2b")
 
 
 def test_service_dockerfiles_use_non_root_runtime_user():
@@ -13,6 +16,10 @@ def test_service_dockerfiles_use_non_root_runtime_user():
 
 
 def test_production_services_drop_capabilities():
-    compose = (ROOT / "docker-compose.prod.yaml").read_text(encoding="utf-8")
-    assert compose.count('cap_drop: ["ALL"]') == 3
-    assert compose.count('no-new-privileges:true') == 3
+    compose = yaml.safe_load(
+        (ROOT / "docker-compose.prod.yaml").read_text(encoding="utf-8")
+    )
+    for name in APP_SERVICES:
+        service = compose["services"][name]
+        assert service["cap_drop"] == ["ALL"]
+        assert "no-new-privileges:true" in service["security_opt"]
