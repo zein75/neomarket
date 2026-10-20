@@ -36,6 +36,7 @@ Evidence files:
 - \`evidence/staging/status-cba15c1-20261020.txt\`
 - \`evidence/staging/seller-state-matrix-cba15c1-20261020.json\`
 - \`evidence/staging/status-ee07903-20261020.txt\`
+- \`evidence/staging/status-ee07903-after-drills-20261020.txt\`
 - \`evidence/staging/clamav-ee079032-20261020.json\`
 - \`evidence/staging/smoke-ee07903-20261020.txt\`
 - \`evidence/staging/qa-fixture-create-destroy-ee07903-20261020.json\`
