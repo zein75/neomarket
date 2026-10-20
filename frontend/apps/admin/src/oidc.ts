@@ -52,8 +52,8 @@ function oidcInternalBaseUrl() {
   ) {
     throw new Error('ADMIN_OIDC_INTERNAL_BASE_URL must be a host-only internal URL');
   }
-  if (parsed.protocol === 'http:' && parsed.hostname !== 'keycloak') {
-    throw new Error('HTTP ADMIN_OIDC_INTERNAL_BASE_URL is restricted to the private Keycloak service');
+  if (parsed.protocol === 'http:' && !['keycloak', 'gateway'].includes(parsed.hostname)) {
+    throw new Error('HTTP ADMIN_OIDC_INTERNAL_BASE_URL is restricted to the private staging network');
   }
   return parsed;
 }

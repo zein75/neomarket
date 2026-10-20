@@ -132,8 +132,8 @@ class Settings:
                     or internal.password
                 ):
                     raise RuntimeError("OIDC_INTERNAL_BASE_URL must be a host-only internal URL")
-                if internal.scheme == "http" and internal.hostname != "keycloak":
-                    raise RuntimeError("HTTP OIDC_INTERNAL_BASE_URL is restricted to the private Keycloak service")
+                if internal.scheme == "http" and internal.hostname not in {"keycloak", "gateway"}:
+                    raise RuntimeError("HTTP OIDC_INTERNAL_BASE_URL is restricted to the private staging network")
 
 
 settings = Settings()
