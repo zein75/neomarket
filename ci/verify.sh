@@ -7,6 +7,9 @@ uv run --frozen python ci/validate_current_admin_spec.py
 uv run --frozen python scripts/check_openapi_routes.py
 uv run --frozen python ci/check_staging_config.py
 PYTHONPATH=services/b2b:shared uv run --frozen pytest -q services/b2b/tests
-PYTHONPATH=services/b2c:shared uv run --frozen pytest -q services/b2c/tests
+# PostgreSQL concurrency scenarios run in ci/postgres-integration.sh with the
+# ephemeral service container; do not turn their intentional local opt-in into
+# a release-gate skip in this unit/static job.
+PYTHONPATH=services/b2c:shared uv run --frozen pytest -q services/b2c/tests -m 'not postgres_integration'
 PYTHONPATH=services/admin:shared uv run --frozen pytest -q services/admin/tests
 PYTHONPATH=shared uv run --frozen pytest -q shared/tests tests
