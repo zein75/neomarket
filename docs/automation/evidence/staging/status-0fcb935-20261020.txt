@@ -1,0 +1,444 @@
+﻿=== compose status ===
+NAME                                      IMAGE                                                                           COMMAND                  SERVICE               CREATED             STATUS                       PORTS
+neomarket-staging-admin-1                 ghcr.io/zein75/market/admin:0fcb935bfd14eba6eaa197898bf865e21eddfbd4            "uv run --no-sync uv…"   admin                 2 minutes ago       Up 2 minutes (healthy)       8003/tcp
+neomarket-staging-admin-frontend-1        ghcr.io/zein75/market/admin-frontend:0fcb935bfd14eba6eaa197898bf865e21eddfbd4   "docker-entrypoint.s…"   admin-frontend        2 minutes ago       Up 2 minutes (healthy)       3000/tcp
+neomarket-staging-admin-postgres-1        postgres:16-alpine                                                              "docker-entrypoint.s…"   admin-postgres        5 hours ago         Up 5 hours (healthy)         5432/tcp
+neomarket-staging-admin-worker-1          ghcr.io/zein75/market/admin:0fcb935bfd14eba6eaa197898bf865e21eddfbd4            "uv run --no-sync py…"   admin-worker          2 minutes ago       Up 2 minutes (healthy)       8003/tcp
+neomarket-staging-b2b-1                   ghcr.io/zein75/market/b2b:0fcb935bfd14eba6eaa197898bf865e21eddfbd4              "uv run --no-sync uv…"   b2b                   2 minutes ago       Up 2 minutes (healthy)       8002/tcp
+neomarket-staging-b2b-run-a324af6d784b    ghcr.io/zein75/market/b2b:f533cc3c37c4a1123aa50cf1b994bd3028d0e722              "uv run --no-sync py…"   b2b                   28 minutes ago      Created                      
+neomarket-staging-b2b-taxonomy-worker-1   ghcr.io/zein75/market/b2b:0fcb935bfd14eba6eaa197898bf865e21eddfbd4              "uv run --no-sync py…"   b2b-taxonomy-worker   2 minutes ago       Up 2 minutes (healthy)       8002/tcp
+neomarket-staging-b2c-1                   ghcr.io/zein75/market/b2c:0fcb935bfd14eba6eaa197898bf865e21eddfbd4              "uv run --no-sync uv…"   b2c                   2 minutes ago       Up 2 minutes (healthy)       8001/tcp
+neomarket-staging-b2c-recovery-worker-1   ghcr.io/zein75/market/b2c:0fcb935bfd14eba6eaa197898bf865e21eddfbd4              "uv run --no-sync py…"   b2c-recovery-worker   2 minutes ago       Up 2 minutes (healthy)       8001/tcp
+neomarket-staging-clamd-1                 clamav/clamav:1.5.4                                                             "/init"                  clamd                 About an hour ago   Up About an hour (healthy)   3310/tcp, 7357/tcp
+neomarket-staging-gateway-1               nginx:1.27-alpine                                                               "/docker-entrypoint.…"   gateway               2 minutes ago       Up 2 minutes (healthy)       127.0.0.1:18080->80/tcp
+neomarket-staging-keycloak-1              quay.io/keycloak/keycloak:26.3.2                                                "/opt/keycloak/bin/k…"   keycloak              4 hours ago         Up 4 hours (healthy)         8080/tcp, 8443/tcp, 9000/tcp
+neomarket-staging-keycloak-postgres-1     postgres:16-alpine                                                              "docker-entrypoint.s…"   keycloak-postgres     4 hours ago         Up 4 hours (healthy)         5432/tcp
+neomarket-staging-mailpit-1               axllent/mailpit:v1.21.8                                                         "/mailpit"               mailpit               4 hours ago         Up 4 hours (healthy)         1025/tcp, 1110/tcp, 8025/tcp
+neomarket-staging-postgres-1              postgres:16-alpine                                                              "docker-entrypoint.s…"   postgres              5 hours ago         Up About an hour (healthy)   5432/tcp
+neomarket-staging-redis-1                 redis:7-alpine                                                                  "docker-entrypoint.s…"   redis                 5 hours ago         Up About an hour (healthy)   6379/tcp
+neomarket-staging-seller-frontend-1       ghcr.io/zein75/market/seller:0fcb935bfd14eba6eaa197898bf865e21eddfbd4           "docker-entrypoint.s…"   seller-frontend       2 minutes ago       Up 2 minutes (healthy)       3000/tcp
+neomarket-staging-storefront-1            ghcr.io/zein75/market/storefront:0fcb935bfd14eba6eaa197898bf865e21eddfbd4       "docker-entrypoint.s…"   storefront            2 minutes ago       Up 2 minutes (healthy)       3000/tcp
+=== health states ===
+/neomarket-staging-admin-1 state=running health=healthy exit=0
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+
+/neomarket-staging-admin-worker-1 state=running health=healthy exit=0
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+
+/neomarket-staging-b2b-1 state=running health=healthy exit=0
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+
+/neomarket-staging-b2c-1 state=running health=healthy exit=0
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+
+/neomarket-staging-b2b-taxonomy-worker-1 state=running health=healthy exit=0
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+
+/neomarket-staging-b2c-recovery-worker-1 state=running health=healthy exit=0
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+
+/neomarket-staging-clamd-1 state=running health=healthy exit=0
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+
+/neomarket-staging-mailpit-1 state=running health=healthy exit=0
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+
+/neomarket-staging-keycloak-1 state=running health=healthy exit=0
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+
+/neomarket-staging-storefront-1 state=running health=healthy exit=0
+  health exit=0 output=health 200 {"status":"ok"}
+
+  health exit=0 output=health 200 {"status":"ok"}
+
+  health exit=0 output=health 200 {"status":"ok"}
+
+  health exit=0 output=health 200 {"status":"ok"}
+
+  health exit=0 output=health 200 {"status":"ok"}
+
+
+/neomarket-staging-seller-frontend-1 state=running health=healthy exit=0
+  health exit=0 output=health 200 {"status":"ok","service":"seller"}
+
+  health exit=0 output=health 200 {"status":"ok","service":"seller"}
+
+  health exit=0 output=health 200 {"status":"ok","service":"seller"}
+
+  health exit=0 output=health 200 {"status":"ok","service":"seller"}
+
+  health exit=0 output=health 200 {"status":"ok","service":"seller"}
+
+
+/neomarket-staging-admin-frontend-1 state=running health=healthy exit=0
+  health exit=0 output=health 200 {"status":"ok","service":"admin"}
+
+  health exit=0 output=health 200 {"status":"ok","service":"admin"}
+
+  health exit=0 output=health 200 {"status":"ok","service":"admin"}
+
+  health exit=0 output=health 200 {"status":"ok","service":"admin"}
+
+  health exit=0 output=health 200 {"status":"ok","service":"admin"}
+
+
+/neomarket-staging-gateway-1 state=running health=healthy exit=0
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+
+=== recent admin-worker logs ===
+=== recent admin/b2b logs ===
+admin-1  | INFO:     Started server process [11]
+admin-1  | INFO:     Waiting for application startup.
+admin-1  | INFO:     Application startup complete.
+admin-1  | INFO:     Uvicorn running on http://0.0.0.0:8003 (Press CTRL+C to quit)
+admin-1  | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":40.95,"event":"http_request","method":"GET","request_id":"b411efd5-42e4-4b38-adc6-8c8fbaf80c87","route":"/ready","service":"admin","status":200,"trace_id":"b411efd5-42e4-4b38-adc6-8c8fbaf80c87"}
+admin-1  | INFO:     127.0.0.1:44676 - "GET /ready HTTP/1.1" 200 OK
+admin-1  | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":1.82,"event":"http_request","method":"GET","request_id":"371e7a8b-21f4-41ca-98b7-b55da1fd0c7d","route":"/ready","service":"admin","status":200,"trace_id":"371e7a8b-21f4-41ca-98b7-b55da1fd0c7d"}
+admin-1  | INFO:     127.0.0.1:59232 - "GET /ready HTTP/1.1" 200 OK
+admin-1  | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":1.449,"event":"http_request","method":"GET","request_id":"3350049d-df06-4435-a41b-786ba4be27ea","route":"/ready","service":"admin","status":200,"trace_id":"3350049d-df06-4435-a41b-786ba4be27ea"}
+admin-1  | INFO:     127.0.0.1:57576 - "GET /ready HTTP/1.1" 200 OK
+admin-1  | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":1.515,"event":"http_request","method":"GET","request_id":"474fb967-1806-4a76-8891-7c569fec5bd8","route":"/ready","service":"admin","status":200,"trace_id":"474fb967-1806-4a76-8891-7c569fec5bd8"}
+admin-1  | INFO:     127.0.0.1:41024 - "GET /ready HTTP/1.1" 200 OK
+admin-1  | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":1.456,"event":"http_request","method":"GET","request_id":"0189d7a3-ca5f-4c68-ba78-1bdacbccb8c7","route":"/ready","service":"admin","status":200,"trace_id":"0189d7a3-ca5f-4c68-ba78-1bdacbccb8c7"}
+admin-1  | INFO:     127.0.0.1:36100 - "GET /ready HTTP/1.1" 200 OK
+admin-1  | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":1.436,"event":"http_request","method":"GET","request_id":"8553f602-7d6f-4276-b16d-97bf5e18e6af","route":"/ready","service":"admin","status":200,"trace_id":"8553f602-7d6f-4276-b16d-97bf5e18e6af"}
+admin-1  | INFO:     127.0.0.1:59328 - "GET /ready HTTP/1.1" 200 OK
+admin-1  | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":2.194,"event":"http_request","method":"GET","request_id":"6877f1ae-18c6-49f9-933f-e11d3bb169ef","route":"/ready","service":"admin","status":200,"trace_id":"6877f1ae-18c6-49f9-933f-e11d3bb169ef"}
+admin-1  | INFO:     127.0.0.1:57752 - "GET /ready HTTP/1.1" 200 OK
+admin-1  | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":2.178,"event":"http_request","method":"GET","request_id":"57c9fc9e-ed6b-469f-88df-8d7508680d8d","route":"/ready","service":"admin","status":200,"trace_id":"57c9fc9e-ed6b-469f-88df-8d7508680d8d"}
+admin-1  | INFO:     127.0.0.1:51840 - "GET /ready HTTP/1.1" 200 OK
+admin-1  | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":39.094,"event":"http_request","method":"GET","request_id":"b8a69252-7e31-4464-a390-411228f7436c","route":"/session","service":"admin","status":401,"trace_id":"b8a69252-7e31-4464-a390-411228f7436c"}
+admin-1  | INFO:     172.20.0.15:40882 - "GET /session HTTP/1.1" 401 Unauthorized
+admin-1  | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":1.406,"event":"http_request","method":"GET","request_id":"584a0192-61e7-4c99-8751-bffd1d74a6f4","route":"/ready","service":"admin","status":200,"trace_id":"584a0192-61e7-4c99-8751-bffd1d74a6f4"}
+admin-1  | INFO:     127.0.0.1:46794 - "GET /ready HTTP/1.1" 200 OK
+admin-1  | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":6.548,"event":"http_request","method":"GET","request_id":"65699ef6-a3d4-4eeb-afef-152a77b040eb","route":"/session","service":"admin","status":401,"trace_id":"65699ef6-a3d4-4eeb-afef-152a77b040eb"}
+admin-1  | INFO:     172.20.0.15:40882 - "GET /session HTTP/1.1" 401 Unauthorized
+admin-1  | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":6.237,"event":"http_request","method":"GET","request_id":"655805d1-35a8-41d7-a9fd-1bc963e44ef6","route":"/session","service":"admin","status":401,"trace_id":"655805d1-35a8-41d7-a9fd-1bc963e44ef6"}
+admin-1  | INFO:     172.20.0.15:40882 - "GET /session HTTP/1.1" 401 Unauthorized
+admin-1  | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":1.444,"event":"http_request","method":"GET","request_id":"8b52234a-0392-4aa2-a790-b3354237db8e","route":"/ready","service":"admin","status":200,"trace_id":"8b52234a-0392-4aa2-a790-b3354237db8e"}
+admin-1  | INFO:     127.0.0.1:55936 - "GET /ready HTTP/1.1" 200 OK
+b2b-1    | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":9.355,"event":"http_request","method":"GET","request_id":"9a9dfab4-9ff3-44e2-8451-5910fa6dd08f","route":"/api/v1/seller/inventory","service":"b2b","status":200,"trace_id":"9a9dfab4-9ff3-44e2-8451-5910fa6dd08f"}
+b2b-1    | INFO:     172.20.0.14:57436 - "GET /api/v1/seller/inventory?limit=50 HTTP/1.1" 200 OK
+b2b-1    | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":13.997,"event":"http_request","method":"GET","request_id":"41b5bab5-3fa8-47d0-83c7-f9719deba47e","route":"/api/v1/seller/dashboard/metrics","service":"b2b","status":200,"trace_id":"41b5bab5-3fa8-47d0-83c7-f9719deba47e"}
+b2b-1    | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":13.561,"event":"http_request","method":"GET","request_id":"8acf2fcd-046e-40d0-aedf-682a57c87e7c","route":"/auth/organizations","service":"b2b","status":200,"trace_id":"8acf2fcd-046e-40d0-aedf-682a57c87e7c"}
+b2b-1    | INFO:     172.20.0.14:57444 - "GET /api/v1/seller/dashboard/metrics HTTP/1.1" 200 OK
+b2b-1    | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":12.562,"event":"http_request","method":"GET","request_id":"121d6bfb-b3ff-42b1-862d-f61867128d8b","route":"/auth/me","service":"b2b","status":200,"trace_id":"121d6bfb-b3ff-42b1-862d-f61867128d8b"}
+b2b-1    | INFO:     172.20.0.14:57478 - "GET /auth/organizations HTTP/1.1" 200 OK
+b2b-1    | INFO:     172.20.0.14:57484 - "GET /auth/me HTTP/1.1" 200 OK
+b2b-1    | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":3.244,"event":"http_request","method":"GET","request_id":"44bf046d-3423-4faf-b507-95412da1e43b","route":"/auth/me","service":"b2b","status":200,"trace_id":"44bf046d-3423-4faf-b507-95412da1e43b"}
+b2b-1    | INFO:     172.20.0.14:57436 - "GET /auth/me HTTP/1.1" 200 OK
+b2b-1    | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":5.52,"event":"http_request","method":"GET","request_id":"9155caec-c709-4aa2-84cf-b60c4f1a031d","route":"/auth/organizations","service":"b2b","status":200,"trace_id":"9155caec-c709-4aa2-84cf-b60c4f1a031d"}
+b2b-1    | INFO:     172.20.0.14:57436 - "GET /auth/organizations HTTP/1.1" 200 OK
+b2b-1    | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":4.736,"event":"http_request","method":"GET","request_id":"0edf5d4c-b55c-4533-8b99-eb2af1b8d315","route":"/auth/me","service":"b2b","status":200,"trace_id":"0edf5d4c-b55c-4533-8b99-eb2af1b8d315"}
+b2b-1    | INFO:     172.20.0.14:57444 - "GET /auth/me HTTP/1.1" 200 OK
+b2b-1    | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":4.713,"event":"http_request","method":"GET","request_id":"e11da14f-7e97-4c56-8fed-edd2266abefe","route":"/auth/me","service":"b2b","status":200,"trace_id":"e11da14f-7e97-4c56-8fed-edd2266abefe"}
+b2b-1    | INFO:     172.20.0.14:57436 - "GET /auth/me HTTP/1.1" 200 OK
+b2b-1    | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":9.683,"event":"http_request","method":"GET","request_id":"72b9862b-7a74-43b6-a632-1ee2adabeff9","route":"/auth/organizations","service":"b2b","status":200,"trace_id":"72b9862b-7a74-43b6-a632-1ee2adabeff9"}
+b2b-1    | INFO:     172.20.0.14:57436 - "GET /auth/organizations HTTP/1.1" 200 OK
+b2b-1    | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":8.948,"event":"http_request","method":"GET","request_id":"8e09eaaa-0baf-4c64-bc1f-36516c1763d5","route":"/auth/me","service":"b2b","status":200,"trace_id":"8e09eaaa-0baf-4c64-bc1f-36516c1763d5"}
+b2b-1    | INFO:     172.20.0.14:57478 - "GET /auth/me HTTP/1.1" 200 OK
+b2b-1    | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":14.264,"event":"http_request","method":"GET","request_id":"d6149a44-20af-42b8-b197-140a58c62143","route":"/api/v1/seller/orders","service":"b2b","status":200,"trace_id":"d6149a44-20af-42b8-b197-140a58c62143"}
+b2b-1    | INFO:     172.20.0.14:57444 - "GET /api/v1/seller/orders?limit=50 HTTP/1.1" 200 OK
+b2b-1    | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":0.281,"event":"http_request","method":"GET","request_id":"30b854ee-ae51-41b6-aa76-86aab23e27df","route":"/health","service":"b2b","status":200,"trace_id":"30b854ee-ae51-41b6-aa76-86aab23e27df"}
+b2b-1    | INFO:     172.20.0.16:44728 - "GET /health HTTP/1.0" 200 OK
+b2b-1    | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":4.658,"event":"http_request","method":"GET","request_id":"12ff1b4f-61db-48a7-9098-bc14f27fea9d","route":"/auth/me","service":"b2b","status":200,"trace_id":"12ff1b4f-61db-48a7-9098-bc14f27fea9d"}
+b2b-1    | INFO:     172.20.0.14:57436 - "GET /auth/me HTTP/1.1" 200 OK
+b2b-1    | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":11.039,"event":"http_request","method":"GET","request_id":"2670ed8a-df84-4059-9cab-cb4a1b05a61b","route":"/team/members","service":"b2b","status":200,"trace_id":"2670ed8a-df84-4059-9cab-cb4a1b05a61b"}
+b2b-1    | INFO:     172.20.0.14:57436 - "GET /team/members HTTP/1.1" 200 OK
+b2b-1    | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":12.703,"event":"http_request","method":"GET","request_id":"8dd9514e-f552-4a9d-8c29-a9e515d26ebe","route":"/auth/organizations","service":"b2b","status":200,"trace_id":"8dd9514e-f552-4a9d-8c29-a9e515d26ebe"}
+b2b-1    | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":9.805,"event":"http_request","method":"GET","request_id":"aee58312-bb9c-4ce3-a59f-c48296ebbe18","route":"/auth/me","service":"b2b","status":200,"trace_id":"aee58312-bb9c-4ce3-a59f-c48296ebbe18"}
+b2b-1    | INFO:     172.20.0.14:57444 - "GET /auth/organizations HTTP/1.1" 200 OK
+b2b-1    | INFO:     172.20.0.14:57478 - "GET /auth/me HTTP/1.1" 200 OK
+b2b-1    | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":4.355,"event":"http_request","method":"GET","request_id":"da40d9b7-e843-418a-9939-e7383be9f3f6","route":"/auth/me","service":"b2b","status":200,"trace_id":"da40d9b7-e843-418a-9939-e7383be9f3f6"}
+b2b-1    | INFO:     172.20.0.14:57436 - "GET /auth/me HTTP/1.1" 200 OK
+b2b-1    | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":4.296,"event":"http_request","method":"GET","request_id":"288b8ac6-50c2-4570-beea-9302e989ffe8","route":"/auth/organizations","service":"b2b","status":200,"trace_id":"288b8ac6-50c2-4570-beea-9302e989ffe8"}
+b2b-1    | INFO:     172.20.0.14:57436 - "GET /auth/organizations HTTP/1.1" 200 OK
+b2b-1    | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":3.48,"event":"http_request","method":"GET","request_id":"2c979a5e-5323-4ff9-a8cf-de224743cad5","route":"/auth/me","service":"b2b","status":200,"trace_id":"2c979a5e-5323-4ff9-a8cf-de224743cad5"}
+b2b-1    | INFO:     172.20.0.14:57444 - "GET /auth/me HTTP/1.1" 200 OK
+b2b-1    | {"actor_id":null,"deploy_sha":"0fcb935bfd14eba6eaa197898bf865e21eddfbd4","duration_ms":2.788,"event":"http_request","method":"GET","request_id":"283c6058-fada-4415-9a50-a40c105fbe44","route":"/ready","service":"b2b","status":200,"trace_id":"283c6058-fada-4415-9a50-a40c105fbe44"}
+b2b-1    | INFO:     127.0.0.1:57058 - "GET /ready HTTP/1.1" 200 OK
+=== recent frontend logs ===
+storefront-1  |    ▲ Next.js 15.5.27
+admin-frontend-1  |    ▲ Next.js 15.5.27
+admin-frontend-1  |    - Local:        http://localhost:3000
+admin-frontend-1  |    - Network:      http://0.0.0.0:3000
+admin-frontend-1  | 
+admin-frontend-1  |  ✓ Starting...
+admin-frontend-1  |  ✓ Ready in 120ms
+storefront-1      |    - Local:        http://localhost:3000
+storefront-1      |    - Network:      http://0.0.0.0:3000
+storefront-1      | 
+storefront-1      |  ✓ Starting...
+storefront-1      |  ✓ Ready in 114ms
+seller-frontend-1  |    ▲ Next.js 15.5.27
+seller-frontend-1  |    - Local:        http://localhost:3000
+seller-frontend-1  |    - Network:      http://0.0.0.0:3000
+seller-frontend-1  | 
+seller-frontend-1  |  ✓ Starting...
+seller-frontend-1  |  ✓ Ready in 114ms
+=== recent infrastructure logs ===
+keycloak-1  | Changes detected in configuration. Updating the server image.
+keycloak-1  | Updating the configuration and installing your custom providers, if any. Please wait.
+keycloak-1  | 2026-10-20 10:12:35,000 INFO  [io.quarkus.deployment.QuarkusAugmentor] (main) Quarkus augmentation completed in 7799ms
+keycloak-1  | Server configuration updated and persisted. Run the following command to review the configuration:
+keycloak-1  | 
+keycloak-1  | 	kc.sh show-config
+keycloak-1  | 
+keycloak-1  | Next time you run the server, just run:
+keycloak-1  | 
+keycloak-1  | 	kc.sh start --http-enabled=true --hostname-strict=false --proxy-headers=xforwarded --import-realm --optimized
+keycloak-1  | 
+keycloak-1  | WARNING: Hostname v1 options [hostname-strict-https] are still in use, please review your configuration
+keycloak-1  | 2026-10-20 10:12:36,239 INFO  [org.keycloak.url.HostnameV2ProviderFactory] (main) If hostname is specified, hostname-strict is effectively ignored
+keycloak-1  | 2026-10-20 10:12:41,836 INFO  [org.keycloak.quarkus.runtime.storage.database.liquibase.QuarkusJpaUpdaterProvider] (main) Initializing database schema. Using changelog META-INF/jpa-changelog-master.xml
+keycloak-1  | 2026-10-20 10:12:53,144 INFO  [org.keycloak.spi.infinispan.impl.embedded.JGroupsConfigurator] (main) JGroups JDBC_PING discovery enabled.
+keycloak-1  | 2026-10-20 10:12:53,793 INFO  [org.keycloak.spi.infinispan.impl.embedded.JGroupsConfigurator] (main) JGroups Encryption enabled (mTLS).
+keycloak-1  | 2026-10-20 10:12:54,176 INFO  [org.keycloak.jgroups.certificates.CertificateReloadManager] (main) Starting JGroups certificate reload manager
+keycloak-1  | 2026-10-20 10:12:54,488 INFO  [org.infinispan.CONTAINER] (main) ISPN000556: Starting user marshaller 'org.infinispan.commons.marshall.ImmutableProtoStreamMarshaller'
+keycloak-1  | 2026-10-20 10:12:55,741 INFO  [org.infinispan.CLUSTER] (main) ISPN000078: Starting JGroups channel `ISPN` with stack `jdbc-ping`
+keycloak-1  | 2026-10-20 10:12:55,746 INFO  [org.jgroups.JChannel] (main) local_addr: e4e9925f-dd79-4d15-a572-f2e2270285c2, name: ebebdefbc259-7222
+keycloak-1  | 2026-10-20 10:12:55,779 INFO  [org.jgroups.protocols.FD_SOCK2] (main) server listening on *:57800
+keycloak-1  | 2026-10-20 10:12:55,793 INFO  [org.jgroups.protocols.pbcast.GMS] (main) ebebdefbc259-7222: no members discovered after 2 ms: creating cluster as coordinator
+keycloak-1  | 2026-10-20 10:12:55,829 INFO  [org.infinispan.CLUSTER] (main) ISPN000094: Received new cluster view for channel ISPN: [ebebdefbc259-7222|0] (1) [ebebdefbc259-7222]
+keycloak-1  | 2026-10-20 10:12:55,832 INFO  [org.keycloak.jgroups.certificates.CertificateReloadManager] (main) Reloading JGroups Certificate
+keycloak-1  | 2026-10-20 10:12:55,946 INFO  [org.infinispan.CLUSTER] (main) ISPN000079: Channel `ISPN` local address is `ebebdefbc259-7222`, physical addresses are `[172.22.0.3:7800]`
+keycloak-1  | 2026-10-20 10:12:56,323 INFO  [org.keycloak.connections.infinispan.DefaultInfinispanConnectionProviderFactory] (main) Node name: ebebdefbc259-7222, Site name: null
+keycloak-1  | 2026-10-20 10:12:56,507 INFO  [org.keycloak.exportimport.dir.DirImportProvider] (main) Importing from directory /opt/keycloak/bin/../data/import
+keycloak-1  | 2026-10-20 10:12:56,623 INFO  [org.keycloak.services] (main) KC-SERVICES0050: Initializing master realm
+keycloak-1  | 2026-10-20 10:12:57,616 INFO  [org.keycloak.exportimport.singlefile.SingleFileImportProvider] (main) Full importing from file /opt/keycloak/bin/../data/import/neomarket-staging.json
+keycloak-1  | 2026-10-20 10:12:57,950 WARN  [org.keycloak.models.utils.RepresentationToModel] (main) Referenced client scope 'profile' doesn't exist. Ignoring
+keycloak-1  | 2026-10-20 10:12:57,953 WARN  [org.keycloak.models.utils.RepresentationToModel] (main) Referenced client scope 'email' doesn't exist. Ignoring
+keycloak-1  | 2026-10-20 10:12:57,956 WARN  [org.keycloak.models.utils.RepresentationToModel] (main) Referenced client scope 'roles' doesn't exist. Ignoring
+keycloak-1  | 2026-10-20 10:12:57,958 WARN  [org.keycloak.models.utils.RepresentationToModel] (main) Referenced client scope 'web-origins' doesn't exist. Ignoring
+keycloak-1  | 2026-10-20 10:12:58,449 INFO  [org.keycloak.exportimport.util.ImportUtils] (main) Realm 'neomarket-staging' imported
+mailpit-1   | time="2026/10/20 10:56:18" level=info msg="[smtpd] enabling any authentication (insecure)"
+keycloak-1  | 2026-10-20 10:12:58,449 INFO  [org.keycloak.services] (main) KC-SERVICES0030: Full model import requested. Strategy: IGNORE_EXISTING
+keycloak-1  | 2026-10-20 10:12:58,449 INFO  [org.keycloak.services] (main) KC-SERVICES0032: Import finished successfully
+keycloak-1  | 2026-10-20 10:12:58,513 INFO  [org.keycloak.services] (main) KC-SERVICES0077: Created temporary admin user with username kc-admin
+keycloak-1  | 2026-10-20 10:12:59,253 INFO  [io.quarkus] (main) Keycloak 26.3.2 on JVM (powered by Quarkus 3.20.2) started in 24.041s. Listening on: http://0.0.0.0:8080. Management interface listening on http://0.0.0.0:9000.
+keycloak-1  | 2026-10-20 10:12:59,253 INFO  [io.quarkus] (main) Profile prod activated. 
+keycloak-1  | 2026-10-20 10:12:59,253 INFO  [io.quarkus] (main) Installed features: [agroal, cdi, hibernate-orm, jdbc-postgresql, keycloak, narayana-jta, opentelemetry, reactive-routes, rest, rest-jackson, smallrye-context-propagation, smallrye-health, vertx]
+mailpit-1   | time="2026/10/20 10:56:18" level=info msg="[smtpd] starting on 0.0.0.0:1025 (no encryption)"
+mailpit-1   | time="2026/10/20 10:56:18" level=info msg="[http] starting on 0.0.0.0:8025"
+mailpit-1   | time="2026/10/20 10:56:18" level=info msg="[http] accessible via http://0.0.0.0:8025/"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:28 +0000] "GET /_next/static/chunks/0244b62f-70fbfd761239fef9.js HTTP/1.1" 200 54442 "-" "Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.6 Mobile Safari/537.36"
+clamd-1     | Starting Freshclamd
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:29 +0000] "GET /settings HTTP/1.1" 307 23 "-" "Mozilla/5.0 (Linux; Android 8.1.0; SM-T837A) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:29 +0000] "GET /unauthorized HTTP/1.1" 200 2600 "-" "Mozilla/5.0 (Linux; Android 8.1.0; SM-T837A) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:29 +0000] "GET /_next/static/chunks/main-app-3bd5985537948238.js HTTP/1.1" 200 557 "-" "Mozilla/5.0 (Linux; Android 8.1.0; SM-T837A) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.6 Safari/537.36"
+clamd-1     | Starting ClamAV
+clamd-1     | 
+Socket for clamd not found yet, retrying (0/1800) ...ClamAV update process started at Tue Oct 20 13:09:45 2026
+clamd-1     | daily database available for update (local version: 28157, remote version: 28159)
+clamd-1     | WARNING: downloadPatchAndApply: Can't download daily-28158.cdiff from https://database.clamav.net/daily-28158.cdiff
+clamd-1     | WARNING: Incremental update failed, trying to download daily.cvd
+clamd-1     | WARNING: Can't download daily.cvd from https://database.clamav.net/daily.cvd
+clamd-1     | WARNING: FreshClam received error code 403 from the ClamAV Content Delivery Network (CDN).
+clamd-1     | This could mean several things:
+clamd-1     |  1. You are running an out-of-date version of ClamAV / FreshClam.
+clamd-1     |     Ensure you are the most updated version by visiting https://www.clamav.net/downloads
+clamd-1     |  2. Your network is explicitly denied by the FreshClam CDN.
+clamd-1     |     In order to rectify this please check that you are:
+clamd-1     |    a. Running an up-to-date version of FreshClam
+clamd-1     |    b. Running FreshClam no more than once an hour
+clamd-1     |    c. Connecting from an IP in a blocked region
+clamd-1     |       Please see https://www.cisco.com/c/m/en_us/crisissupport.html
+clamd-1     |    d. If you have checked (a), (b) and (c), please open a ticket at
+clamd-1     |       https://github.com/Cisco-Talos/clamav/issues
+clamd-1     |       and we will investigate why your network is blocked.
+clamd-1     |       Please provide the following cf-ray id with your ticket: a4d8424749ebc76f-HEL
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:29 +0000] "GET /_next/static/chunks/webpack-07c62182acb7385d.js HTTP/1.1" 200 1684 "-" "Mozilla/5.0 (Linux; Android 8.1.0; SM-T837A) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:29 +0000] "GET /_next/static/chunks/app/error-b5df034861788c92.js HTTP/1.1" 200 663 "-" "Mozilla/5.0 (Linux; Android 8.1.0; SM-T837A) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:29 +0000] "GET /_next/static/css/f5a40a2e38f5e77b.css HTTP/1.1" 200 7246 "-" "Mozilla/5.0 (Linux; Android 8.1.0; SM-T837A) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:29 +0000] "GET /_next/static/chunks/204-48309b83e15d5d28.js HTTP/1.1" 200 46266 "-" "Mozilla/5.0 (Linux; Android 8.1.0; SM-T837A) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:29 +0000] "GET /_next/static/chunks/0244b62f-70fbfd761239fef9.js HTTP/1.1" 200 54442 "-" "Mozilla/5.0 (Linux; Android 8.1.0; SM-T837A) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:31 +0000] "GET /moderation HTTP/1.1" 307 23 "-" "Mozilla/5.0 (Linux; Android 8.1.0; SM-T837A) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:31 +0000] "GET /unauthorized HTTP/1.1" 200 2600 "-" "Mozilla/5.0 (Linux; Android 8.1.0; SM-T837A) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:31 +0000] "GET /_next/static/chunks/webpack-07c62182acb7385d.js HTTP/1.1" 200 1684 "-" "Mozilla/5.0 (Linux; Android 8.1.0; SM-T837A) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:31 +0000] "GET /_next/static/css/f5a40a2e38f5e77b.css HTTP/1.1" 200 7246 "-" "Mozilla/5.0 (Linux; Android 8.1.0; SM-T837A) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:31 +0000] "GET /_next/static/chunks/0244b62f-70fbfd761239fef9.js HTTP/1.1" 200 54442 "-" "Mozilla/5.0 (Linux; Android 8.1.0; SM-T837A) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:31 +0000] "GET /_next/static/chunks/main-app-3bd5985537948238.js HTTP/1.1" 200 557 "-" "Mozilla/5.0 (Linux; Android 8.1.0; SM-T837A) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.6 Safari/537.36"
+clamd-1     | 
+clamd-1     | WARNING: You are on cool-down until after: 2026-10-21 13:09:46
+clamd-1     | ERROR: Database update process failed: Forbidden; Blocked by CDN
+clamd-1     | ERROR: Update failed.
+clamd-1     | WARNING: FreshClam was forbidden from downloading a database.
+clamd-1     | WARNING: This is fatal. Retrying later won't help. Exiting now.
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:31 +0000] "GET /_next/static/chunks/app/error-b5df034861788c92.js HTTP/1.1" 200 663 "-" "Mozilla/5.0 (Linux; Android 8.1.0; SM-T837A) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.6 Safari/537.36"
+clamd-1     | 
+Socket for clamd not found yet, retrying (1/1800) ...
+Socket for clamd not found yet, retrying (2/1800) ...
+Socket for clamd not found yet, retrying (3/1800) ...
+Socket for clamd not found yet, retrying (4/1800) ...
+Socket for clamd not found yet, retrying (5/1800) ...
+Socket for clamd not found yet, retrying (6/1800) ...
+Socket for clamd not found yet, retrying (7/1800) ...
+Socket for clamd not found yet, retrying (8/1800) ...
+Socket for clamd not found yet, retrying (9/1800) ...
+Socket for clamd not found yet, retrying (10/1800) ...
+Socket for clamd not found yet, retrying (11/1800) ...
+Socket for clamd not found yet, retrying (12/1800) ...
+Socket for clamd not found yet, retrying (13/1800) ...
+Socket for clamd not found yet, retrying (14/1800) ...
+Socket for clamd not found yet, retrying (15/1800) ...
+Socket for clamd not found yet, retrying (16/1800) ...
+Socket for clamd not found yet, retrying (17/1800) ...
+Socket for clamd not found yet, retrying (18/1800) ...
+Socket for clamd not found yet, retrying (19/1800) ...
+Socket for clamd not found yet, retrying (20/1800) ...
+Socket for clamd not found yet, retrying (21/1800) ...
+Socket for clamd not found yet, retrying (22/1800) ...
+Socket for clamd not found yet, retrying (23/1800) ...
+Socket for clamd not found yet, retrying (24/1800) ...
+Socket for clamd not found yet, retrying (25/1800) ...
+Socket for clamd not found yet, retrying (26/1800) ...
+Socket for clamd not found yet, retrying (27/1800) ...
+Socket for clamd not found yet, retrying (28/1800) ...
+Socket for clamd not found yet, retrying (29/1800) ...
+Socket for clamd not found yet, retrying (30/1800) ...Tue Oct 20 13:10:16 2026 -> Limits: Global time limit set to 120000 milliseconds.
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:31 +0000] "GET /_next/static/chunks/204-48309b83e15d5d28.js HTTP/1.1" 200 46266 "-" "Mozilla/5.0 (Linux; Android 8.1.0; SM-T837A) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.7632.6 Safari/537.36"
+clamd-1     | Tue Oct 20 13:10:16 2026 -> Limits: Global size limit set to 419430400 bytes.
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:35 +0000] "GET /login HTTP/1.1" 200 3076 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+clamd-1     | Tue Oct 20 13:10:16 2026 -> Limits: File size limit set to 104857600 bytes.
+clamd-1     | Tue Oct 20 13:10:16 2026 -> Limits: Recursion level limit set to 17.
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:35 +0000] "GET /_next/static/chunks/webpack-b5a4b7bef713a2e5.js HTTP/1.1" 200 1713 "https://seller.neomarket.test/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+clamd-1     | Tue Oct 20 13:10:16 2026 -> Limits: Files limit set to 10000.
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:35 +0000] "GET /_next/static/css/3ba020debf6c5179.css HTTP/1.1" 200 7051 "https://seller.neomarket.test/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:35 +0000] "GET /_next/static/chunks/main-app-0f8f21e0752b84d0.js HTTP/1.1" 200 560 "https://seller.neomarket.test/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:35 +0000] "GET /_next/static/chunks/app/error-87fc6845a3f61e24.js HTTP/1.1" 200 680 "https://seller.neomarket.test/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:35 +0000] "GET /_next/static/chunks/app/login/page-8f7c95713bf22c37.js HTTP/1.1" 200 3837 "https://seller.neomarket.test/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:35 +0000] "GET /_next/static/chunks/app/layout-43eb857bc18b49e4.js HTTP/1.1" 200 4020 "https://seller.neomarket.test/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:35 +0000] "GET /_next/static/chunks/5482-34d9c4aec6cb8dac.js HTTP/1.1" 200 3386 "https://seller.neomarket.test/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:35 +0000] "GET /_next/static/chunks/6204-977a9526cb43a48b.js HTTP/1.1" 200 46267 "https://seller.neomarket.test/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:35 +0000] "GET /_next/static/chunks/0244b62f-6bce3757d8777dde.js HTTP/1.1" 200 54443 "https://seller.neomarket.test/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:36 +0000] "GET /api/seller/auth/organizations HTTP/1.1" 401 224 "https://seller.neomarket.test/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:36 +0000] "GET /api/seller/auth/session HTTP/1.1" 401 224 "https://seller.neomarket.test/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:36 +0000] "GET /register?_rsc=j7s84HGI7papZ6oY HTTP/1.1" 200 144 "https://seller.neomarket.test/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:37 +0000] "POST /api/seller/auth/login HTTP/1.1" 200 21 "https://seller.neomarket.test/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:38 +0000] "GET /dashboard?_rsc=utQopaZyVbfSG9h2 HTTP/1.1" 200 870 "https://seller.neomarket.test/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:38 +0000] "GET /_next/static/chunks/app/dashboard/page-755d1d36d9917a16.js HTTP/1.1" 200 7682 "https://seller.neomarket.test/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:38 +0000] "GET /dashboard?_rsc=9HKYuIr6jjoMgvTW HTTP/1.1" 200 1670 "https://seller.neomarket.test/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:38 +0000] "GET /dashboard HTTP/1.1" 200 3364 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:38 +0000] "GET /api/seller/products?limit=100&include_skus=true HTTP/1.1" 200 1054 "https://seller.neomarket.test/dashboard" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:38 +0000] "GET /api/seller/dashboard/metrics HTTP/1.1" 499 0 "https://seller.neomarket.test/dashboard" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:38 +0000] "GET /api/seller/auth/organizations HTTP/1.1" 200 135 "https://seller.neomarket.test/dashboard" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:38 +0000] "GET /api/seller/auth/session HTTP/1.1" 499 0 "https://seller.neomarket.test/dashboard" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:38 +0000] "GET /api/seller/products?limit=100&include_skus=true HTTP/1.1" 200 1054 "https://seller.neomarket.test/dashboard" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:38 +0000] "GET /api/seller/dashboard/metrics HTTP/1.1" 200 605 "https://seller.neomarket.test/dashboard" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:38 +0000] "GET /api/seller/auth/session HTTP/1.1" 200 250 "https://seller.neomarket.test/dashboard" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:38 +0000] "GET /api/seller/auth/organizations HTTP/1.1" 200 135 "https://seller.neomarket.test/dashboard" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:38 +0000] "GET /products HTTP/1.1" 200 3066 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+clamd-1     | Tue Oct 20 13:10:16 2026 -> Limits: MaxEmbeddedPE limit set to 41943040 bytes.
+clamd-1     | Tue Oct 20 13:10:16 2026 -> Limits: MaxHTMLNormalize limit set to 41943040 bytes.
+clamd-1     | Tue Oct 20 13:10:16 2026 -> Limits: MaxHTMLNoTags limit set to 8388608 bytes.
+clamd-1     | Tue Oct 20 13:10:16 2026 -> Limits: MaxScriptNormalize limit set to 20971520 bytes.
+clamd-1     | Tue Oct 20 13:10:16 2026 -> Limits: MaxZipTypeRcg limit set to 1048576 bytes.
+clamd-1     | Tue Oct 20 13:10:16 2026 -> Limits: MaxPartitions limit set to 50.
+clamd-1     | Tue Oct 20 13:10:16 2026 -> Limits: MaxIconsPE limit set to 100.
+clamd-1     | Tue Oct 20 13:10:16 2026 -> Limits: MaxRecHWP3 limit set to 16.
+clamd-1     | Tue Oct 20 13:10:16 2026 -> Limits: PCREMatchLimit limit set to 100000.
+clamd-1     | Tue Oct 20 13:10:16 2026 -> Limits: PCRERecMatchLimit limit set to 2000.
+clamd-1     | Tue Oct 20 13:10:16 2026 -> Limits: PCREMaxFileSize limit set to 104857600.
+clamd-1     | Tue Oct 20 13:10:16 2026 -> Archive support enabled.
+clamd-1     | Tue Oct 20 13:10:16 2026 -> Image (graphics) scanning support enabled.
+clamd-1     | Tue Oct 20 13:10:16 2026 -> Detection using image fuzzy hash enabled.
+clamd-1     | Tue Oct 20 13:10:16 2026 -> AlertExceedsMax heuristic detection disabled.
+clamd-1     | Tue Oct 20 13:10:16 2026 -> Heuristic alerts enabled.
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:38 +0000] "GET /_next/static/chunks/app/products/page-20b687cb2b87f3e9.js HTTP/1.1" 200 4667 "https://seller.neomarket.test/products" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:39 +0000] "GET /api/seller/products? HTTP/1.1" 200 561 "https://seller.neomarket.test/products" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:39 +0000] "GET /api/seller/auth/organizations HTTP/1.1" 200 135 "https://seller.neomarket.test/products" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:39 +0000] "GET /api/seller/auth/session HTTP/1.1" 200 250 "https://seller.neomarket.test/products" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:39 +0000] "GET /products/new HTTP/1.1" 200 3655 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:39 +0000] "GET /_next/static/chunks/app/products/new/page-746a7bb77ca01b2a.js HTTP/1.1" 200 9422 "https://seller.neomarket.test/products/new" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:39 +0000] "GET /api/seller/auth/organizations HTTP/1.1" 200 135 "https://seller.neomarket.test/products/new" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:39 +0000] "GET /api/seller/categories HTTP/1.1" 200 22 "https://seller.neomarket.test/products/new" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:39 +0000] "GET /api/seller/auth/organizations HTTP/1.1" 200 135 "https://seller.neomarket.test/products/new" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+clamd-1     | Tue Oct 20 13:10:16 2026 -> Portable Executable support enabled.
+clamd-1     | Tue Oct 20 13:10:16 2026 -> ELF support enabled.
+clamd-1     | Tue Oct 20 13:10:16 2026 -> Mail files support enabled.
+clamd-1     | Tue Oct 20 13:10:16 2026 -> OLE2 support enabled.
+clamd-1     | Tue Oct 20 13:10:16 2026 -> PDF support enabled.
+clamd-1     | Tue Oct 20 13:10:16 2026 -> SWF support enabled.
+clamd-1     | Tue Oct 20 13:10:16 2026 -> HTML support enabled.
+clamd-1     | Tue Oct 20 13:10:16 2026 -> XMLDOCS support enabled.
+clamd-1     | Tue Oct 20 13:10:16 2026 -> HWP3 support enabled.
+clamd-1     | Tue Oct 20 13:10:16 2026 -> OneNote support enabled.
+clamd-1     | Tue Oct 20 13:10:16 2026 -> Self checking every 600 seconds.
+clamd-1     | Tue Oct 20 13:10:16 2026 -> Set stacksize to 1048576
+clamd-1     | socket found, clamd started.
+clamd-1     | Tue Oct 20 13:11:19 2026 -> /tmp/eicar.txt: Eicar-Test-Signature FOUND
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:39 +0000] "GET /api/seller/auth/session HTTP/1.1" 200 250 "https://seller.neomarket.test/products/new" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+clamd-1     | Tue Oct 20 13:20:17 2026 -> SelfCheck: Database status OK.
+clamd-1     | Tue Oct 20 13:30:18 2026 -> SelfCheck: Database status OK.
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:40 +0000] "GET /inventory HTTP/1.1" 200 3320 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:40 +0000] "GET /_next/static/chunks/app/inventory/page-4af95452672e90fc.js HTTP/1.1" 200 7169 "https://seller.neomarket.test/inventory" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:40 +0000] "GET /api/seller/inventory?limit=50 HTTP/1.1" 200 409 "https://seller.neomarket.test/inventory" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:40 +0000] "GET /api/seller/dashboard/metrics HTTP/1.1" 200 605 "https://seller.neomarket.test/inventory" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:40 +0000] "GET /api/seller/auth/organizations HTTP/1.1" 200 135 "https://seller.neomarket.test/inventory" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:40 +0000] "GET /api/seller/auth/session HTTP/1.1" 200 250 "https://seller.neomarket.test/inventory" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:41 +0000] "GET /imports HTTP/1.1" 200 3153 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:41 +0000] "GET /_next/static/chunks/app/imports/page-ab165d52d56a4896.js HTTP/1.1" 200 5914 "https://seller.neomarket.test/imports" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:41 +0000] "GET /api/seller/auth/organizations HTTP/1.1" 200 135 "https://seller.neomarket.test/imports" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:41 +0000] "GET /api/seller/auth/session HTTP/1.1" 200 250 "https://seller.neomarket.test/imports" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+clamd-1     | Tue Oct 20 13:40:19 2026 -> SelfCheck: Database status OK.
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:41 +0000] "GET /orders HTTP/1.1" 200 3120 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+clamd-1     | Tue Oct 20 13:50:20 2026 -> SelfCheck: Database status OK.
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:41 +0000] "GET /_next/static/chunks/app/orders/page-b7f4a4bde1808d22.js HTTP/1.1" 200 4968 "https://seller.neomarket.test/orders" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+clamd-1     | Tue Oct 20 14:00:20 2026 -> SelfCheck: Database status OK.
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:41 +0000] "GET /api/seller/auth/organizations HTTP/1.1" 200 135 "https://seller.neomarket.test/orders" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+clamd-1     | Tue Oct 20 14:10:21 2026 -> SelfCheck: Database status OK.
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:41 +0000] "GET /api/seller/auth/session HTTP/1.1" 200 250 "https://seller.neomarket.test/orders" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+clamd-1     | Tue Oct 20 14:20:22 2026 -> SelfCheck: Database status OK.
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:41 +0000] "GET /api/seller/orders?limit=50 HTTP/1.1" 200 106 "https://seller.neomarket.test/orders" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+clamd-1     | Tue Oct 20 14:30:22 2026 -> SelfCheck: Database status OK.
+gateway-1   | 127.0.0.1 - - [20/Oct/2026:14:36:42 +0000] "GET /health HTTP/1.1" 200 15 "-" "Wget"
+gateway-1   | 127.0.0.1 - - [20/Oct/2026:14:36:42 +0000] "GET /health HTTP/1.1" 200 15 "-" "Wget"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:42 +0000] "GET /team HTTP/1.1" 200 3536 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:42 +0000] "GET /_next/static/chunks/app/team/page-0e71742e3208bde0.js HTTP/1.1" 200 5493 "https://seller.neomarket.test/team" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:42 +0000] "GET /api/seller/team/members HTTP/1.1" 200 197 "https://seller.neomarket.test/team" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:42 +0000] "GET /api/seller/auth/organizations HTTP/1.1" 200 135 "https://seller.neomarket.test/team" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:42 +0000] "GET /api/seller/auth/session HTTP/1.1" 200 250 "https://seller.neomarket.test/team" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:43 +0000] "GET /settings HTTP/1.1" 200 3397 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:43 +0000] "GET /_next/static/chunks/app/settings/page-50a6795b0af7cbb4.js HTTP/1.1" 200 1171 "https://seller.neomarket.test/settings" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:43 +0000] "GET /api/seller/auth/organizations HTTP/1.1" 200 135 "https://seller.neomarket.test/settings" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+gateway-1   | 172.21.0.1 - - [20/Oct/2026:14:36:43 +0000] "GET /api/seller/auth/session HTTP/1.1" 200 250 "https://seller.neomarket.test/settings" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"

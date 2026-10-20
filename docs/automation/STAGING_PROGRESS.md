@@ -1,5 +1,11 @@
 ﻿# Staging progress
 
+### Current staging release `0fcb935` — 2026-10-20
+
+- GitHub Actions run `39439533285` passed static checks, PostgreSQL migration/concurrency checks and all six immutable image builds. The protected staging deployment completed on `0fcb935bfd14eba6eaa197898bf865e21eddfbd4`; the current status capture reports all application services, workers, gateway and Keycloak healthy: `docs/automation/evidence/staging/status-0fcb935-20261020.txt`.
+- A real Chromium Seller keyboard sweep used a disposable staging fixture and the trusted Caddy CA at 1440x1100. Eight authenticated routes and 147 visible controls were traversed with zero invalid focus states, zero page errors and zero unexpected 5xx responses: `docs/automation/evidence/staging/seller-focus-0fcb935-20261020-tls.json`.
+- This closes the observed missing focus ring on the two session controls in source commit `0fcb935`; UI-06 remains PARTIAL where the acceptance matrix requires manual screen-reader/modal review. Automated axe remains clean, while UI-07 manual assistive-technology evidence is still open.
+
 **Latest verification:** 2026-10-20 (local regression and frontend release checks)
 
 ### Current live runtime `dae7914` — OIDC discovery and redirect verification

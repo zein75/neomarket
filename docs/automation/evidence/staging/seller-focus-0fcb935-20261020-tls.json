@@ -1,0 +1,67 @@
+{
+  "environment": "staging",
+  "release_sha": "0fcb935bfd14eba6eaa197898bf865e21eddfbd4",
+  "browser": "Chromium",
+  "viewport": {
+    "width": 1440,
+    "height": 1100
+  },
+  "tls_errors": "none (Caddy CA trusted by browser)",
+  "routes": [
+    {
+      "route": "/dashboard",
+      "visible_focusable_count": 28,
+      "traversed": 28,
+      "invalid_focuses": 0
+    },
+    {
+      "route": "/products",
+      "visible_focusable_count": 14,
+      "traversed": 14,
+      "invalid_focuses": 0
+    },
+    {
+      "route": "/products/new",
+      "visible_focusable_count": 20,
+      "traversed": 20,
+      "invalid_focuses": 0
+    },
+    {
+      "route": "/inventory",
+      "visible_focusable_count": 18,
+      "traversed": 18,
+      "invalid_focuses": 0
+    },
+    {
+      "route": "/imports",
+      "visible_focusable_count": 13,
+      "traversed": 13,
+      "invalid_focuses": 0
+    },
+    {
+      "route": "/orders",
+      "visible_focusable_count": 9,
+      "traversed": 9,
+      "invalid_focuses": 0
+    },
+    {
+      "route": "/team",
+      "visible_focusable_count": 17,
+      "traversed": 17,
+      "invalid_focuses": 0
+    },
+    {
+      "route": "/settings",
+      "visible_focusable_count": 9,
+      "traversed": 9,
+      "invalid_focuses": 0
+    }
+  ],
+  "invalid_focuses": 0,
+  "page_errors": [],
+  "console_errors": [
+    "Failed to load resource: the server responded with a status of 401 ()",
+    "Failed to load resource: the server responded with a status of 401 ()"
+  ],
+  "failed_responses": []
+}

@@ -2,8 +2,8 @@
 
 ## Version
 
-- Runtime release: \`d30c5d843f741213db7d11278bb528c586655b90\` (current live staging)
-- Source HEAD: \`f9faaf93de8b01c44bf1521be3283af15f1509cf\`; this HEAD contains documentation-only changes after the deployed `d30c5d8` runtime, which was deployed through the protected staging wrapper.
+- Runtime release: \`0fcb935bfd14eba6eaa197898bf865e21eddfbd4\` (current live staging)
+- Source HEAD: \`0fcb935bfd14eba6eaa197898bf865e21eddfbd4\`; verify/build passed in GitHub Actions run \`39439533285\`, and the protected staging wrapper deployed this immutable SHA.
 - Server: \`192.168.0.112\`
 - Gateway: \`127.0.0.1:18080\`
 - Environment: isolated staging
@@ -29,6 +29,7 @@
 - Host port capture shows only Caddy \`80/443\` publicly bound; NeoMarket gateway and service listeners remain loopback/internal.
 - Authenticated Chromium staging sweep: 11/11 protected Seller routes returned HTTP 200 on the requested URL with a real opaque session cookie; no runtime error responses were observed after refreshing the fixture with a valid internal email domain. Axe found no violations on dashboard, products, product-create, inventory, imports, orders, team and settings.
 - Current-runtime Chromium axe sweep on `d30c5d8` covered the same eight authenticated Seller routes at 1440px: 0 WCAG 2.2 A/AA violations, 0 page errors and 0 unexpected failed responses. Manual assistive-technology review remains separate evidence work for UI-07.
+- Current-runtime Chromium keyboard focus sweep on `0fcb935` covered eight authenticated Seller routes at 1440px: 147 visible controls traversed, 0 invalid focus states, 0 page errors and 0 unexpected 5xx responses. The run used the trusted Caddy CA and an isolated fixture; the two session controls that previously lacked an indicator now expose a 3px solid focus ring.
 
 Evidence files:
 
@@ -54,6 +55,8 @@ Evidence files:
 - \`evidence/staging/status-d30c5d8-20261020.txt\`
 - \`evidence/staging/https-health-d30c5d8-20261020.txt\`
 - \`evidence/staging/seller-axe-d30c5d8-20261020.json\`
+- \`evidence/staging/seller-focus-0fcb935-20261020-tls.json\`
+- \`evidence/staging/status-0fcb935-20261020.txt\`
 - \`evidence/staging/clamav-ee079032-20261020.json\`
 - \`evidence/staging/smoke-ee07903-20261020.txt\`
 - \`evidence/staging/qa-fixture-create-destroy-ee07903-20261020.json\`
@@ -119,4 +122,4 @@ Remaining non-commercial evidence gaps:
 
 ## Release status
 
-**B2B runtime is deployed and regression-tested. The current `d30c5d8` runtime is healthy and the real HTTPS health probes pass. The fresh Chromium Seller fixture evidence was collected on the code-equivalent `20cd369` runtime; it verified 11/11 protected routes, HttpOnly session state, no page errors and no unexpected 5xx responses. The full Seller/B2B release remains BLOCKED** until the non-commercial evidence gaps and the ADR-dependent requirements are resolved. ADR-001 is present but still marked `PROPOSED / LEGAL_AND_PSP_REVIEW_REQUIRED`; no finance or return requirement was promoted from documentation alone.
+**B2B runtime is deployed and regression-tested. The current `0fcb935` runtime is healthy; the protected status capture shows all required services, workers, gateway and Keycloak healthy. The fresh Chromium Seller fixture focus evidence covered eight authenticated routes with 0 invalid focus states. The full Seller/B2B release remains BLOCKED** until the remaining non-commercial evidence gaps and the ADR-dependent requirements are resolved. ADR-001 is present but still marked `PROPOSED / LEGAL_AND_PSP_REVIEW_REQUIRED`; no finance or return requirement was promoted from documentation alone.
