@@ -1,0 +1,38 @@
+﻿{
+    "timestamp":  "20261020T120530Z",
+    "deployment_sha":  "c073e7446d6d639f73644a1b68d2110ed234b325",
+    "gateway":  "127.0.0.1:18080",
+    "host":  "b2b.internal",
+    "checks":  [
+                   {
+                       "name":  "wrong-login",
+                       "expected":  "401",
+                       "actual":  "401",
+                       "pass":  true
+                   },
+                   {
+                       "name":  "seller-metrics-unauth",
+                       "expected":  "401",
+                       "actual":  "401",
+                       "pass":  true
+                   },
+                   {
+                       "name":  "legacy-products",
+                       "expected":  "410",
+                       "actual":  "410",
+                       "pass":  true
+                   },
+                   {
+                       "name":  "internal-hidden",
+                       "expected":  "404",
+                       "actual":  "404",
+                       "pass":  true
+                   },
+                   {
+                       "name":  "mfa-unauth",
+                       "expected":  "401",
+                       "actual":  "401",
+                       "pass":  true
+                   }
+               ]
+}
