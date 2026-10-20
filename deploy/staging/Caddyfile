@@ -12,5 +12,5 @@ http://storefront.neomarket.test, http://seller.neomarket.test, http://admin.neo
 https://storefront.neomarket.test, https://seller.neomarket.test, https://admin.neomarket.test, https://keycloak.neomarket.test {
 	tls internal
 	encode zstd gzip
-	reverse_proxy 127.0.0.1:8080
+	reverse_proxy 127.0.0.1:18080
 }

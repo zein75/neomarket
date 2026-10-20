@@ -45,7 +45,7 @@ for name, cfg in services.items():
   if name != "gateway" and published:
     sys.exit("FATAL public port on " + name)
   for p in published:
-    if p.get("host_ip") != "127.0.0.1" or str(p.get("published")) != "8080":
+    if p.get("host_ip") != "127.0.0.1" or str(p.get("published")) != "18080":
       sys.exit("FATAL unexpected gateway port binding: " + str(p))
 print("Port exposure gate: PASS")
 '

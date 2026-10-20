@@ -43,7 +43,7 @@ for name,cfg in services.items():
     for p in cfg.get("ports",[]):
         published=str(p.get("published", ""))
         host_ip=p.get("host_ip")
-        if name != "gateway" or host_ip != "127.0.0.1" or published != "8080":
+        if name != "gateway" or host_ip != "127.0.0.1" or published != "18080":
             raise SystemExit(f"unexpected published port: {name} {p}")
 print("Port exposure gate: PASS")
 '

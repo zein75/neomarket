@@ -37,7 +37,7 @@ assert 'ports' not in services['b2c-recovery-worker'] or not services['b2c-recov
 for name, service in services.items():
     if name != 'gateway':
         assert not service.get('ports'), f'{name} publishes a host port!'
-assert services['gateway']['ports'] == ['127.0.0.1:8080:80']
+assert services['gateway']['ports'] == ['127.0.0.1:18080:80']
 assert data['networks']['backend'].get('internal') is True
 assert set(services['admin']['networks']) == {'backend', 'admin-data'}
 assert set(services['admin-frontend']['networks']) == {'backend'}
