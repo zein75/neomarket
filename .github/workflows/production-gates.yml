@@ -21,7 +21,7 @@ jobs:
       - run: uv sync --all-packages --locked
       - run: uv lock --check
       - run: uv run ruff check shared/shared services/b2b/src services/b2c/src services/admin/src
-      - run: uv run python docs/NEOMARKET_PRODUCTION_SPEC_V2_2026-10-14/qa/validate_spec.py
+      - run: uv run python ci/validate_current_admin_spec.py
       - run: uv run python scripts/check_openapi_routes.py
       - name: Validate production Compose
         env:
