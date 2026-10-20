@@ -1,0 +1,12 @@
+Runtime: b7e07e79e8f471f664fdc946683f475eae005772
+Probe method: curl with Caddy internal TLS verification disabled for a local staging probe and --resolve to 192.168.0.112; this is not browser QA.
+
+storefront.neomarket.test /api/health -> HTTP 200 {"status":"ok"}
+seller.neomarket.test /api/health -> HTTP 200 {"status":"ok","service":"seller"}
+admin.neomarket.test /api/health -> HTTP 200 {"status":"ok","service":"admin"}
+keycloak.neomarket.test /api/health -> HTTP 404 {"error":"Unable to find matching target resource method"} (Keycloak has no application /api/health route; realm discovery is the applicable probe.)
+
+keycloak.neomarket.test /realms/neomarket-staging/.well-known/openid-configuration -> HTTP 200
+issuer=https://keycloak.neomarket.test/realms/neomarket-staging
+jwks_uri=https://keycloak.neomarket.test/realms/neomarket-staging/protocol/openid-connect/certs
+acr_values_supported=["0","1"]

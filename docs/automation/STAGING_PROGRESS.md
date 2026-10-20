@@ -145,4 +145,10 @@ An additional real-browser smoke covered 24 public Storefront, Seller and Admin 
 - Source HEAD is `35ebe3a19eec7e524d2a22d7f233c624eb0592ac`. A protected deploy request failed closed because GHCR does not contain the immutable `admin-frontend` image for that SHA, so no partial promotion was applied and runtime `872b0a1` remains active.
 - The latest authenticated Seller browser evidence remains on code-equivalent `ee079032`; no new authenticated route sweep is claimed for `872b0a1`.
 
+### Current live runtime b7e07e7 - 2026-10-20
+
+- After all six immutable images were published by workflow `39433889652`, protected deployment completed on `b7e07e79e8f471f664fdc946683f475eae005772`. All required services, workers, gateway and Keycloak report healthy. Evidence: `docs/automation/evidence/staging/status-b7e07e7-20261020.txt`.
+- Real HTTPS health probes returned 200 for Storefront, Seller and Admin; Keycloak realm discovery returned 200 with the configured issuer and JWKS URL. Evidence: `docs/automation/evidence/staging/https-health-b7e07e7-20261020.txt`.
+- The authenticated Seller browser sweep remains the earlier code-equivalent `ee079032` evidence; no fresh authenticated browser claim is made for `b7e07e7`.
+
 
