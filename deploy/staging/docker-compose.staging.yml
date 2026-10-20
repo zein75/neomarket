@@ -91,6 +91,10 @@ services:
   clamd:
     image: clamav/clamav:1.5.4
     restart: unless-stopped
+    # Docker's host resolver is not able to resolve the ClamAV CDN on the
+    # staging host. Keep DNS scoped to this update-capable container; the
+    # service remains on the private backend network and exposes no host port.
+    dns: [1.1.1.1, 8.8.8.8]
     # The official image initializes the virus database and writes runtime
     # state during startup. Keep its persistent database isolated, but do not
     # make the container root filesystem read-only or the entrypoint exits

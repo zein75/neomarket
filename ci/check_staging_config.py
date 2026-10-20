@@ -11,6 +11,7 @@ assert services['admin-worker']['environment']['ADMIN_ALLOW_DEV_AUTH'] == 'false
 assert 'gateway' in services
 assert 'clamd' in services, 'staging must include a real ClamAV scanner'
 assert services['clamd']['image'] == 'clamav/clamav:1.5.4'
+assert services['clamd']['dns'] == ['1.1.1.1', '8.8.8.8'], 'ClamAV update container must use explicit external DNS on staging'
 assert not services['clamd'].get('ports'), 'ClamAV must not publish a host port'
 assert 'clamavdata:/var/lib/clamav' in services['clamd']['volumes']
 assert services['clamd']['healthcheck']['test'][0] == 'CMD-SHELL'
