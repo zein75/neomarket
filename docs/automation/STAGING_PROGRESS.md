@@ -20,7 +20,7 @@ Independent local checks on the current checkout:
 | S0 host audit | DONE | `STAGING_INFRA_AUDIT.md` and captured server audit |
 | S1 restricted deployment | DONE | fixed-SHA wrapper, forced SSH command, root-only Docker credentials |
 | S2 filesystem/secrets | DONE | root-owned `/etc/neomarket/staging.env`, persistent volumes, no secret values in Git |
-| S3 Compose runtime | PASS | deployment `3a1e7e9505fc767…` completed; all required services, both workers and gateway healthy |
+| S3 Compose runtime | PASS | deployment `fbbd473729746786?` completed; all required services, both workers and gateway healthy |
 | S4 ingress/HTTPS | PARTIAL | Caddy internal TLS works; fixed-SHA redeploy recreated the gateway and live host probes return the expected Storefront/Seller/Admin health payloads. The current Playwright Chromium profile trusts the Caddy CA; authenticated browser evidence remains open |
 | S5 migrations/integration | PASS for startup | B2B, B2C and Admin migrations completed; PostgreSQL/Redis healthy |
 | S6 Keycloak/OIDC/MFA | PARTIAL | Keycloak realm imported and healthy; real browser OIDC/MFA evidence not run |
@@ -32,6 +32,12 @@ Independent local checks on the current checkout:
 | S14 security audit | PARTIAL | static Compose gates and ingress smoke passed; full runtime audit remains |
 
 **Current release status: BLOCKED.** Production readiness is not asserted while browser, backup/restore, authenticated QA, visual, and full security evidence are missing.
+
+### CSP font asset verification — 2026-10-20 18:48 local
+
+- Release `82e12533be6e06b24a08f9ab2febc13e4589505d` passed CI, all six image builds, migration checks, and restricted staging deployment with `SMOKE PASS`.
+- The enforced CSP now permits the Google font stylesheet/font origins already referenced by the three frontend shells. Real Chromium checks against Storefront, Seller and Admin returned HTTP 200, no CSP/font console violations, and no page errors. Evidence: `docs/automation/evidence/staging/csp-fonts-82e1253-20261020.json`.
+- This closes the observed staging font CSP defect; it does not change the mandatory authenticated, visual, backup/restore or commercial release gates.
 
 **Runtime evidence (2026-10-20T11:50:01Z):** deployment `c073e7446d6d639f73644a1b68d2110ed234b325` completed through the restricted `neomarket-deploy` SSH command. Gateway probes are recorded in `evidence/staging/gateway-routes-20261020T115001Z.txt`; the status capture is `evidence/staging/status-20261020T115001Z.txt`. All required containers reported `running` and `healthy`; the deployment smoke check returned `SMOKE PASS`.
 
@@ -58,7 +64,7 @@ An additional real-browser smoke covered 24 public Storefront, Seller and Admin 
 - Repeated Caddy host and anonymous Admin API probes returned expected Storefront/Seller/Admin/Keycloak boundaries and `401 ADMIN_SESSION_REQUIRED` on protected Admin endpoints. Evidence: `docs/automation/evidence/staging/gateway-routes-20261020T1722Z.txt`.
 - Staging CSRF browser probe initially exposed a test-fixture issue: `SameSite=Strict` cookies are correctly withheld on the cross-site form, so the request stopped at 401 before CSRF. The test now uses production `__Host-` cookie names with secure `SameSite=None` synthetic cookies only for this negative boundary; the real staging probe passes HTTP 403 `CSRF_VALIDATION_FAILED` with `no-store`. Evidence: `docs/automation/evidence/staging/admin-csrf-boundary-3a1e7e9/REPORT.md`.
 - The protected `neomarket-staging-qa-fixture` probe exposed deployment drift: the root-installed fixture copy is stale. The first create returned ephemeral fixture data, while the destroy request followed the stale create path and failed on a `products.seller_id` NOT NULL violation. Cleanup is therefore unconfirmed and must be handled by the root owner after refreshing `/opt/neomarket-staging/qa/b2b_fixture.py` from the checked-out source. Evidence: `docs/automation/evidence/staging/qa-fixture-fk-failure-3a1e7e9.txt`.
-- Fresh release checker result: 202 required cases, 170 PASS, 32 NOT_RUN, and 0/3 independent manifests; result `BLOCKED`. Evidence: `docs/automation/evidence/staging/release-check-20261020T1730Z.json`.
+- Fresh release checker result: 202 required cases, 170 PASS, 32 NOT_RUN, and 0/3 independent manifests; result `BLOCKED`. Evidence: `docs/automation/evidence/staging/release-check-20261020T1813Z.json`.
 
 ### Latest redeploy and repeat boundary ? 2026-10-20 18:01 local
 
@@ -74,3 +80,10 @@ An additional real-browser smoke covered 24 public Storefront, Seller and Admin 
 - Fixed the staging QA fixture email suffix from `.test` to `.internal`; the former was rejected by the same `EmailStr` validator used by the live team response and caused a real `/team/members` 500.
 - Authenticated Chromium sweep on the real staging host: 11/11 protected Seller routes stayed on the requested URL with HTTP 200; runtime error sweep was empty; axe violations were empty on eight core routes. Evidence: `docs/automation/evidence/staging/b2b-authenticated-routes-fbbd473-20261020.json` and `docs/automation/evidence/staging/b2b-authenticated-runtime-fbbd473-20261020.json`.
 - ADR-001 was added to the repository but remains `PROPOSED / LEGAL_AND_PSP_REVIEW_REQUIRED`; returns, restock, PSP, payout and fiscal flows remain fail-closed and release-blocking until the required approvals/provider evidence exist.
+
+### Current staging release and fixture cleanup ? 2026-10-20 18:11 local
+
+- CI run `39424050529` passed for SHA `c1ba25cffca87c703dfce6b4187796e38fe9439c`; protected deploy completed with `SMOKE PASS` and all services healthy.
+- Fixture cleanup fix is deployed. The prior fixture was deleted successfully, and a fresh isolated `create` followed by `destroy` returned `deleted=true`. Evidence: `docs/automation/evidence/staging/qa-fixture-create-destroy-c1ba25c.txt`.
+- Current Admin boundary run passed 72/72 and CSRF run passed 3/3 on this SHA. Evidence: `docs/automation/evidence/staging/admin-anonymous-boundary-c1ba25c.json`, `admin-csrf-boundary-c1ba25c.json`.
+- Authenticated Keycloak/MFA remains unverified; release checker still requires three independent authenticated manifests.

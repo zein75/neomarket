@@ -2,7 +2,7 @@
 
 ## Version
 
-- Runtime release: \`fbbd47372974678638ed0cc48967fa73e4a3d3a8\`
+- Runtime release: \`82e12533be6e06b24a08f9ab2febc13e4589505d\`
 - Server: \`192.168.0.112\`
 - Gateway: \`127.0.0.1:18080\`
 - Environment: isolated staging
@@ -32,6 +32,13 @@ Evidence files:
 - \`evidence/staging/port-exposure-20261020T120647Z.json\`
 - \`evidence/staging/b2b-authenticated-routes-fbbd473-20261020.json\`
 - \`evidence/staging/b2b-authenticated-runtime-fbbd473-20261020.json\`
+- \`evidence/staging/csp-fonts-82e1253-20261020.json\`
+
+The release `82e1253` also corrected the enforced CSP `connect-src` to allow the
+Google font stylesheet/font origins already used by the approved Seller,
+Storefront and Admin shells. A real Chromium check against all three staging
+hosts returned HTTP 200, no CSP/font console violations, no page errors, and
+the expected `connect-src` directive.
 
 ## Current requirement matrix
 
