@@ -1,0 +1,63 @@
+{
+  "release_sha": "b0fd2323d8fa5c6df166018f0e5f7c0cfdb4c565",
+  "environment": "staging",
+  "captures": [
+    {
+      "route": "dashboard",
+      "viewport": "mobile-390",
+      "device": "Pixel 5",
+      "http_status": 200,
+      "file": "dashboard-mobile-390.png",
+      "width": 393,
+      "height": 1976,
+      "scrollWidth": 393,
+      "errors": [
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()"
+      ]
+    },
+    {
+      "route": "product-create",
+      "viewport": "mobile-390",
+      "device": "Pixel 5",
+      "http_status": 200,
+      "file": "product-create-mobile-390.png",
+      "width": 393,
+      "height": 1995,
+      "scrollWidth": 393,
+      "errors": [
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()"
+      ]
+    },
+    {
+      "route": "dashboard",
+      "viewport": "tablet-768",
+      "device": "Galaxy Tab S4",
+      "http_status": 200,
+      "file": "dashboard-tablet-768.png",
+      "width": 712,
+      "height": 1850,
+      "scrollWidth": 712,
+      "errors": [
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()"
+      ]
+    },
+    {
+      "route": "product-create",
+      "viewport": "tablet-768",
+      "device": "Galaxy Tab S4",
+      "http_status": 200,
+      "file": "product-create-tablet-768.png",
+      "width": 712,
+      "height": 1626,
+      "scrollWidth": 712,
+      "errors": [
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()"
+      ]
+    }
+  ],
+  "errors": []
+}
