@@ -1,0 +1,4 @@
+﻿command: uv run --project services/b2b pytest services/b2b/tests -q
+code_under_test: ee079032cfd234ddd3232c4dfc74fc84b1a5bc22
+result: 285 passed, 38 skipped, 2 warnings
+environment: local isolated test suite
