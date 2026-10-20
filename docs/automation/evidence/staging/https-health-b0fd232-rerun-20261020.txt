@@ -1,0 +1,8 @@
+﻿environment=staging
+runtime_sha=b0fd2323d8fa5c6df166018f0e5f7c0cfdb4c565
+probe=HTTPS via Caddy --resolve 192.168.0.112
+host=storefront.neomarket.test path=/ status=200 expected=200
+host=seller.neomarket.test path=/login status=200 expected=200
+host=admin.neomarket.test path=/api/health status=200 expected=200
+host=admin.neomarket.test path=/ status=307 expected=307
+host=keycloak.neomarket.test path=/realms/neomarket-staging/.well-known/openid-configuration status=200 expected=200
