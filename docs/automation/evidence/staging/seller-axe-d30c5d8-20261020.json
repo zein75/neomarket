@@ -1,0 +1,58 @@
+{
+  "environment": "staging",
+  "release_sha": "d30c5d843f741213db7d11278bb528c586655b90",
+  "browser": "Chromium",
+  "viewport": {
+    "width": 1440,
+    "height": 1100
+  },
+  "routes": [
+    {
+      "route": "/dashboard",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "route": "/products",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "route": "/products/new",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "route": "/inventory",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "route": "/imports",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "route": "/orders",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "route": "/team",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "route": "/settings",
+      "status": 200,
+      "violations": []
+    }
+  ],
+  "page_errors": [],
+  "console_errors": [
+    "Failed to load resource: the server responded with a status of 401 ()",
+    "Failed to load resource: the server responded with a status of 401 ()"
+  ],
+  "failed_responses": [],
+  "violation_count": 0
+}

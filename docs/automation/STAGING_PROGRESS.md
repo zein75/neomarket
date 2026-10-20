@@ -161,5 +161,6 @@ An additional real-browser smoke covered 24 public Storefront, Seller and Admin 
 - A separate fixture cleanup check returned `deleted=true` with no credential material recorded. Evidence: `docs/automation/evidence/staging/qa-fixture-create-destroy-20cd369-20261020.json`.
 - The B2B regression suite was rerun from source `a720655`: 285 passed, 38 skipped, 0 failed; Ruff also passed. Evidence: `docs/automation/evidence/staging/b2b-regression-a720655-20261020.json`.
 - The release checker was rerun from source `71fdfbf`: 202 required cases and zero independent final manifests, so the result remains `BLOCKED`. Evidence: `docs/automation/evidence/staging/release-check-71fdfbf-20261020.json`.
+- Current `d30c5d8` staging Chromium axe sweep covered eight authenticated Seller routes at 1440px with zero WCAG 2.2 A/AA violations, page errors or unexpected failed responses. Manual assistive-technology review remains open. Evidence: `docs/automation/evidence/staging/seller-axe-d30c5d8-20261020.json`.
 
 

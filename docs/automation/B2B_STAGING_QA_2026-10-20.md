@@ -28,6 +28,7 @@
   - unauthenticated MFA challenge: \`401\`.
 - Host port capture shows only Caddy \`80/443\` publicly bound; NeoMarket gateway and service listeners remain loopback/internal.
 - Authenticated Chromium staging sweep: 11/11 protected Seller routes returned HTTP 200 on the requested URL with a real opaque session cookie; no runtime error responses were observed after refreshing the fixture with a valid internal email domain. Axe found no violations on dashboard, products, product-create, inventory, imports, orders, team and settings.
+- Current-runtime Chromium axe sweep on `d30c5d8` covered the same eight authenticated Seller routes at 1440px: 0 WCAG 2.2 A/AA violations, 0 page errors and 0 unexpected failed responses. Manual assistive-technology review remains separate evidence work for UI-07.
 
 Evidence files:
 
@@ -52,6 +53,7 @@ Evidence files:
 - \`evidence/staging/b2b-regression-a720655-20261020.json\`
 - \`evidence/staging/status-d30c5d8-20261020.txt\`
 - \`evidence/staging/https-health-d30c5d8-20261020.txt\`
+- \`evidence/staging/seller-axe-d30c5d8-20261020.json\`
 - \`evidence/staging/clamav-ee079032-20261020.json\`
 - \`evidence/staging/smoke-ee07903-20261020.txt\`
 - \`evidence/staging/qa-fixture-create-destroy-ee07903-20261020.json\`
