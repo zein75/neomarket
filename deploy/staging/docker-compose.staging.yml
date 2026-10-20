@@ -93,7 +93,9 @@ services:
     restart: unless-stopped
     # Use the staging LAN resolver. Public resolvers are unreachable from the
     # Docker network, while the host resolves the ClamAV CDN through this DNS.
-    # The service remains on the private backend network and exposes no host port.
+    # Keep scanner traffic private to the backend while allowing its updater to
+    # reach the ClamAV CDN through a dedicated egress-only network. No host port
+    # is published and application services stay on the internal backend net.
     dns: [192.168.0.1]
     # The official image initializes the virus database and writes runtime
     # state during startup. Keep its persistent database isolated, but do not
@@ -112,7 +114,7 @@ services:
       retries: 10
       start_period: 120s
     mem_limit: 768m
-    networks: [backend]
+    networks: [backend, egress]
     logging:
       options: {max-size: "5m", max-file: "3"}
 
@@ -494,6 +496,7 @@ networks:
   admin-data:
     internal: true
   edge: {}
+  egress: {}
   identity-data:
     internal: true
 volumes:

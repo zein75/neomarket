@@ -13,6 +13,7 @@ assert 'clamd' in services, 'staging must include a real ClamAV scanner'
 assert services['clamd']['image'] == 'clamav/clamav:1.5.4'
 assert services['clamd']['dns'] == ['192.168.0.1'], 'ClamAV update container must use the staging LAN DNS resolver'
 assert not services['clamd'].get('ports'), 'ClamAV must not publish a host port'
+assert set(services['clamd']['networks']) == {'backend', 'egress'}, 'ClamAV must use private backend plus dedicated egress network'
 assert 'clamavdata:/var/lib/clamav' in services['clamd']['volumes']
 assert services['clamd']['healthcheck']['test'][0] == 'CMD-SHELL'
 assert 'keycloak' in services and 'keycloak-postgres' in services
@@ -40,6 +41,7 @@ for name, service in services.items():
         assert not service.get('ports'), f'{name} publishes a host port!'
 assert services['gateway']['ports'] == ['127.0.0.1:18080:80']
 assert data['networks']['backend'].get('internal') is True
+assert 'egress' in data['networks'] and data['networks']['egress'].get('internal') is not True
 assert set(services['admin']['networks']) == {'backend', 'admin-data'}
 assert set(services['admin-frontend']['networks']) == {'backend'}
 assert 'edge' not in services['admin']['networks']
