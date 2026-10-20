@@ -1,0 +1,221 @@
+﻿{
+  "deployment_sha": "c073e7446d6d639f73644a1b68d2110ed234b325",
+  "checks": [
+    {
+      "viewport": "desktop",
+      "host": "storefront.neomarket.test",
+      "path": "/",
+      "status": 200,
+      "finalUrl": "https://storefront.neomarket.test/",
+      "title": "NeoMarket — прямые поставки",
+      "mainVisible": true
+    },
+    {
+      "viewport": "desktop",
+      "host": "storefront.neomarket.test",
+      "path": "/catalog",
+      "status": 200,
+      "finalUrl": "https://storefront.neomarket.test/catalog",
+      "title": "NeoMarket — прямые поставки",
+      "mainVisible": true
+    },
+    {
+      "viewport": "desktop",
+      "host": "storefront.neomarket.test",
+      "path": "/login",
+      "status": 200,
+      "finalUrl": "https://storefront.neomarket.test/login",
+      "title": "Вход | NeoMarket",
+      "mainVisible": true
+    },
+    {
+      "viewport": "desktop",
+      "host": "storefront.neomarket.test",
+      "path": "/register",
+      "status": 200,
+      "finalUrl": "https://storefront.neomarket.test/register",
+      "title": "Регистрация | NeoMarket",
+      "mainVisible": true
+    },
+    {
+      "viewport": "desktop",
+      "host": "seller.neomarket.test",
+      "path": "/",
+      "status": 200,
+      "finalUrl": "https://seller.neomarket.test/",
+      "title": "NeoMarket Seller Hub",
+      "mainVisible": true
+    },
+    {
+      "viewport": "desktop",
+      "host": "seller.neomarket.test",
+      "path": "/login",
+      "status": 200,
+      "finalUrl": "https://seller.neomarket.test/login",
+      "title": "NeoMarket Seller Hub",
+      "mainVisible": true
+    },
+    {
+      "viewport": "desktop",
+      "host": "seller.neomarket.test",
+      "path": "/register",
+      "status": 200,
+      "finalUrl": "https://seller.neomarket.test/register",
+      "title": "NeoMarket Seller Hub",
+      "mainVisible": true
+    },
+    {
+      "viewport": "desktop",
+      "host": "admin.neomarket.test",
+      "path": "/unauthorized",
+      "status": 200,
+      "finalUrl": "https://admin.neomarket.test/unauthorized",
+      "title": "NeoMarket Admin Console",
+      "mainVisible": true
+    },
+    {
+      "viewport": "tablet",
+      "host": "storefront.neomarket.test",
+      "path": "/",
+      "status": 200,
+      "finalUrl": "https://storefront.neomarket.test/",
+      "title": "NeoMarket — прямые поставки",
+      "mainVisible": true
+    },
+    {
+      "viewport": "tablet",
+      "host": "storefront.neomarket.test",
+      "path": "/catalog",
+      "status": 200,
+      "finalUrl": "https://storefront.neomarket.test/catalog",
+      "title": "NeoMarket — прямые поставки",
+      "mainVisible": true
+    },
+    {
+      "viewport": "tablet",
+      "host": "storefront.neomarket.test",
+      "path": "/login",
+      "status": 200,
+      "finalUrl": "https://storefront.neomarket.test/login",
+      "title": "Вход | NeoMarket",
+      "mainVisible": true
+    },
+    {
+      "viewport": "tablet",
+      "host": "storefront.neomarket.test",
+      "path": "/register",
+      "status": 200,
+      "finalUrl": "https://storefront.neomarket.test/register",
+      "title": "Регистрация | NeoMarket",
+      "mainVisible": true
+    },
+    {
+      "viewport": "tablet",
+      "host": "seller.neomarket.test",
+      "path": "/",
+      "status": 200,
+      "finalUrl": "https://seller.neomarket.test/",
+      "title": "NeoMarket Seller Hub",
+      "mainVisible": true
+    },
+    {
+      "viewport": "tablet",
+      "host": "seller.neomarket.test",
+      "path": "/login",
+      "status": 200,
+      "finalUrl": "https://seller.neomarket.test/login",
+      "title": "NeoMarket Seller Hub",
+      "mainVisible": true
+    },
+    {
+      "viewport": "tablet",
+      "host": "seller.neomarket.test",
+      "path": "/register",
+      "status": 200,
+      "finalUrl": "https://seller.neomarket.test/register",
+      "title": "NeoMarket Seller Hub",
+      "mainVisible": true
+    },
+    {
+      "viewport": "tablet",
+      "host": "admin.neomarket.test",
+      "path": "/unauthorized",
+      "status": 200,
+      "finalUrl": "https://admin.neomarket.test/unauthorized",
+      "title": "NeoMarket Admin Console",
+      "mainVisible": true
+    },
+    {
+      "viewport": "mobile",
+      "host": "storefront.neomarket.test",
+      "path": "/",
+      "status": 200,
+      "finalUrl": "https://storefront.neomarket.test/",
+      "title": "NeoMarket — прямые поставки",
+      "mainVisible": true
+    },
+    {
+      "viewport": "mobile",
+      "host": "storefront.neomarket.test",
+      "path": "/catalog",
+      "status": 200,
+      "finalUrl": "https://storefront.neomarket.test/catalog",
+      "title": "NeoMarket — прямые поставки",
+      "mainVisible": true
+    },
+    {
+      "viewport": "mobile",
+      "host": "storefront.neomarket.test",
+      "path": "/login",
+      "status": 200,
+      "finalUrl": "https://storefront.neomarket.test/login",
+      "title": "Вход | NeoMarket",
+      "mainVisible": true
+    },
+    {
+      "viewport": "mobile",
+      "host": "storefront.neomarket.test",
+      "path": "/register",
+      "status": 200,
+      "finalUrl": "https://storefront.neomarket.test/register",
+      "title": "Регистрация | NeoMarket",
+      "mainVisible": true
+    },
+    {
+      "viewport": "mobile",
+      "host": "seller.neomarket.test",
+      "path": "/",
+      "status": 200,
+      "finalUrl": "https://seller.neomarket.test/",
+      "title": "NeoMarket Seller Hub",
+      "mainVisible": true
+    },
+    {
+      "viewport": "mobile",
+      "host": "seller.neomarket.test",
+      "path": "/login",
+      "status": 200,
+      "finalUrl": "https://seller.neomarket.test/login",
+      "title": "NeoMarket Seller Hub",
+      "mainVisible": true
+    },
+    {
+      "viewport": "mobile",
+      "host": "seller.neomarket.test",
+      "path": "/register",
+      "status": 200,
+      "finalUrl": "https://seller.neomarket.test/register",
+      "title": "NeoMarket Seller Hub",
+      "mainVisible": true
+    },
+    {
+      "viewport": "mobile",
+      "host": "admin.neomarket.test",
+      "path": "/unauthorized",
+      "status": 200,
+      "finalUrl": "https://admin.neomarket.test/unauthorized",
+      "title": "NeoMarket Admin Console",
+      "mainVisible": true
+    }
+  ]
+}

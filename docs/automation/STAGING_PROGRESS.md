@@ -41,3 +41,5 @@ The acceptance checker still returns `BLOCKED` (`202` required cases, `0` of `3`
 `python docs/NeoMarket_Admin_Production_Spec_2026-10-16/qa/check_release.py --matrix docs/NeoMarket_Admin_Production_Spec_2026-10-16/qa/ACCEPTANCE_MATRIX.csv --runs-dir docs/automation/seller_runs`.
 
 **Browser evidence (2026-10-20T11:56Z):** `admin-auth-boundary.spec.ts` ran against the real staging Admin host with Chromium host rules and the Caddy CA trusted in the current user store. All 72 anonymous protected-page/forged-cookie checks passed across desktop, tablet and mobile; report: `evidence/staging/admin-anonymous-boundary-20261020.json`. The separate APIRequestContext check was not promoted because Playwright's request client does not consume Chromium host rules and the local DNS names are intentionally private.
+
+An additional real-browser smoke covered 24 public Storefront, Seller and Admin entrypoints across desktop, tablet and mobile; every response was HTTP 200 with a visible `<main>`. Report: `evidence/staging/public-browser-20261020.json`.
