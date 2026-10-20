@@ -54,7 +54,10 @@ python3 "$ROOT/compose/prepare_admin_db_isolation.py"
 "${COMPOSE[@]}" --profile migrate run --rm b2c-migrate
 "${COMPOSE[@]}" --profile migrate run --rm admin-migrate
 "${COMPOSE[@]}" up -d --wait --no-deps b2b b2c admin admin-worker b2b-taxonomy-worker b2c-recovery-worker
-"${COMPOSE[@]}" up -d --wait storefront seller-frontend admin-frontend gateway
+# Recreate gateway so a refreshed root-owned nginx.conf is loaded; the gateway
+# only binds localhost:18080 and remains behind Caddy.
+"${COMPOSE[@]}" up -d --wait storefront seller-frontend admin-frontend
+"${COMPOSE[@]}" up -d --wait --no-deps --force-recreate gateway
 bash "$ROOT/compose/smoke.sh"
 printf '%s\n' "$RELEASE_SHA" > "$ROOT/last-successful-sha"
 chown root:root "$ROOT/last-successful-sha"
