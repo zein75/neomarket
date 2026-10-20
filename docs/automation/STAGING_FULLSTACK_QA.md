@@ -12,7 +12,7 @@ The protected staging runtime was deliberately deployed to the pinned SHA below.
 - Current production specifications: `docs/NeoMarket_Admin_Production_Spec_2026-10-16/` and `docs/NeoMarket_Seller_Production_Blueprint_2026-10-16/`.
 - Staging manifests: `deploy/staging/`.
 - Local branch: `staging`; local HEAD contains later documentation-only commits. Those commits are not deployed.
-- The local worktree is dirty; the current deployed staging release is `20cd369cefdd0e8b6b89addedf92df6cc49bb796` (see `status-20cd369-20261020.txt`). Source HEAD `f533cc3c37c4a1123aa50cf1b994bd3028d0e722` contains documentation-only changes after that code release.
+- The local worktree is dirty; the current deployed staging release is `d30c5d843f741213db7d11278bb528c586655b90` (see `status-d30c5d8-20261020.txt`).
 - Requested `$neomarket-exhaustive-qa` skill was not present in the configured skill roots or repository skill directory.
 
 ## Stage 1 ? server audit
@@ -51,7 +51,7 @@ The protected staging runtime was deliberately deployed to the pinned SHA below.
 The root-owned deployment layout is present under `/opt/neomarket-staging/compose` with compose, migration, smoke, and status scripts. `/opt/neomarket-staging/last-successful-sha` contains:
 
 ```text
-20cd369cefdd0e8b6b89addedf92df6cc49bb796
+d30c5d843f741213db7d11278bb528c586655b90
 ```
 
 `/opt/neomarket-staging/.release.env` points to `ghcr.io/zein75/market` with the same SHA. The value is metadata only; container status cannot be read directly by `ter0o` because the environment file and Docker socket are protected.
@@ -80,11 +80,11 @@ Static staging Compose security: PASS
 
 This proves only static Compose properties. It does not prove secrets, container health, migrations, TLS trust in browsers, or external integrations.
 
-The latest successful image build for the current code release was workflow run `39435057893` for SHA `20cd369cefdd0e8b6b89addedf92df6cc49bb796`; static checks, PostgreSQL migration/concurrency tests, and all six image builds passed. The current live runtime is `20cd369`; the later `f533cc3` commit contains documentation-only changes.
+The latest successful image build for the current release was workflow run `39437627719` for SHA `d30c5d843f741213db7d11278bb528c586655b90`; static checks, PostgreSQL migration/concurrency tests, and all six image builds passed. The protected staging deployment completed through the root-owned wrapper.
 
 ## Stage 2–7 result
 
-The protected runtime status and startup migrations are verified. The B2B suite completed with `285 passed, 38 skipped, 0 failed`; a fresh Chromium Seller fixture on `20cd369` authenticated and returned `200` on 11 protected routes with an HttpOnly session and no unexpected 5xx responses; ClamAV detected EICAR and accepted a clean sample; and bounded PostgreSQL and Redis stop/start drills returned readiness `503` during each dependency outage and `200` after recovery without deleting volumes. The current `20cd369` status and HTTPS probes are healthy. These checks do not prove the full release: Keycloak MFA/OIDC claims, authenticated Admin workflows, visual comparison, upload/quarantine end-to-end behavior, retry/DLQ/provider drills, off-host backup/restore and the three independent release-gate manifests remain open.
+The protected runtime status and startup migrations are verified. The B2B suite completed with `285 passed, 38 skipped, 0 failed`; a fresh Chromium Seller fixture on the code-equivalent `20cd369` runtime authenticated and returned `200` on 11 protected routes with an HttpOnly session and no unexpected 5xx responses; ClamAV detected EICAR and accepted a clean sample; and bounded PostgreSQL and Redis stop/start drills returned readiness `503` during each dependency outage and `200` after recovery without deleting volumes. The current `d30c5d8` status and HTTPS probes are healthy. These checks do not prove the full release: Keycloak MFA/OIDC claims, authenticated Admin workflows, visual comparison, upload/quarantine end-to-end behavior, retry/DLQ/provider drills, off-host backup/restore and the three independent release-gate manifests remain open.
 
 ## Required next steps
 
