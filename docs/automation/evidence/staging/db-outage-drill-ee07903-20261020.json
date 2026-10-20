@@ -1,0 +1,12 @@
+﻿{
+    "commit":  "ee079032cfd234ddd3232c4dfc74fc84b1a5bc22",
+    "environment":  "staging",
+    "dependency":  "postgresql",
+    "before_ready":  "200 {\"status\":\"ok\"}",
+    "during_outage":  "HTTP 503 Service Unavailable",
+    "restore_health":  "healthy",
+    "after_ready":  "200 {\"status\":\"ok\"}",
+    "volume_deleted":  false,
+    "duration_seconds":  15,
+    "observedAt":  "2026-10-20T13:27:02.2722963Z"
+}

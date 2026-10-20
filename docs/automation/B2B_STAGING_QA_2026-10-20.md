@@ -41,6 +41,7 @@ Evidence files:
 - \`evidence/staging/qa-fixture-create-destroy-ee07903-20261020.json\`
 - \`evidence/staging/b2b-regression-ee07903-20261020.txt\`
 - \`evidence/staging/b2b-authenticated-routes-ee07903-20261020.json\`
+- \`evidence/staging/db-outage-drill-ee07903-20261020.json\`
 
 The Compose release `ee079032` keeps the application network internal and adds
 a dedicated egress-only network for ClamAV updates. The scanner is healthy and

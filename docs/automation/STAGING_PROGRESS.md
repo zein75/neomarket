@@ -110,12 +110,20 @@ An additional real-browser smoke covered 24 public Storefront, Seller and Admin 
 - Protected deployment completed and all required services, workers, gateway and Keycloak reported healthy. Evidence: `docs/automation/evidence/staging/status-ee07903-20261020.txt`.
 - ClamAV now uses the private `backend` network plus a dedicated non-internal `egress` network. A real EICAR sample returned `Eicar-Test-Signature FOUND`; a clean sample returned `OK`. Evidence: `docs/automation/evidence/staging/clamav-ee079032-20261020.json`.
 - Freshclam reaches the upstream CDN but receives HTTP 403 and enters CDN cooldown. Signature freshness and full media quarantine/upload evidence remain PARTIAL; this is not marked PASS.
+- Controlled PostgreSQL outage drill on the same runtime returned B2B readiness `503` while the database was stopped, then recovered to `200 {"status":"ok"}` after the container became healthy. No volume was deleted. Evidence: `docs/automation/evidence/staging/db-outage-drill-ee07903-20261020.json`. This is partial dependency-recovery evidence; alerting, retry/DLQ and provider drills remain open.
 
 ### Deployment confirmation for ee07903 - 2026-10-20 13:10Z
 
 - CI run `39427746198` passed for SHA `ee079032cfd234ddd3232c4dfc74fc84b1a5bc22`; protected deploy completed and all required containers are healthy.
 - Gateway probes passed on this SHA. Evidence: `docs/automation/evidence/staging/status-20261020T131059Z.txt` and `gateway-routes-20261020T131059Z.txt`.
 - The commit changes only ClamAV updater egress. Anonymous Admin 72/72 and CSRF 3/3 browser evidence remains from immediately preceding code-equivalent `5eb9fc6`; authenticated OIDC/MFA and three manifests remain blocked.
+
+### SSH retry and current deployed boundary - 2026-10-20 18:15Z
+
+- SSH to `market-staging` succeeded again. The read-only audit records Ubuntu host capacity, network, listener, SSH and Docker permission results in `docs/automation/evidence/staging/ssh-retry-audit-20261020T181531.txt`.
+- The protected runtime is still pinned to `ee079032cfd234ddd3232c4dfc74fc84b1a5bc22`; all required containers report healthy.
+- Chromium Admin anonymous boundary passed 72/72 and CSRF boundary passed 3/3 on this deployed SHA. Evidence: `admin-anonymous-boundary-ee079-20261020T181628.json` and `admin-csrf-boundary-ee079-20261020T181628.json`.
+- Gateway and Keycloak discovery probes pass; discovery still advertises only ACR `0`/`1`, so authenticated MFA/step-up remains blocked. Evidence: `gateway-retry-20261020T181841.txt`.
 
 ### Current staging release cba15c1 and repeat boundary - 2026-10-20 12:54Z
 

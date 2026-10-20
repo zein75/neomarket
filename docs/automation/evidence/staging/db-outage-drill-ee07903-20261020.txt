@@ -1,0 +1,22 @@
+﻿ssh : 
+At line:33 char:103
++ ... ill.sh"; $x=ssh -i $key -o IdentitiesOnly=yes -o BatchMode=yes ter0o@ ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+before_ready 200 {"status":"ok"}
+
+stop_result neomarket-staging-postgres-1
+during_ready HTTPError HTTP Error 503: Service Unavailable
+
+start_result neomarket-staging-postgres-1
+restore_health_1=starting
+restore_health_2=starting
+restore_health_3=starting
+restore_health_4=starting
+restore_health_5=starting
+restore_health_6=healthy
+after_ready 200 {"status":"ok"}
+
+
