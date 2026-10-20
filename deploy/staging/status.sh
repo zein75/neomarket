@@ -21,10 +21,13 @@ for service in admin admin-worker b2b b2c b2b-taxonomy-worker b2c-recovery-worke
     continue
   fi
   docker inspect --format '{{.Name}} state={{.State.Status}} health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}} exit={{.State.ExitCode}}' "$id"
+  docker inspect --format '{{range .State.Health.Log}}{{printf "  health exit=%d output=%s\n" .ExitCode .Output}}{{end}}' "$id" 2>/dev/null || true
 done
 printf '%s\n' '=== recent admin-worker logs ==='
 "${COMPOSE[@]}" logs --no-color --tail=120 admin-worker 2>&1 || true
 printf '%s\n' '=== recent admin/b2b logs ==='
 "${COMPOSE[@]}" logs --no-color --tail=40 admin b2b 2>&1 || true
+printf '%s\n' '=== recent frontend logs ==='
+"${COMPOSE[@]}" logs --no-color --tail=100 storefront seller-frontend admin-frontend 2>&1 || true
 printf '%s\n' '=== recent infrastructure logs ==='
 "${COMPOSE[@]}" logs --no-color --tail=80 clamd mailpit keycloak gateway 2>&1 || true
