@@ -4,9 +4,9 @@
 
 ### Current runtime correction (2026-10-20)
 
-The current deployed application image is immutable SHA `b0fd2323d8fa5c6df166018f0e5f7c0cfdb4c565`; all required services, workers, gateway and Keycloak are healthy in [`status-b0fd232-20261020.txt`](evidence/staging/status-b0fd232-20261020.txt). The older SHA references below are historical runs. Fresh B2B regression, authenticated axe and keyboard evidence are recorded in `B2B_STAGING_QA_2026-10-20.md`.
+The current deployed application image is immutable SHA `45ebbae37cb5104decf7a586e767a55cd41cd0cf`; all required services, workers, gateway and Keycloak are healthy in [`status-45ebbae-20261020T150900Z.txt`](evidence/staging/status-45ebbae-20261020T150900Z.txt). The older SHA references below are historical runs. Fresh B2B regression, authenticated axe and keyboard evidence are recorded in `B2B_STAGING_QA_2026-10-20.md`.
 
-**BLOCKED.** SSH access and the restricted staging runtime are present, and read-only endpoint probes pass for the public boundaries. The current `b0fd232` runtime is healthy and the real Admin OIDC login endpoint issues a 307 redirect to Keycloak with PKCE/state/nonce. Full release gates remain open because Keycloak MFA claims are not configured, authenticated Admin/visual QA, backup/restore, provider/DLQ recovery evidence, and three independent Playwright manifests are still missing.
+**BLOCKED.** SSH access and the restricted staging runtime are present, and read-only endpoint probes pass for the public boundaries. The current `45ebbae` runtime is healthy. Because the Keycloak MFA AMR/ACR mapping is explicitly still `не настроено`, the Admin login page is closed and `/api/auth/login` returns `503 Admin OIDC is not configured`; this fail-closed behavior is recorded in [`admin-mfa-fail-closed-45ebbae-20261020T150811Z.json`](evidence/staging/admin-mfa-fail-closed-45ebbae-20261020T150811Z.json). Full release gates remain open because Keycloak MFA claims are not configured, authenticated Admin/visual QA, backup/restore, provider/DLQ recovery evidence, and three independent Playwright manifests are still missing.
 
 The protected staging runtime was deliberately deployed to the pinned SHA below. No production deployment was performed.
 
@@ -16,14 +16,14 @@ The protected staging runtime was deliberately deployed to the pinned SHA below.
 - Current production specifications: `docs/NeoMarket_Admin_Production_Spec_2026-10-16/` and `docs/NeoMarket_Seller_Production_Blueprint_2026-10-16/`.
 - Staging manifests: `deploy/staging/`.
 - Local branch: `staging`; local HEAD contains later documentation-only commits. Those commits are not deployed.
-- The local worktree is dirty; the current deployed staging release is `0fcb935bfd14eba6eaa197898bf865e21eddfbd4` (see `evidence/staging/status-0fcb935-20261020T194454.txt`).
+- The local worktree is dirty; the current deployed staging release is `45ebbae37cb5104decf7a586e767a55cd41cd0cf` (see `evidence/staging/status-45ebbae-20261020T150900Z.txt`).
 - Requested `$neomarket-exhaustive-qa` skill was not present in the configured skill roots or repository skill directory.
 
 ## Latest OIDC staging verification
 
-- The restricted deployment currently runs immutable SHA `0fcb935bfd14eba6eaa197898bf865e21eddfbd4`; all required services and workers report healthy. The authoritative capture is [`status-0fcb935-20261020T194454.txt`](evidence/staging/status-0fcb935-20261020T194454.txt).
+- The restricted deployment currently runs immutable SHA `45ebbae37cb5104decf7a586e767a55cd41cd0cf`; all required services and workers report healthy. The authoritative capture is [`status-45ebbae-20261020T150900Z.txt`](evidence/staging/status-45ebbae-20261020T150900Z.txt).
 - Server-side discovery and token metadata fetches use the private `keycloak:8080` service. The public issuer remains `https://keycloak.neomarket.test/realms/neomarket-staging` for browser redirects and issuer validation.
-- `GET https://admin.neomarket.test/api/auth/login` on the current SHA returned `307 Temporary Redirect` with the expected authorization endpoint, `response_type=code`, PKCE `S256`, state, nonce, `prompt=login`, and `max_age=0`. Secret query values are omitted from [`admin-oidc-0fcb935-20261020T194621.json`](evidence/staging/admin-oidc-0fcb935-20261020T194621.json).
+- The post-deploy Admin boundary is intentionally fail-closed: `GET /login` renders `Вход закрыт`, while `GET /api/auth/login` returns `503 {"error":"Admin OIDC is not configured"}`. Keycloak discovery remains available and advertises only ACR `0`/`1`; the full redacted probe is [`admin-mfa-fail-closed-45ebbae-20261020T150811Z.json`](evidence/staging/admin-mfa-fail-closed-45ebbae-20261020T150811Z.json).
 - The latest persisted Chromium boundary run remains **75/75** across desktop, tablet and mobile. It was run against the code-equivalent OIDC deployment and covers 72 anonymous protected-route/forged-cookie cases and 3 cross-origin CSRF cases: [`admin-boundary-dae7914-20261020T144500Z.json`](evidence/staging/admin-boundary-dae7914-20261020T144500Z.json).
 - This is OIDC discovery/redirect evidence only. No staff credentials or MFA claims were used; authenticated Admin browser acceptance remains BLOCKED and fail-closed.
 
@@ -88,7 +88,7 @@ All probes were run against the server through SSH with Caddy's internal TLS ver
 |---|---:|---:|---|
 | `storefront.neomarket.test` | 200 | 200 | storefront responds |
 | `seller.neomarket.test` | 200 | 200 | seller responds |
-| `admin.neomarket.test` | 307 | 200 | redirects anonymous user to `/unauthorized` |
+| `admin.neomarket.test` | 200 (`/login` closed) | 200 | fail-closed Admin login while MFA mapping is not configured |
 | `keycloak.neomarket.test` | 302 | n/a | redirects to Keycloak admin; realm discovery succeeds at `/realms/neomarket-staging/.well-known/openid-configuration` |
 
 Port exposure is consistent with the checked-in staging policy: gateway is localhost-only and Caddy is the public boundary.

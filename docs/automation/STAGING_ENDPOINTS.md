@@ -10,7 +10,7 @@ The authoritative current application image is `45ebbae37cb5104decf7a586e767a55c
 |---|---|---|
 | `https://storefront.neomarket.test` | Storefront frontend through Caddy | `curl --resolve -k` returned HTTP 200 on `ee079032cfd234ddd3232c4dfc74fc84b1a5bc22` |
 | `https://seller.neomarket.test` | Seller frontend through Caddy | `curl --resolve -k` returned Seller health response |
-| `https://admin.neomarket.test` | Admin frontend through Caddy | anonymous `/` returns 307 to `/unauthorized`; `/api/health` returns 200; `/api/auth/login` returns a real 307 Keycloak OIDC redirect on `0fcb935bfd14eba6eaa197898bf865e21eddfbd4` |
+| `https://admin.neomarket.test` | Admin frontend through Caddy | anonymous `/` returns 307 to `/unauthorized`; `/api/health` returns 200; `/api/auth/login` returns 503 while MFA claim mapping is not configured on `45ebbae37cb5104decf7a586e767a55cd41cd0cf` |
 | `https://keycloak.neomarket.test` | Keycloak through Caddy | `curl --resolve -k` returned 302 |
 | `127.0.0.1:18080` | Internal Nginx gateway | deployment smoke passed |
 | `127.0.0.1:8080` | Existing demo Nginx | preserved; not NeoMarket |

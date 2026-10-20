@@ -1,0 +1,33 @@
+{
+  "captured_at": "2026-10-20T15:08:11Z",
+  "sha": "45ebbae37cb5104decf7a586e767a55cd41cd0cf",
+  "source": "staging gateway via localhost:18080 with Host headers",
+  "checks": {
+    "login_page": {
+      "status": 200,
+      "closed_marker": "\u0412\u0445\u043e\u0434 \u0437\u0430\u043a\u0440\u044b\u0442",
+      "open_marker_absent": true,
+      "observed": "closed fail-closed page"
+    },
+    "auth_login": {
+      "status": 503,
+      "body": "{\"error\":\"Admin OIDC is not configured\"}"
+    },
+    "health": {
+      "status": 200,
+      "body": "{\"status\":\"ok\",\"service\":\"admin\"}"
+    },
+    "keycloak_discovery": {
+      "status": 200,
+      "issuer": "http://keycloak.neomarket.test/realms/neomarket-staging",
+      "acr_values_supported": [
+        "0",
+        "1"
+      ],
+      "code_challenge_methods_supported": [
+        "plain",
+        "S256"
+      ]
+    }
+  }
+}
