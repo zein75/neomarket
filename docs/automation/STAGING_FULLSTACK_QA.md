@@ -23,6 +23,12 @@ The protected staging runtime was deliberately deployed to the pinned SHA below.
 - Fresh Chromium staging checks on the same SHA passed **75/75** across desktop, tablet and mobile: 72 anonymous protected-route/forged-cookie cases and 3 cross-origin CSRF cases. Evidence: [`admin-boundary-dae7914-20261020T144500Z.json`](evidence/staging/admin-boundary-dae7914-20261020T144500Z.json) and the persisted Playwright report.
 - This is OIDC discovery/redirect evidence only. No staff credentials or MFA claims were used; authenticated Admin browser acceptance remains BLOCKED and fail-closed.
 
+## Latest local release regression
+
+- Commit `e0c8042` replaces the deleted legacy spec validator in `ci/verify.sh` and the production-gates workflow with a structural validator for the current 2026-10-16 Admin specification. The validator passes for both OpenAPI targets and all 202 acceptance rows.
+- B2B: `285 passed, 38 skipped`; B2C unit gate: `154 passed, 10 deselected` (the PostgreSQL integration marker is run separately); Admin: `57 passed, 65 skipped`; shared/repository: `28 passed`.
+- Ruff, `uv lock --check`, OpenAPI route comparison and staging Compose security checks pass. The PowerShell host cannot execute `ci/verify.sh` through its WSL `bash` shim because that shim is configured with a missing `C:\rtz\wsl\Ubuntu\ext4.vhdx`; the equivalent gate commands were run directly and passed.
+
 ## Stage 1 ? server audit
 
 ### Access and capacity
