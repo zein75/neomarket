@@ -10,6 +10,7 @@
 ## Evidence executed
 
 - Local B2B regression: **285 passed, 38 skipped, 0 failed**.
+- Isolated PostgreSQL integration subset: **32 passed, 0 failed** after applying B2B migrations through `0065_product_safety_holds` in a disposable database.
 - Ruff: PASS.
 - Python compilation: PASS.
 - B2B target OpenAPI validation: PASS (76 Admin target operations and 12 B2B Admin target operations).
@@ -45,6 +46,8 @@ Evidence files:
 - \`evidence/staging/db-outage-drill-ee07903-20261020.json\`
 - \`evidence/staging/redis-outage-drill-ee07903-20261020.json\`
 - \`qa-reports/restore-drill/b2b-followup-20261020.json\`
+- \`evidence/staging/b2b-isolated-postgres-integration-20261020.txt\`
+- \`evidence/staging/b2b-isolated-postgres-integration-20261020.json\`
 
 The Compose release `ee079032` keeps the application network internal and adds
 a dedicated egress-only network for ClamAV updates. The scanner is healthy and

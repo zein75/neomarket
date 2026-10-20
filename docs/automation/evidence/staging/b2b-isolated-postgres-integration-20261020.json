@@ -1,0 +1,13 @@
+﻿{
+    "environment":  "isolated-local-postgres",
+    "commit_sha":  "94eca462ff6c7944575008417d8dbe5ec7aea18b",
+    "database":  "temporary disposable database",
+    "test_files":  [
+                       "test_inventory_export_service.py",
+                       "test_inventory_reservations.py",
+                       "test_live_outbox_crash_recovery.py"
+                   ],
+    "result":  "PASS",
+    "summary":  "32 passed, 0 failed",
+    "generated_at":  "2026-10-20T13:36:19.6525613Z"
+}
