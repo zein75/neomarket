@@ -1,0 +1,16 @@
+# Private staging only. Caddy's local CA provides HTTPS without exposing
+# the internal gateway or service ports.
+
+(staging_redirect) {
+	redir https://{host}{uri} permanent
+}
+
+http://storefront.neomarket.test, http://seller.neomarket.test, http://admin.neomarket.test, http://keycloak.neomarket.test {
+	import staging_redirect
+}
+
+https://storefront.neomarket.test, https://seller.neomarket.test, https://admin.neomarket.test, https://keycloak.neomarket.test {
+	tls internal
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8080
+}
