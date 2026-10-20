@@ -1,0 +1,7 @@
+﻿{
+    "release_sha":  "cba15c1aa57641677dc57d1692da8bc38d5f8ac5",
+    "checked_at":  "2026-10-20T19:02:00+05:00",
+    "command":  "python docs/NeoMarket_Admin_Production_Spec_2026-10-16/qa/check_release.py --matrix docs/NeoMarket_Admin_Production_Spec_2026-10-16/qa/ACCEPTANCE_MATRIX.csv --runs-dir docs/automation/seller_runs",
+    "exit_code":  1,
+    "output":  "{\n  \"result\": \"BLOCKED\",\n  \"required_cases\": 202,\n  \"issues\": [\n    \"Exactly 3 independent manifests required, found 0\"\n  ],\n  \"issue_count\": 1\n}"
+}

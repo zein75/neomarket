@@ -44,6 +44,8 @@ Independent local checks on the current checkout:
 - The enforced CSP now permits the Google font stylesheet/font origins already referenced by the three frontend shells. Real Chromium checks against Storefront, Seller and Admin returned HTTP 200, no CSP/font console violations, and no page errors. Evidence: `docs/automation/evidence/staging/csp-fonts-82e1253-20261020.json`.
 - This closes the observed staging font CSP defect; it does not change the mandatory authenticated, visual, backup/restore or commercial release gates.
 
+The release checker was rerun on `cba15c1`; it remains `BLOCKED` because the required three independent manifests are absent (`202` cases, `0/3` manifests). Evidence: `docs/automation/evidence/staging/release-check-cba15c1-20261020.json`.
+
 **Runtime evidence (2026-10-20T11:50:01Z):** deployment `c073e7446d6d639f73644a1b68d2110ed234b325` completed through the restricted `neomarket-deploy` SSH command. Gateway probes are recorded in `evidence/staging/gateway-routes-20261020T115001Z.txt`; the status capture is `evidence/staging/status-20261020T115001Z.txt`. All required containers reported `running` and `healthy`; the deployment smoke check returned `SMOKE PASS`.
 
 The public Keycloak discovery document also resolves through Caddy with the configured staging issuer, JWKS URL and PKCE `S256` support; the response is recorded in `evidence/staging/keycloak-oidc-discovery-20261020T1152Z.json`. This is provider discovery evidence only and does not promote browser MFA/OIDC acceptance.
