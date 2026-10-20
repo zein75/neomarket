@@ -1,0 +1,160 @@
+{
+  "release": "cba15c1aa57641677dc57d1692da8bc38d5f8ac5",
+  "fixture": "qa-b2b-20261020c",
+  "checkedAt": "2026-10-20T12:58:13.194Z",
+  "results": [
+    {
+      "route": "/dashboard",
+      "status": 200,
+      "url": "https://seller.neomarket.test/dashboard",
+      "heading": "Управление каталогом и остатками",
+      "stateTexts": [],
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "route": "/products",
+      "status": 200,
+      "url": "https://seller.neomarket.test/products",
+      "heading": "Товары",
+      "stateTexts": [],
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "route": "/products/new",
+      "status": 200,
+      "url": "https://seller.neomarket.test/products/new",
+      "heading": "Новый черновик",
+      "stateTexts": [
+        "Активные категории не настроены. Создание товара временно недоступно."
+      ],
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "route": "/inventory",
+      "status": 200,
+      "url": "https://seller.neomarket.test/inventory",
+      "heading": "Остатки",
+      "stateTexts": [],
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "route": "/imports",
+      "status": 200,
+      "url": "https://seller.neomarket.test/imports",
+      "heading": "Import stock counts",
+      "stateTexts": [],
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "route": "/orders",
+      "status": 200,
+      "url": "https://seller.neomarket.test/orders",
+      "heading": "Заказы",
+      "stateTexts": [
+        "Пока нет распределённых заказов"
+      ],
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "route": "/returns",
+      "status": 200,
+      "url": "https://seller.neomarket.test/returns",
+      "heading": "returns",
+      "stateTexts": [
+        "Возвраты, refund и restock отключены до ADR по merchant of record, доставке, возвратам и PSP."
+      ],
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "route": "/finance",
+      "status": 200,
+      "url": "https://seller.neomarket.test/finance",
+      "heading": "Финансы",
+      "stateTexts": [
+        "ФИНАНСОВЫЙ ПРОВАЙДЕР НЕ НАСТРОЕН",
+        "Финансовые данные и выплаты появятся после настройки платёжного провайдера и правил комиссии. Сейчас система не располагает подтверждёнными расчётами."
+      ],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 501 ()"
+      ],
+      "pageErrors": []
+    },
+    {
+      "route": "/finance/payouts",
+      "status": 200,
+      "url": "https://seller.neomarket.test/finance/payouts",
+      "heading": "Выплаты",
+      "stateTexts": [
+        "ФИНАНСОВЫЙ ПРОВАЙДЕР НЕ НАСТРОЕН",
+        "Финансовые данные и выплаты появятся после настройки платёжного провайдера и правил комиссии. Сейчас система не располагает подтверждёнными расчётами."
+      ],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 501 ()"
+      ],
+      "pageErrors": []
+    },
+    {
+      "route": "/team",
+      "status": 200,
+      "url": "https://seller.neomarket.test/team",
+      "heading": "Команда",
+      "stateTexts": [],
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "route": "/settings",
+      "status": 200,
+      "url": "https://seller.neomarket.test/settings",
+      "heading": "settings",
+      "stateTexts": [],
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "route": "/analytics",
+      "status": 200,
+      "url": "https://seller.neomarket.test/analytics",
+      "heading": "analytics",
+      "stateTexts": [],
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "route": "/moderation",
+      "status": 200,
+      "url": "https://seller.neomarket.test/moderation",
+      "heading": "Модерация",
+      "stateTexts": [],
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "route": "/onboarding",
+      "status": 200,
+      "url": "https://seller.neomarket.test/onboarding",
+      "heading": "onboarding",
+      "stateTexts": [
+        "Онбординг KYB ожидает утверждённого identity-провайдера и backend-контрактов. Данные не подменяются демонстрационными значениями."
+      ],
+      "consoleErrors": [],
+      "pageErrors": []
+    },
+    {
+      "route": "/support",
+      "status": 200,
+      "url": "https://seller.neomarket.test/support",
+      "heading": "support",
+      "stateTexts": [],
+      "consoleErrors": [],
+      "pageErrors": []
+    }
+  ]
+}

@@ -46,6 +46,8 @@ Independent local checks on the current checkout:
 
 The release checker was rerun on `cba15c1`; it remains `BLOCKED` because the required three independent manifests are absent (`202` cases, `0/3` manifests). Evidence: `docs/automation/evidence/staging/release-check-cba15c1-20261020.json`.
 
+Authenticated Seller state matrix on `cba15c1` covered 15 routes with HTTP 200 and no page errors. Truthful empty/unavailable states were observed for orders, product creation, onboarding, returns and finance; the finance `501 FEATURE_NOT_CONFIGURED` responses are intentional fail-closed behavior. Evidence: `docs/automation/evidence/staging/seller-state-matrix-cba15c1-20261020.json`. Fixture cleanup returned `deleted=true`.
+
 **Runtime evidence (2026-10-20T11:50:01Z):** deployment `c073e7446d6d639f73644a1b68d2110ed234b325` completed through the restricted `neomarket-deploy` SSH command. Gateway probes are recorded in `evidence/staging/gateway-routes-20261020T115001Z.txt`; the status capture is `evidence/staging/status-20261020T115001Z.txt`. All required containers reported `running` and `healthy`; the deployment smoke check returned `SMOKE PASS`.
 
 The public Keycloak discovery document also resolves through Caddy with the configured staging issuer, JWKS URL and PKCE `S256` support; the response is recorded in `evidence/staging/keycloak-oidc-discovery-20261020T1152Z.json`. This is provider discovery evidence only and does not promote browser MFA/OIDC acceptance.

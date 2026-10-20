@@ -34,11 +34,20 @@ Evidence files:
 - \`evidence/staging/b2b-authenticated-runtime-fbbd473-20261020.json\`
 - \`evidence/staging/csp-fonts-82e1253-20261020.json\`
 - \`evidence/staging/status-cba15c1-20261020.txt\`
+- \`evidence/staging/seller-state-matrix-cba15c1-20261020.json\`
 
 The Compose release `cba15c1` keeps ClamAV private and adds container-scoped
 DNS for the signature updater. The container remains healthy, but the staging
 network still cannot resolve/reach `database.clamav.net`; signature freshness
 is therefore an open operational blocker and no media-scan gate is promoted.
+
+Authenticated Seller state sweep on the same release covered 15 real routes:
+all returned HTTP 200 with no page errors. Orders showed the truthful empty
+state, product creation and onboarding exposed their unavailable dependencies,
+returns stayed disabled by ADR policy, and finance returned the explicit
+`501 FEATURE_NOT_CONFIGURED` state. The expected 501 responses are retained as
+fail-closed evidence; they are not treated as runtime defects. The ephemeral
+fixture was destroyed after the run.
 
 The release `82e1253` also corrected the enforced CSP `connect-src` to allow the
 Google font stylesheet/font origins already used by the approved Seller,
