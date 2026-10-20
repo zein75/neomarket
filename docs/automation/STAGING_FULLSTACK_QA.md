@@ -10,6 +10,8 @@ The local-only Admin demo-auth escape hatch is disabled in staging: `GET /api/au
 
 The current real-browser anonymous Admin boundary rerun passed **75/75** across desktop, tablet and mobile Chromium on the live `45ebbae` runtime. It covers all 23 protected pages per project, browser-fetch BFF `401` handling, and forged-cookie rejection, with no route interception or backend stubs. The BFF assertion was moved from Playwright `APIRequestContext` to browser `fetch` so the private staging host mapping is actually used. Evidence: [`admin-anonymous-boundary-45ebbae-20261020T1541Z.json`](evidence/staging/admin-anonymous-boundary-45ebbae-20261020T1541Z.json).
 
+The independent cross-origin mutation check passed **3/3** Chromium projects and returned `403 CSRF_VALIDATION_FAILED` with `no-store` from the live Admin BFF. Evidence: [`admin-csrf-boundary-45ebbae-20261020T1543Z.json`](evidence/staging/admin-csrf-boundary-45ebbae-20261020T1543Z.json).
+
 The source audit confirms that AT-100, AT-104 and AT-105 still lack an authoritative configured search projection, cache invalidation contract, and rebuild/reconciliation/rollback contract. They remain blocked; no provider or semantics were invented.
 
 The current Admin/backend/frontend gate rerun is recorded in [`admin-gates-20261020`](evidence/admin-gates-20261020/REPORT.md): Admin unit `58 passed, 65 skipped`, Admin PostgreSQL `63 passed, 2 skipped`, B2B `285 passed, 38 skipped`, B2C `154 passed, 10 deselected`, Admin OpenAPI `76` operations, B2B internal OpenAPI `12` operations, and Admin frontend typecheck/build all pass. These are source and disposable-database checks; they do not replace the unavailable authenticated Keycloak browser gate.
