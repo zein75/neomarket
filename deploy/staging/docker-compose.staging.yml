@@ -339,6 +339,7 @@ services:
     networks: [backend]
     environment:
       NODE_ENV: production
+      HOSTNAME: 0.0.0.0
       NEOMARKET_B2C_URL: http://b2c:8001
       NEOMARKET_PUBLIC_ORIGIN: ${STOREFRONT_PUBLIC_ORIGIN:?set STOREFRONT_PUBLIC_ORIGIN}
     depends_on:
@@ -361,6 +362,7 @@ services:
     networks: [backend]
     environment:
       NODE_ENV: production
+      HOSTNAME: 0.0.0.0
       NEOMARKET_B2B_URL: http://b2b:8002
       NEOMARKET_PUBLIC_ORIGIN: ${SELLER_PUBLIC_ORIGIN:?set SELLER_PUBLIC_ORIGIN}
       NEOMARKET_SELLER_ORIGIN: ${SELLER_PUBLIC_ORIGIN:?set SELLER_PUBLIC_ORIGIN}
@@ -385,6 +387,7 @@ services:
     networks: [backend]
     environment:
       NODE_ENV: production
+      HOSTNAME: 0.0.0.0
       NEOMARKET_ADMIN_URL: http://admin:8003
       NEOMARKET_ADMIN_SESSION_SERVICE_URL: http://admin:8003
       NEOMARKET_PUBLIC_ORIGIN: ${ADMIN_PUBLIC_ORIGIN:?set ADMIN_PUBLIC_ORIGIN}
