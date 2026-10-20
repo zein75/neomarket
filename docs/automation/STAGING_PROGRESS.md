@@ -18,6 +18,7 @@
 - The first official three-project Seller keyboard run exposed two moderation filter buttons with `outline: none` on desktop/tablet. Diagnosis is recorded in `docs/automation/evidence/staging/seller-focus-diagnose-0fcb935-20261020.json`; source fix `b0fd232` adds an explicit 3px cobalt focus ring.
 - The repeat official `seller-keyboard-focus.spec.ts` run passed 9/9 tests across desktop, tablet and mobile with no skipped or unexpected tests: `docs/automation/evidence/staging/keyboard-b0fd232-playwright.json`. UI-06 is still PARTIAL only for its remaining manual screen-reader/modal review requirement.
 - The official `seller-accessibility.spec.ts` passed on all three Chromium projects with zero skipped/unexpected tests and no WCAG 2.2 A/AA axe violations across its public and authenticated Seller screens: `docs/automation/evidence/staging/axe-b0fd232-playwright.json` and `docs/automation/evidence/staging/axe-b0fd232/`. UI-07 remains PARTIAL only because manual assistive-technology review is still required by the matrix.
+- The acceptance checker remains honestly BLOCKED at `202 required cases`, `0/3 independent manifests`; the refreshed result is `docs/automation/evidence/staging/release-check-b0fd232-20261020.json`. No manifest was fabricated.
 
 **Latest verification:** 2026-10-20 (local regression and frontend release checks)
 

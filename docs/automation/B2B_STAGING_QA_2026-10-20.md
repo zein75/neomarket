@@ -65,6 +65,7 @@ Evidence files:
 - \`evidence/staging/status-b0fd232-20261020.txt\`
 - \`evidence/staging/axe-b0fd232-playwright.json\`
 - \`evidence/staging/axe-b0fd232/\`
+- \`evidence/staging/release-check-b0fd232-20261020.json\`
 - \`evidence/staging/clamav-ee079032-20261020.json\`
 - \`evidence/staging/smoke-ee07903-20261020.txt\`
 - \`evidence/staging/qa-fixture-create-destroy-ee07903-20261020.json\`
