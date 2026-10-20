@@ -1,0 +1,23 @@
+{
+  "run_id": "admin-anonymous-boundary-45ebbae-20261020T1519Z",
+  "environment": "isolated-staging",
+  "release_sha": "45ebbae37cb5104decf7a586e767a55cd41cd0cf",
+  "executed_at": "2026-10-20T15:19:21Z",
+  "base_url": "https://admin.neomarket.test",
+  "browser": "Chromium",
+  "projects": [
+    "desktop-chromium",
+    "tablet-chromium",
+    "mobile-chromium"
+  ],
+  "host_resolution": "Chromium launch host-resolver-rules MAP *.neomarket.test 192.168.0.112",
+  "tls": "Caddy staging CA trusted in the local Chromium profile",
+  "test_file": "frontend/e2e/tests/admin-auth-boundary.spec.ts",
+  "grep": "redirects anonymous|forged Admin cookie",
+  "tests_expected": 69,
+  "tests_passed": 69,
+  "tests_failed": 0,
+  "tests_skipped": 0,
+  "api_request_case_excluded": true,
+  "notes": "Real staging frontend and gateway responses; no route interception or backend stubs. APIRequestContext case was excluded because Playwright request clients do not consume Chromium host-resolver rules."
+}
