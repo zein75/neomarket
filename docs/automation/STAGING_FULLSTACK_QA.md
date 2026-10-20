@@ -51,6 +51,12 @@ The protected staging runtime was deliberately deployed to the pinned SHA below.
 - Read-only wrapper: `/usr/local/sbin/neomarket-staging-status`, but it cannot read `/etc/neomarket/staging.env` as `ter0o`; no secret was read.
 - The SSH guard accepts only a validated SHA request or `neomarket-staging-status`; the protected SHA request was used for the staging redeploy recorded below.
 
+### Fresh SSH retry
+
+- A new `ssh -o BatchMode=yes market-staging` login succeeded as `ter0o` on host `dev`; direct read-only identity and hostname checks work.
+- The status wrapper currently exits non-zero while trying to `stat /etc/neomarket/staging.env` because the file is root-only. This does not expose secrets and does not invalidate the previously captured healthy runtime status, but a root-owned wrapper fix is required before a new live container status capture can be made through this account.
+- Public read-only probes with the staging host mapping returned Admin health `200`, Admin OIDC login `307` to Keycloak, and Keycloak discovery `200`.
+
 ### Network and proxy
 
 - `enp4s0`: `192.168.0.112/24`.
