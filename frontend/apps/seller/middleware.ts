@@ -14,10 +14,21 @@ export async function middleware(request: NextRequest) {
     // Cookie presence is not authentication. Revalidate the bearer with the
     // B2B auth/me contract before serving any private Seller route.
     try {
-      const session = await fetch(new URL('/api/seller/auth/session', request.url), {
-        headers: { cookie: request.headers.get('cookie') ?? '' },
-        cache: 'no-store',
-      });
+      const token = request.cookies.get('__Host-nm_seller_access')?.value || request.cookies.get('nm_seller_access')?.value;
+      const internalB2B = process.env.NEOMARKET_B2B_URL?.replace(/\/$/, '');
+      // Middleware runs inside the frontend container. Use the service DNS
+      // name when configured; the public BFF origin is not resolvable from
+      // that network in staging and would incorrectly turn valid sessions
+      // into login redirects.
+      const session = await fetch(
+        internalB2B ? `${internalB2B}/auth/me` : new URL('/api/seller/auth/session', request.url),
+        {
+          headers: internalB2B
+            ? { Accept: 'application/json', Authorization: `Bearer ${token}` }
+            : { cookie: request.headers.get('cookie') ?? '' },
+          cache: 'no-store',
+        },
+      );
       if (session.ok) return NextResponse.next();
     } catch {
       // Fail closed when the auth service is unavailable.
