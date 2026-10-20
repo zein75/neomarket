@@ -1,0 +1,24 @@
+{
+  "captured_at": "2026-10-20T14:45:00Z",
+  "environment": "staging",
+  "deployed_sha": "dae79147dac0b4d86e4397981e86f7bec10d3faa",
+  "suite": [
+    "admin-auth-boundary.spec.ts",
+    "admin-csrf-boundary.spec.ts"
+  ],
+  "projects": [
+    "desktop-chromium",
+    "tablet-chromium",
+    "mobile-chromium"
+  ],
+  "host_resolver": "MAP *.neomarket.test 192.168.0.112,EXCLUDE localhost",
+  "tests_total": 75,
+  "tests_passed": 75,
+  "tests_failed": 0,
+  "tests_flaky": 0,
+  "tests_skipped": 0,
+  "result": "PASS: anonymous boundary and CSRF checks",
+  "scope_note": "This is anonymous/cross-origin boundary evidence only; it is not authenticated OIDC/MFA release evidence.",
+  "playwright_json_sha256": "0677252b720367696427b8effdd0880899e573dd02a2789071e8a532bcd9f1f1",
+  "raw_report": "admin-boundary-dae7914-20261020T144500Z.playwright.json"
+}

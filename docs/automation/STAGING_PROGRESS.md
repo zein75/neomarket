@@ -12,6 +12,7 @@
 
 - Protected staging deployment completed on immutable SHA `dae79147dac0b4d86e4397981e86f7bec10d3faa`; all required services, workers, gateway and Keycloak are healthy. Evidence: `evidence/staging/status-dae7914-20261020T143121Z.txt`.
 - Admin `GET /api/auth/login` now returns `307 Temporary Redirect` to the real Keycloak authorization endpoint with PKCE `S256`, state, nonce, `prompt=login`, and `max_age=0`. Server-side discovery uses private `keycloak:8080`; no public-DNS hairpin is required. Evidence: `evidence/staging/admin-oidc-private-keycloak-dae79147dac0b4d86e4397981e86f7bec10d3faa-20261020T143102Z.json`.
+- Fresh Chromium anonymous boundary and CSRF checks passed 75/75 across desktop, tablet and mobile on the same SHA. Evidence: `evidence/staging/admin-boundary-dae7914-20261020T144500Z.json`.
 - MFA/step-up claims remain `не настроено`; no credentials or MFA codes were used. Authenticated Admin browser scenarios and the three independent manifests remain BLOCKED.
 
 The staging refresh helper was hardened in `bcdcddb`: when run from `/tmp/neomarket-src/deploy/staging/bootstrap/refresh_root_files.sh`, it reads the checked-out manifests directly and updates the root-owned deployment wrapper. The host applied the refresh and a fixed-SHA redeploy on 2026-10-20.

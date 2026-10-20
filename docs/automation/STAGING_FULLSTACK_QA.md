@@ -20,6 +20,7 @@ The protected staging runtime was deliberately deployed to the pinned SHA below.
 - CI and the restricted deployment completed for immutable SHA `dae79147dac0b4d86e4397981e86f7bec10d3faa`; all required services and workers report healthy.
 - Server-side discovery and token metadata fetches use the private `keycloak:8080` service. The public issuer remains `https://keycloak.neomarket.test/realms/neomarket-staging` for browser redirects and issuer validation.
 - `GET https://admin.neomarket.test/api/auth/login` returned `307 Temporary Redirect` with the expected authorization endpoint, `response_type=code`, PKCE `S256`, state, nonce, `prompt=login`, and `max_age=0`. Evidence: [`admin-oidc-private-keycloak-dae79147dac0b4d86e4397981e86f7bec10d3faa-20261020T143102Z.json`](evidence/staging/admin-oidc-private-keycloak-dae79147dac0b4d86e4397981e86f7bec10d3faa-20261020T143102Z.json).
+- Fresh Chromium staging checks on the same SHA passed **75/75** across desktop, tablet and mobile: 72 anonymous protected-route/forged-cookie cases and 3 cross-origin CSRF cases. Evidence: [`admin-boundary-dae7914-20261020T144500Z.json`](evidence/staging/admin-boundary-dae7914-20261020T144500Z.json) and the persisted Playwright report.
 - This is OIDC discovery/redirect evidence only. No staff credentials or MFA claims were used; authenticated Admin browser acceptance remains BLOCKED and fail-closed.
 
 ## Stage 1 ? server audit
