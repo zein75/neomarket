@@ -1,0 +1,8 @@
+﻿ssh : 
+At line:4 char:6
++ $x = ssh -i $key -o IdentitiesOnly=yes -o BatchMode=yes ter0o@192.168 ...
++      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+COMPOSE_CONFIG_PASS
