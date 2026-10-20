@@ -51,5 +51,10 @@ install -o root -g root -m 0644 "$SCRIPT_DIR/neomarket-staging-deploy.sudoers" /
 chmod 0440 /etc/sudoers.d/neomarket-staging-deploy
 fi
 systemctl reload caddy
-rm -f "$COMPOSE_SRC" "$STATUS_SRC" "$CADDY_SRC" "$NGINX_SRC"
+# The helper is also intentionally runnable from a checked-out repository.
+# Never delete tracked source files there; only clean the temporary upload
+# contract used by the legacy remote refresh workflow.
+if [[ "$COMPOSE_SRC" == /tmp/ter0o-neomarket-compose.yml ]]; then
+  rm -f "$COMPOSE_SRC" "$STATUS_SRC" "$CADDY_SRC" "$NGINX_SRC"
+fi
 echo "Installed staging Compose, diagnostics and Caddy configuration. Backup: $backup"
