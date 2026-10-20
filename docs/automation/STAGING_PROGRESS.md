@@ -115,6 +115,7 @@ An additional real-browser smoke covered 24 public Storefront, Seller and Admin 
 - A fresh isolated local PostgreSQL restore drill passed for B2C, B2B and Admin. Source/restored row counts and order-independent checksums matched; Admin audit-chain hashes, links and head remained valid. Evidence: `qa-reports/restore-drill/b2b-followup-20261020.json`. This does not close the required off-host WAL/PITR target, encryption, retention or RPO/RTO gate.
 - A disposable PostgreSQL integration run applied B2B migrations through `0065_product_safety_holds` and passed 32 DB-backed inventory/export/reservation/outbox tests with zero failures. Evidence: `docs/automation/evidence/staging/b2b-isolated-postgres-integration-20261020.txt` and `.json`. This is isolated local evidence, not a claim against the staging database.
 - A second disposable PostgreSQL run passed 7 auth/draft integration tests covering session revocation, draft autosave revision fencing and membership management. Evidence: `docs/automation/evidence/staging/b2b-isolated-auth-draft-integration-20261020.txt` and `.json`.
+- A disposable PostgreSQL scale run passed both 100k-row checks: seller inventory pagination completed 1,000 pages with 3.16 MB Python peak, and inventory export wrote 100,001 CSV lines with 1.65 MB worker peak. Evidence: `docs/automation/evidence/staging/b2b-isolated-scale-integration-20261020.txt` and `.json`.
 
 ### Deployment confirmation for ee07903 - 2026-10-20 13:10Z
 

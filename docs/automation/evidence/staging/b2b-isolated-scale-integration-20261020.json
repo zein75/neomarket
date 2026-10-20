@@ -1,0 +1,11 @@
+﻿{
+    "environment":  "isolated-local-postgres",
+    "commit_sha":  "872b0a1bcfcdac48fb347420502ac92596d0151b",
+    "database":  "temporary disposable database with transaction-scoped temp tables",
+    "test_files":  [
+                       "test_seller_inventory_scale.py",
+                       "test_inventory_export_scale.py"
+                   ],
+    "result":  "PASS",
+    "generated_at":  "2026-10-20T13:39:22.1163138Z"
+}
