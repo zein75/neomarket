@@ -10,7 +10,7 @@
 | Real PostgreSQL/Redis migrations | PASS for current heads | B2B/B2C/Admin migration jobs completed |
 | Keycloak availability | PASS | realm imported; container healthy |
 | OIDC/MFA/RBAC browser proof | BLOCKED | anonymous boundary is verified; real staff credentials/MFA browser manifests are missing; Keycloak advertises only ACR `0`/`1` |
-| Media storage and ClamAV | PARTIAL | ClamAV healthy; full upload/quarantine flow not run |
+| Media storage and ClamAV | PARTIAL | ClamAV service is healthy, but `freshclam` still cannot resolve/reach `database.clamav.net` after container-scoped DNS; full upload/quarantine and signature-freshness evidence are not run |
 | HTTPS ingress | PASS for routing / PARTIAL for browser | Caddy internal TLS and host routing pass on `82e12533be6e06b24a08f9ab2febc13e4589505d`; CA is trusted by the current Playwright Chromium profile |
 | Authenticated Playwright | BLOCKED | no controlled staging Admin test identity/MFA enrollment; anonymous boundary 72/72 only |
 | Backup/restore | NOT RUN | external backup target and restore drill absent |

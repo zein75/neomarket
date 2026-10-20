@@ -33,6 +33,11 @@ Independent local checks on the current checkout:
 
 **Current release status: BLOCKED.** Production readiness is not asserted while browser, backup/restore, authenticated QA, visual, and full security evidence are missing.
 
+### ClamAV updater investigation — 2026-10-20 18:55 local
+
+- Compose release `cba15c1aa57641677dc57d1692da8bc38d5f8ac5` adds explicit DNS servers only to the private ClamAV container; static Compose security remains PASS and the full stack redeployed healthy.
+- Runtime logs still report `Could not resolve hostname database.clamav.net` and `Update failed for database: daily`. The scanner process itself is healthy, but signature freshness is unavailable on this staging network. Media storage/antivirus remains PARTIAL and no false PASS is recorded.
+
 ### CSP font asset verification — 2026-10-20 18:48 local
 
 - Release `82e12533be6e06b24a08f9ab2febc13e4589505d` passed CI, all six image builds, migration checks, and restricted staging deployment with `SMOKE PASS`.

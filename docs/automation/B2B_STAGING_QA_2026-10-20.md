@@ -2,7 +2,7 @@
 
 ## Version
 
-- Runtime release: \`82e12533be6e06b24a08f9ab2febc13e4589505d\`
+- Runtime release: \`cba15c1aa57641677dc57d1692da8bc38d5f8ac5\`
 - Server: \`192.168.0.112\`
 - Gateway: \`127.0.0.1:18080\`
 - Environment: isolated staging
@@ -33,6 +33,11 @@ Evidence files:
 - \`evidence/staging/b2b-authenticated-routes-fbbd473-20261020.json\`
 - \`evidence/staging/b2b-authenticated-runtime-fbbd473-20261020.json\`
 - \`evidence/staging/csp-fonts-82e1253-20261020.json\`
+
+The Compose release `cba15c1` keeps ClamAV private and adds container-scoped
+DNS for the signature updater. The container remains healthy, but the staging
+network still cannot resolve/reach `database.clamav.net`; signature freshness
+is therefore an open operational blocker and no media-scan gate is promoted.
 
 The release `82e1253` also corrected the enforced CSP `connect-src` to allow the
 Google font stylesheet/font origins already used by the approved Seller,
