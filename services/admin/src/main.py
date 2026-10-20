@@ -272,6 +272,10 @@ async def readiness() -> dict[str, str]:
                 ):
                     raise RuntimeError("Admin runtime database role must be non-superuser and append-only for audit_logs")
     except Exception as exc:  # noqa: BLE001 - readiness must fail closed
+        # Keep the response generic for clients, but record the non-secret
+        # failure class/message so staging diagnostics can identify whether a
+        # migration-head or runtime-role check is blocking readiness.
+        logger.error("Admin readiness check failed (%s): %s", type(exc).__name__, exc)
         raise HTTPException(
             status_code=503,
             detail={"code": "NOT_READY", "message": "Database unavailable or schema is not current"},
