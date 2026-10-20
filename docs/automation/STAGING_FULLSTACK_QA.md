@@ -1,5 +1,13 @@
 # NeoMarket Fullstack Staging QA ? 2026-10-20
 
+## Latest server verification (2026-10-20T15:23Z)
+
+SSH access is working again through `market-staging` as `ter0o`. The read-only audit and live probes are recorded in [`server-check-45ebbae-20261020T1523Z.json`](evidence/staging/server-check-45ebbae-20261020T1523Z.json). Host capacity is 12 logical CPUs, 15 GiB RAM, 331 GiB free on `/`, and public listeners are limited to SSH/HTTP/HTTPS; Docker remains unavailable to the test SSH user.
+
+The pinned staging release `45ebbae37cb5104decf7a586e767a55cd41cd0cf` responds healthy for Admin and B2B. Admin OIDC remains intentionally fail-closed: `GET /api/auth/login` returns `503 {"error":"Admin OIDC is not configured"}` because the Keycloak MFA AMR/ACR mapping is still not configured. Keycloak discovery is reachable and advertises only ACR `0` and `1`.
+
+The source audit confirms that AT-100, AT-104 and AT-105 still lack an authoritative configured search projection, cache invalidation contract, and rebuild/reconciliation/rollback contract. They remain blocked; no provider or semantics were invented.
+
 ## Release status
 
 ### Current runtime correction (2026-10-20)

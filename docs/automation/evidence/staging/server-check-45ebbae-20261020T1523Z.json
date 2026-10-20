@@ -1,0 +1,48 @@
+{
+  "run_id": "server-check-45ebbae-20261020T1523Z",
+  "timestamp_utc": "2026-10-20T15:23:02Z",
+  "environment": "staging",
+  "release_sha": "45ebbae37cb5104decf7a586e767a55cd41cd0cf",
+  "ssh": {
+    "alias": "market-staging",
+    "host": "192.168.0.112",
+    "user": "ter0o",
+    "result": "PASS",
+    "read_only": true
+  },
+  "host_audit": {
+    "hostname": "dev",
+    "os": "Ubuntu 26.04.1 LTS",
+    "kernel": "7.0.0-38-generic",
+    "cpu": "AMD Ryzen 5 3600, 12 logical CPUs",
+    "memory": "15 GiB RAM, 4 GiB swap",
+    "root_storage": "468 GiB ext4, 331 GiB available",
+    "docker_socket": "not available to ter0o; sudo requires interactive authentication",
+    "public_listeners": ["22/tcp", "80/tcp", "443/tcp"],
+    "internal_listeners": ["127.0.0.1:18080", "127.0.0.1:8080", "127.0.0.1:2019"],
+    "firewall": "not inspectable without root; no system setting changed"
+  },
+  "runtime_probes": {
+    "admin_login_page": {"method": "GET", "path": "/login", "status": 200, "contains": "Вход закрыт"},
+    "admin_health": {"method": "GET", "path": "/api/health", "status": 200, "body": {"status": "ok", "service": "admin"}},
+    "admin_oidc_login": {"method": "GET", "path": "/api/auth/login", "status": 503, "body": {"error": "Admin OIDC is not configured"}},
+    "admin_protected_page": {"method": "GET", "path": "/dashboard", "status": 307, "location": "/unauthorized"},
+    "admin_protected_api": {"method": "GET", "path": "/api/admin/sellers", "status": 401, "body": {"code": "ADMIN_SESSION_REQUIRED"}},
+    "b2b_health": {"method": "GET", "host": "b2b.internal", "path": "/health", "status": 200, "body": {"status": "ok"}},
+    "b2b_ready_via_gateway": {"method": "GET", "host": "b2b.internal", "path": "/ready", "status": 404, "expected": true},
+    "keycloak_discovery": {"method": "GET", "path": "/realms/neomarket-staging/.well-known/openid-configuration", "status": 200, "acr_values_supported": ["0", "1"], "code_challenge_methods_supported": ["plain", "S256"]}
+  },
+  "source_contract_checks": {
+    "AT-100": "BLOCKED: no configured authoritative search projection/provider",
+    "AT-104": "BLOCKED: no configured cache key/TTL and invalidation contract",
+    "AT-105": "BLOCKED: no configured rebuild/reconciliation/rollback contract",
+    "evidence": "docs/automation/ADMIN_DECISIONS_REQUIRED.md"
+  },
+  "release_checker": {
+    "result": "BLOCKED",
+    "required_cases": 202,
+    "independent_manifests": 0,
+    "reason": "Exactly 3 independent manifests required, found 0"
+  },
+  "changes": []
+}
