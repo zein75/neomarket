@@ -11,3 +11,10 @@
 !.env.example
 docs/NeoMarket_Frontend_Production_Spec_2026-10-15
 graphify-out
+**/playwright-report
+**/test-results*
+**/qa-reports
+**/docs/automation
+**/*.zip
+**/*.webm
+**/*.mp4
