@@ -4,6 +4,8 @@
 
 ## Completed
 
+Current protected runtime evidence is pinned to application image SHA `b0fd2323d8fa5c6df166018f0e5f7c0cfdb4c565`; the historical runtime update below is retained for audit provenance.
+
 - Static staging Compose security check passes.
 - No application service except the loopback gateway publishes a host port.
 - Admin development authentication is disabled in the staging manifest.

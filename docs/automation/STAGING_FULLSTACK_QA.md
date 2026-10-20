@@ -2,6 +2,10 @@
 
 ## Release status
 
+### Current runtime correction (2026-10-20)
+
+The current deployed application image is immutable SHA `b0fd2323d8fa5c6df166018f0e5f7c0cfdb4c565`; all required services, workers, gateway and Keycloak are healthy in [`status-b0fd232-20261020.txt`](evidence/staging/status-b0fd232-20261020.txt). The older SHA references below are historical runs. Fresh B2B regression, authenticated axe and keyboard evidence are recorded in `B2B_STAGING_QA_2026-10-20.md`.
+
 **BLOCKED.** SSH access and the restricted staging runtime are present, and read-only endpoint probes pass for the public boundaries. The current `0fcb935` runtime is healthy and the real Admin OIDC login endpoint issues a 307 redirect to Keycloak with PKCE/state/nonce. Full release gates remain open because Keycloak MFA claims are not configured, authenticated Admin/visual QA, backup/restore, provider/DLQ recovery evidence, and three independent Playwright manifests are still missing.
 
 The protected staging runtime was deliberately deployed to the pinned SHA below. No production deployment was performed.
