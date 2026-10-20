@@ -310,6 +310,40 @@ async def test_catalog_returns_filtered_sorted_products() -> None:
     assert response["offset"] == 0
     assert [item["id"] for item in response["items"]] == ["p2"]
     assert response["items"][0]["min_price"] == 15000
+    assert response["items"][0]["min_price_minor"] == 15000
+    assert response["items"][0]["images"] == [{"url": "https://cdn.test/p2.jpg"}]
+
+
+@pytest.mark.asyncio
+async def test_seed_catalog_cards_do_not_publish_unverified_ratings_or_media() -> None:
+    seeded = _product(
+        "seed-product",
+        title="Seed product",
+        category_id="components",
+        category="Components",
+        price=15000,
+    )
+    seeded["characteristics"] = {
+        "demo": True,
+        "source": "seed",
+        "rating": 4.9,
+        "reviews_count": 135,
+    }
+    seeded["skus"] = [{
+        "id": "seed-sku-id",
+        "price": 15000,
+        "active_quantity": 4,
+        "images": [{"url": "https://example.test/unverified.jpg"}],
+    }]
+    FakeB2BClient.products = [seeded]
+
+    response = await CatalogService().list_products()
+    card = response["items"][0]
+
+    assert card["images"] == []
+    assert card["skus"][0]["images"] == []
+    assert "rating" not in card
+    assert "reviews_count" not in card
 
 
 @pytest.mark.asyncio
@@ -705,8 +739,9 @@ async def test_product_card_returns_full_data_with_skus() -> None:
                 {
                     "id": "sku-p1-black",
                     "name": "Black",
+                    "article": "KB-001-BLK",
                     "price": 15000,
-                    "discount": 1000,
+                        "discount": 1000,
                     "active_quantity": 3,
                     "cost_price": 9000,
                     "reserved_quantity": 2,
@@ -723,18 +758,48 @@ async def test_product_card_returns_full_data_with_skus() -> None:
     assert response["id"] == "p1"
     assert response["name"] == "Premium keyboard"
     assert response["description"] == "Premium keyboard description"
+    assert response["min_price_minor"] == 15000
     assert response["images"] == [{"url": "https://cdn.test/main.jpg"}]
     assert response["skus"] == [
         {
             "id": "sku-p1-black",
-            "name": "Black",
+                "name": "Black",
+                "article": "KB-001-BLK",
             "price": 15000,
-            "discount": 1000,
+            "price_minor": 15000,
+                "currency": "RUB",
+                "discount": 1000,
             "available_quantity": 3,
             "in_stock": True,
             "images": [{"url": "https://cdn.test/black.jpg"}],
         }
     ]
+
+
+@pytest.mark.asyncio
+async def test_product_card_normalizes_list_characteristics_for_public_contract() -> None:
+    FakeB2BClient.products = [
+        {
+            **_product(
+                "p1",
+                title="Seed product",
+                category_id="seed",
+                category="Seed",
+                price=15000,
+            ),
+            "characteristics": [
+                {"name": "warranty", "value": "24 месяца"},
+                {"name": "rating", "value": "4.5"},
+            ],
+        }
+    ]
+
+    response = await CatalogService().get_product_card("p1")
+
+    assert response["characteristics"] == {
+        "warranty": "24 месяца",
+        "rating": "4.5",
+    }
 
 
 @pytest.mark.asyncio

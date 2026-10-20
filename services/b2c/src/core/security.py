@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import InvalidTokenError
 from passlib.context import CryptContext
 
 from .config import settings
@@ -48,13 +49,10 @@ def decode_access_token(token: str) -> str | None:
             issuer=settings.jwt_issuer,
             audience=settings.jwt_audience,
             options={
-                "require_sub": True,
-                "require_iat": True,
-                "require_nbf": True,
-                "require_exp": True,
+                "require": ["sub", "iat", "nbf", "exp"],
             },
         )
         subject = payload.get("sub")
         return str(subject) if subject else None
-    except JWTError:
+    except InvalidTokenError:
         return None

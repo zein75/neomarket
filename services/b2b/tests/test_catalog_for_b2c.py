@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from datetime import datetime, timezone
 from uuid import uuid4
 
 import pytest
@@ -202,6 +203,52 @@ def test_public_categories_route_requires_service_key() -> None:
     assert response.status_code == 401
 
 
+def test_seller_categories_route_requires_authenticated_seller() -> None:
+    response = TestClient(app).get("/api/v1/seller/categories")
+    assert response.status_code == 401
+
+
+def test_seller_categories_route_returns_active_categories_for_product_form(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    category_id = uuid4()
+
+    class FakeCategoryService:
+        def __init__(self, _db: object) -> None:
+            pass
+
+        async def list_active(self):
+            return {
+                "items": [{
+                    "id": category_id,
+                    "name": "Robotics",
+                    "slug": "robotics",
+                    "parent_id": None,
+                    "is_active": True,
+                    "created_at": datetime.now(timezone.utc),
+                    "updated_at": datetime.now(timezone.utc),
+                }],
+            }
+
+    async def fake_db():
+        yield SimpleNamespace()
+
+    async def fake_seller():
+        return SimpleNamespace(id=uuid4())
+
+    monkeypatch.setattr(categories_router, "CategoryService", FakeCategoryService)
+    app.dependency_overrides[categories_router.get_db] = fake_db
+    app.dependency_overrides[categories_router.get_current_seller] = fake_seller
+    try:
+        response = TestClient(app).get("/api/v1/seller/categories")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["items"][0]["id"] == str(category_id)
+    assert response.json()["items"][0]["name"] == "Robotics"
+
+
 @pytest.mark.asyncio
 async def test_catalog_returns_moderated_in_stock_products() -> None:
     visible = _product(status=ProductStatus.MODERATED, deleted=False, stock=5, reserved=2)
@@ -258,9 +305,11 @@ async def test_catalog_response_has_no_cost_price() -> None:
     assert item["slug"].startswith("wireless-keyboard-")
     assert item["image"].endswith("keyboard.jpg")
     assert item["price"] == 129900
+    assert item["price_minor"] == 129900
     assert item["in_stock"] is True
     assert item["is_in_cart"] is False
     assert item["skus"][0]["price"] == 129900
+    assert item["skus"][0]["price_minor"] == 129900
     assert item["skus"][0]["characteristics"] == [{"name": "color", "value": "Black"}]
     assert "created_at" in item
     assert "cost_price" not in item["skus"][0]
@@ -291,9 +340,11 @@ def test_public_catalog_route_returns_contract_envelope() -> None:
     assert body["items"][0]["slug"].startswith("wireless-keyboard-")
     assert body["items"][0]["image"].endswith("keyboard.jpg")
     assert body["items"][0]["price"] == 129900
+    assert body["items"][0]["price_minor"] == 129900
     assert body["items"][0]["in_stock"] is True
     assert body["items"][0]["is_in_cart"] is False
     assert body["items"][0]["skus"][0]["price"] == 129900
+    assert body["items"][0]["skus"][0]["price_minor"] == 129900
     assert body["items"][0]["skus"][0]["characteristics"] == [
         {"name": "color", "value": "Black"}
     ]
@@ -377,6 +428,8 @@ def test_public_product_detail_route_uses_public_sku_shape() -> None:
 
     assert response.status_code == 200
     sku = response.json()["skus"][0]
+    assert response.json()["price_minor"] == 129900
+    assert sku["price_minor"] == 129900
     assert sku["stock_quantity"] == 5
     assert sku["discount"] == 0
     assert sku["article"] is None

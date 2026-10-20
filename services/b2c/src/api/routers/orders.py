@@ -8,6 +8,7 @@ from src.api.deps import get_current_user, get_db
 from src.models.order import CheckoutCompensationState, OrderStatus
 from src.models.user import User
 from src.schemas.order import (
+    CheckoutAttemptResponse,
     OrderCreateRequest,
     CancelOrderRequest,
     OrderPaginatedResponse,
@@ -99,6 +100,60 @@ async def get_order(
 
 
 @router.get(
+    "/api/v1/checkout-operations/by-idempotency",
+    response_model=CheckoutOperationStatus,
+    responses={401: {"description": "Unauthorized"}, 404: {"description": "Not found"}},
+)
+async def get_checkout_operation_by_idempotency(
+    idempotency_key: UUID = Header(alias="Idempotency-Key"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CheckoutOperationStatus:
+    """Resolve an ambiguous checkout write without creating a new attempt.
+
+    The browser keeps one UUID for the logical submit.  If a proxy timeout
+    hides the POST response, the buyer can safely resolve the deterministic
+    operation using the same key; no new order or reservation is created.
+    """
+    operation_id = OrderService._checkout_operation_id(current_user.id, str(idempotency_key))
+    attempt = await OrderRepository(db).get_checkout_attempt(operation_id, current_user.id)
+    if attempt is not None:
+        return CheckoutOperationStatus(
+            operation_id=attempt.attempt_id,
+            state=attempt.status,
+            order_id=attempt.order_id,
+            updated_at=attempt.updated_at,
+            attempt_id=attempt.attempt_id,
+            idempotency_key=UUID(attempt.idempotency_key),
+            error_code=attempt.error_code,
+        )
+    order, pending = await OrderRepository(db).get_checkout_operation(operation_id, current_user.id)
+    if order is not None:
+        return CheckoutOperationStatus(
+            operation_id=operation_id,
+            state="COMPLETED",
+            order_id=order.id,
+            updated_at=order.updated_at,
+        )
+    if pending is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "CHECKOUT_OPERATION_NOT_FOUND", "message": "Checkout operation not found"},
+        )
+    if pending.compensation_state is CheckoutCompensationState.COMPENSATED:
+        state = "FAILED"
+    elif pending.compensation_state is CheckoutCompensationState.COMPENSATING:
+        state = "RECONCILE_REQUIRED"
+    else:
+        state = "PENDING"
+    return CheckoutOperationStatus(
+        operation_id=operation_id,
+        state=state,
+        updated_at=pending.updated_at,
+    )
+
+
+@router.get(
     "/api/v1/checkout-operations/{operation_id}",
     response_model=CheckoutOperationStatus,
     responses={401: {"description": "Unauthorized"}, 404: {"description": "Not found"}},
@@ -108,7 +163,19 @@ async def get_checkout_operation(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> CheckoutOperationStatus:
-    order, pending = await OrderRepository(db).get_checkout_operation(
+    repository = OrderRepository(db)
+    attempt = await repository.get_checkout_attempt(operation_id, current_user.id)
+    if attempt is not None:
+        return CheckoutOperationStatus(
+            operation_id=attempt.attempt_id,
+            state=attempt.status,
+            order_id=attempt.order_id,
+            updated_at=attempt.updated_at,
+            attempt_id=attempt.attempt_id,
+            idempotency_key=UUID(attempt.idempotency_key),
+            error_code=attempt.error_code,
+        )
+    order, pending = await repository.get_checkout_operation(
         operation_id, current_user.id
     )
     if order is not None:
@@ -133,6 +200,33 @@ async def get_checkout_operation(
         operation_id=operation_id,
         state=state,
         updated_at=pending.updated_at,
+    )
+
+
+@router.get(
+    "/api/v1/checkout-attempts/{attempt_id}",
+    response_model=CheckoutAttemptResponse,
+    responses={401: {"description": "Unauthorized"}, 404: {"description": "Not found"}},
+)
+async def get_checkout_attempt(
+    attempt_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CheckoutAttemptResponse:
+    attempt = await OrderRepository(db).get_checkout_attempt(attempt_id, current_user.id)
+    if attempt is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "CHECKOUT_ATTEMPT_NOT_FOUND", "message": "Checkout attempt not found"},
+        )
+    return CheckoutAttemptResponse(
+        attempt_id=attempt.attempt_id,
+        idempotency_key=UUID(attempt.idempotency_key),
+        status=attempt.status,
+        order_id=attempt.order_id,
+        created_at=attempt.created_at,
+        updated_at=attempt.updated_at,
+        error_code=attempt.error_code,
     )
 
 

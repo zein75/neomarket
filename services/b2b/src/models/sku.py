@@ -1,7 +1,7 @@
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Integer, JSON, String
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, ForeignKey, Index, Integer, JSON, String, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 
@@ -29,6 +29,22 @@ class SKU(Base, TimestampMixin):
         CheckConstraint(
             "reserved_quantity <= stock", name="ck_skus_reserved_lte_stock"
         ),
+        Index("ix_skus_product_id_id", "product_id", "id"),
+        Index(
+            "ix_skus_catalog_stock",
+            "product_id",
+            "is_active",
+            "on_hand",
+            "reserved_quantity",
+            "price",
+        ),
+        Index(
+            "uq_skus_product_seller_article_ci",
+            "product_id",
+            text("lower(seller_article)"),
+            unique=True,
+            postgresql_where=text("seller_article IS NOT NULL"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -40,13 +56,17 @@ class SKU(Base, TimestampMixin):
         nullable=False,
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    price: Mapped[int] = mapped_column(Integer, nullable=False)
-    stock: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    price: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    stock: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
     # Expand/contract migration: kept nullable until all historical rows are
     # backfilled; application code still reads ``stock`` during the rollout.
-    on_hand: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    reserved_quantity: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    on_hand: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    reserved_quantity: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
     images: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    seller_article: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    currency: Mapped[str] = mapped_column(String(3), default="RUB", nullable=False)
+    options: Mapped[dict[str, str]] = mapped_column(JSON, default=dict, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    revision: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 
     product: Mapped["Product"] = relationship("Product", back_populates="skus")

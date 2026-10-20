@@ -57,14 +57,23 @@ class B2CClient:
             response.raise_for_status()
 
     async def send_outbox_event(self, payload: dict[str, Any]) -> None:
+        if payload.get("schema_version") == 1 and payload.get("producer") == "b2b":
+            path = (
+                "/internal/v1/events/taxonomy"
+                if payload.get("aggregate_type") == "brand"
+                else "/internal/v1/events/catalog"
+            )
+        else:
+            path = "/api/v1/b2b/events"
         async with httpx.AsyncClient(timeout=settings.b2c_timeout_seconds) as client:
             response = await client.post(
-                f"{self.base_url}/api/v1/b2b/events",
+                f"{self.base_url}{path}",
                 json=payload,
                 headers=service_headers(settings, audience="neomarket-b2c", legacy_key=self.service_key),
             )
-            if response.status_code != 409:
-                response.raise_for_status()
+            if response.status_code == 409 and path == "/api/v1/b2b/events":
+                return
+            response.raise_for_status()
 
     def build_product_deleted_event(self, product: Any) -> dict[str, Any]:
         return {

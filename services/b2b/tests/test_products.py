@@ -105,16 +105,21 @@ def test_create_product_returns_201_with_created_status() -> None:
 
 
 def test_seller_id_taken_from_jwt(override_dependencies: UUID) -> None:
-    body_seller_id = uuid4()
-
-    response = TestClient(app).post(
-        "/api/v1/products",
-        json=_payload(seller_id=str(body_seller_id)),
-    )
+    response = TestClient(app).post("/api/v1/products", json=_payload())
 
     assert response.status_code == 201
     assert response.json()["seller_id"] == str(override_dependencies)
     assert FakeProductService.seller_id == override_dependencies
+
+
+def test_create_product_rejects_body_seller_id() -> None:
+    response = TestClient(app).post(
+        "/api/v1/products",
+        json=_payload(seller_id=str(uuid4())),
+    )
+
+    assert response.status_code == 400
+    assert FakeProductService.seller_id is None
 
 
 def test_missing_images_returns_400() -> None:

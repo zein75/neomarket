@@ -195,6 +195,47 @@ async def test_edit_blocked_product_returns_to_on_moderation() -> None:
 
 
 @pytest.mark.asyncio
+async def test_blocked_product_patch_saves_draft_without_resubmitting() -> None:
+    seller_id = uuid4()
+    product = _product(seller_id=seller_id, status=ProductStatus.BLOCKED)
+    product.revision = 4
+    FakeProductRepository.product = product
+
+    updated = await ProductService(FakeSession()).update(
+        product.id,
+        seller_id,
+        ProductUpdate(description="Saved correction, still awaiting seller submit"),
+        expected_revision=4,
+        submit_for_moderation=False,
+    )
+
+    assert updated.status == ProductStatus.BLOCKED
+    assert updated.revision == 5
+    assert updated.description == "Saved correction, still awaiting seller submit"
+    assert FakeModerationClient.edited_events == []
+
+
+@pytest.mark.asyncio
+async def test_unblocked_product_cannot_use_draft_only_patch() -> None:
+    seller_id = uuid4()
+    product = _product(seller_id=seller_id, status=ProductStatus.MODERATED)
+    FakeProductRepository.product = product
+
+    with pytest.raises(Exception) as exc_info:
+        await ProductService(FakeSession()).update(
+            product.id,
+            seller_id,
+            ProductUpdate(description="Must use the explicit revision workflow"),
+            expected_revision=1,
+            submit_for_moderation=False,
+        )
+
+    assert exc_info.value.status_code == 409
+    assert exc_info.value.detail["code"] == "DRAFT_EDIT_NOT_ALLOWED"
+    assert product.description == "Old description"
+
+
+@pytest.mark.asyncio
 async def test_reserves_preserved_after_sku_edit() -> None:
     seller_id = uuid4()
     product_id = uuid4()
@@ -249,6 +290,35 @@ async def test_sku_edit_cannot_drop_stock_below_reserved() -> None:
 
 
 @pytest.mark.asyncio
+async def test_sku_edit_rejects_stale_locked_revision() -> None:
+    seller_id = uuid4()
+    product_id = uuid4()
+    sku = _sku(product_id=product_id, reserved_quantity=0)
+    sku.revision = 3
+    original_price = sku.price
+    product = _product(
+        product_id=product_id,
+        seller_id=seller_id,
+        status=ProductStatus.CREATED,
+        skus=[sku],
+    )
+    FakeProductRepository.product = product
+    FakeSKURepository.sku = sku
+
+    with pytest.raises(Exception) as exc_info:
+        await SKUService(FakeSession()).update(
+            sku.id,
+            seller_id,
+            SKUUpdate(price=original_price + 100),
+            expected_revision=2,
+        )
+
+    assert exc_info.value.status_code == 412
+    assert exc_info.value.detail["code"] == "REVISION_CONFLICT"
+    assert sku.price == original_price
+
+
+@pytest.mark.asyncio
 async def test_edit_hard_blocked_returns_403() -> None:
     seller_id = uuid4()
     product = _product(seller_id=seller_id, status=ProductStatus.HARD_BLOCKED)
@@ -266,6 +336,27 @@ async def test_edit_hard_blocked_returns_403() -> None:
         "code": "PRODUCT_HARD_BLOCKED",
         "message": "Cannot edit hard-blocked product",
     }
+
+
+@pytest.mark.asyncio
+async def test_edit_rejects_stale_locked_revision() -> None:
+    seller_id = uuid4()
+    product = _product(seller_id=seller_id, status=ProductStatus.CREATED)
+    product.revision = 3
+    original_description = product.description
+    FakeProductRepository.product = product
+
+    with pytest.raises(Exception) as exc_info:
+        await ProductService(FakeSession()).update(
+            product.id,
+            seller_id,
+            ProductUpdate(description="Stale edit"),
+            expected_revision=2,
+        )
+
+    assert exc_info.value.status_code == 412
+    assert exc_info.value.detail["code"] == "REVISION_CONFLICT"
+    assert product.description == original_description
 
 
 @pytest.mark.asyncio
@@ -309,6 +400,7 @@ def test_update_product_response_matches_contract() -> None:
     try:
         response = TestClient(app).put(
             f"/api/v1/products/{product.id}",
+            headers={"If-Match": '"1"'},
             json={
                 "description": "Fixed description",
                 "images": [
@@ -326,6 +418,7 @@ def test_update_product_response_matches_contract() -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "ON_MODERATION"
+    assert body["revision"] == 2
     assert body["slug"].startswith("wireless-keyboard-")
     assert body["images"] == [
         {
@@ -354,6 +447,7 @@ def test_update_hard_blocked_product_error_matches_contract() -> None:
     try:
         response = TestClient(app).put(
             f"/api/v1/products/{product.id}",
+            headers={"If-Match": "1"},
             json={"description": "Cannot fix"},
         )
     finally:

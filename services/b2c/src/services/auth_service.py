@@ -20,14 +20,15 @@ class AuthService:
         self.repo = UserRepository(session)
 
     async def register(self, data: UserCreate) -> User:
-        existing = await self.repo.get_by_email(data.email)
+        email = str(data.email).strip().lower()
+        existing = await self.repo.get_by_email(email)
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Email already registered",
             )
         return await self.repo.create(
-            email=data.email,
+            email=email,
             hashed_password=hash_password(data.password),
             first_name=data.first_name,
             last_name=data.last_name,
@@ -35,7 +36,7 @@ class AuthService:
         )
 
     async def authenticate(self, email: str, password: str) -> User:
-        user = await self.repo.get_by_email(email)
+        user = await self.repo.get_by_email(email.strip().lower())
         if not user or not verify_password(password, user.hashed_password):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

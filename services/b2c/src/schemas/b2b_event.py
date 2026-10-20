@@ -63,8 +63,38 @@ class CatalogEventEnvelope(EventEnvelopeV1):
     def validate_catalog_scope(self) -> "CatalogEventEnvelope":
         if self.producer != "b2b" or self.aggregate_type != "product":
             raise ValueError("catalog events must be produced by b2b for product aggregate")
-        if self.event_type not in {"product.created", "product.updated", "product.deleted"}:
+        if self.event_type not in {"product.created", "product.updated", "product.deleted", "product.safety_hold.v1"}:
             raise ValueError("unsupported catalog event type")
+        return self
+
+
+class BrandMergeEventPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    source_brand_id: UUID
+    target_brand_id: UUID
+    source_version: int = Field(ge=1)
+    target_version: int = Field(ge=1)
+    taxonomy_version: int = Field(ge=1)
+    product_references_moved: int = Field(ge=0)
+    impact_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class TaxonomyEventEnvelope(EventEnvelopeV1):
+    """B2B taxonomy events consumed by the read-through B2C catalog."""
+
+    payload: BrandMergeEventPayload
+
+    @model_validator(mode="after")
+    def validate_brand_merge_scope(self) -> "TaxonomyEventEnvelope":
+        if (
+            self.producer != "b2b"
+            or self.aggregate_type != "brand"
+            or self.event_type != "brand.merged.v1"
+            or self.payload.source_brand_id != self.aggregate_id
+            or self.payload.source_version != self.aggregate_version
+        ):
+            raise ValueError("invalid brand merge event scope or version")
         return self
 
 

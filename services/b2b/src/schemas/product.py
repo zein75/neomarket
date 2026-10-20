@@ -1,13 +1,12 @@
 import re
-import ipaddress
 from datetime import datetime, timezone
-from typing import Any
-from urllib.parse import urlparse
+from typing import Any, Literal
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from src.models.product import ProductStatus
+from src.schemas.media_url import validate_media_url
 from src.schemas.sku import SKUCharacteristic, SKUResponse
 
 
@@ -20,21 +19,7 @@ class ProductImageCreate(BaseModel):
     @field_validator("url")
     @classmethod
     def require_public_https(cls, value: str) -> str:
-        parsed = urlparse(value)
-        if parsed.scheme.lower() != "https" or not parsed.hostname:
-            raise ValueError("image URL must use https")
-        host = parsed.hostname.lower().rstrip(".")
-        if host in {"localhost", "localhost.localdomain"} or host.endswith(".local"):
-            raise ValueError("image URL host is not public")
-        try:
-            address = ipaddress.ip_address(host)
-        except ValueError:
-            address = None
-        if address is not None and (
-            address.is_private or address.is_loopback or address.is_link_local
-        ):
-            raise ValueError("image URL host is not public")
-        return value
+        return validate_media_url(value)
 
 
 class ProductImageResponse(BaseModel):
@@ -53,11 +38,141 @@ class CharacteristicResponse(Characteristic):
 
 
 class ProductCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     title: str = Field(min_length=1, max_length=255)
     description: str = Field(min_length=1, max_length=5000)
     category_id: UUID
+    brand_id: UUID | None = None
     images: list[ProductImageCreate] = Field(min_length=1)
     characteristics: list[Characteristic] = Field(default_factory=list)
+
+
+class FirstSKUCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=255)
+    price: int = Field(ge=0)
+    stock: int = Field(default=0, ge=0)
+    images: list[ProductImageCreate] = Field(min_length=1)
+
+
+class ProductWithFirstSKUCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    product: ProductCreate
+    first_sku: FirstSKUCreate
+
+
+class DraftVariantInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    seller_article: str = Field(min_length=1, max_length=128)
+    name: str = Field(min_length=1, max_length=255)
+    price_minor: int = Field(ge=0, le=9_223_372_036_854_775_807)
+    currency: str = Field(pattern=r"^[A-Z]{3}$")
+    on_hand: int = Field(ge=0, le=9_223_372_036_854_775_807)
+    options: dict[str, str] = Field(default_factory=dict, max_length=100)
+
+    @field_validator("seller_article", "name")
+    @classmethod
+    def trim_required_text(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("must not be blank")
+        return value
+
+
+class ProductDraftCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(min_length=1, max_length=255)
+    description: str = Field(min_length=1, max_length=20_000)
+    category_id: UUID
+    brand_id: UUID | None = None
+    attributes: dict[str, Any] = Field(default_factory=dict, max_length=100)
+    media_ids: list[UUID] = Field(default_factory=list, max_length=20)
+    variants: list[DraftVariantInput] = Field(min_length=1, max_length=100)
+
+    @field_validator("title", "description")
+    @classmethod
+    def trim_required_product_text(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("must not be blank")
+        return value
+
+    @model_validator(mode="after")
+    def validate_variant_batch(self) -> "ProductDraftCreate":
+        articles = [variant.seller_article.casefold() for variant in self.variants]
+        if len(articles) != len(set(articles)):
+            raise ValueError("seller_article values must be unique within the batch")
+        currencies = {variant.currency for variant in self.variants}
+        if len(currencies) > 1:
+            raise ValueError("all variants in a product draft must use the same currency")
+        return self
+
+
+class ProductDraftVariantResponse(BaseModel):
+    id: UUID
+    seller_article: str
+    name: str
+    price_minor: int
+    currency: str
+    on_hand: int
+    options: dict[str, str]
+
+
+class ProductDraftResponse(BaseModel):
+    id: UUID
+    revision: int
+    status: Literal["DRAFT"]
+    operation_id: UUID
+    variants: list[ProductDraftVariantResponse]
+
+
+class DraftAutosaveVariant(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    key: str = Field(min_length=1, max_length=128)
+    seller_article: str = Field(default="", max_length=128)
+    name: str = Field(default="", max_length=255)
+    price: str = Field(default="", max_length=64)
+    on_hand: str = Field(default="0", max_length=64)
+    options: str = Field(default="{}", max_length=20_000)
+
+
+class DraftAutosavePayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(default="", max_length=255)
+    description: str = Field(default="", max_length=20_000)
+    category_id: UUID | None = None
+    attributes: dict[str, str] = Field(default_factory=dict, max_length=100)
+    currency: str = Field(default="RUB", min_length=3, max_length=3, pattern=r"^[A-Z]{3}$")
+    variants: list[DraftAutosaveVariant] = Field(min_length=1, max_length=100)
+    media_names: list[str] = Field(default_factory=list, max_length=20)
+
+    @field_validator("title", "description", mode="before")
+    @classmethod
+    def normalize_text(cls, value: Any) -> str:
+        if not isinstance(value, str):
+            raise ValueError("must be a string")
+        return value
+
+    @field_validator("media_names")
+    @classmethod
+    def validate_media_names(cls, value: list[str]) -> list[str]:
+        if any(not isinstance(item, str) or len(item) > 255 for item in value):
+            raise ValueError("media names are invalid")
+        return value
+
+
+class DraftAutosaveResponse(BaseModel):
+    id: UUID
+    revision: int
+    payload: DraftAutosavePayload
+    updated_at: datetime
 
 
 class ProductUpdate(BaseModel):
@@ -66,6 +181,7 @@ class ProductUpdate(BaseModel):
     title: str | None = None
     description: str | None = None
     category_id: UUID | None = None
+    brand_id: UUID | None = None
     images: list[ProductImageCreate] | None = None
     characteristics: list[Characteristic] | None = None
     category: str | None = None
@@ -79,7 +195,9 @@ class ProductPatch(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=20_000)
     category_id: UUID | None = None
+    brand_id: UUID | None = None
     images: list[ProductImageCreate | str] | None = Field(default=None, max_length=20)
+    characteristics: list[Characteristic] | None = None
 
     @field_validator("images", mode="before")
     @classmethod
@@ -103,6 +221,7 @@ class ProductResponse(BaseModel):
     title: str
     description: str | None
     category_id: UUID | None
+    brand_id: UUID | None = None
     slug: str
     images: list[ProductImageResponse]
     characteristics: list[CharacteristicResponse]
@@ -111,6 +230,7 @@ class ProductResponse(BaseModel):
     moderator_comment: str | None
     created_at: datetime
     updated_at: datetime
+    revision: int = 1
     deleted: bool
     skus: list[SKUResponse]
 
@@ -127,6 +247,7 @@ class ProductResponse(BaseModel):
                 "slug": getattr(value, "slug", None),
                 "description": getattr(value, "description"),
                 "category_id": getattr(value, "category_id", None),
+                "brand_id": getattr(value, "brand_id", None),
                 "images": getattr(value, "images", []),
                 "characteristics": getattr(value, "characteristics", {}),
                 "status": getattr(value, "status"),
@@ -134,6 +255,7 @@ class ProductResponse(BaseModel):
                 "field_reports": getattr(value, "field_reports", []),
                 "created_at": getattr(value, "created_at", None),
                 "updated_at": getattr(value, "updated_at", None),
+                "revision": getattr(value, "revision", 1),
                 "deleted": getattr(value, "deleted", False),
                 "skus": getattr(value, "skus", []),
             }
@@ -148,6 +270,7 @@ class ProductResponse(BaseModel):
         data.setdefault("blocking_reason_id", cls._blocking_reason_id(data))
         data.setdefault("moderator_comment", cls._moderator_comment(data))
         data.setdefault("deleted", False)
+        data.setdefault("revision", 1)
         data.setdefault("skus", [])
         data["images"] = cls._normalize_images(data.get("images", []), data.get("id"))
         data["characteristics"] = cls._normalize_characteristics(
@@ -232,6 +355,10 @@ class SKUPublicResponse(BaseModel):
     product_id: UUID
     name: str
     price: int
+    # Canonical integer amount in minor currency units; ``price`` is retained
+    # for existing B2B clients during the additive contract migration.
+    price_minor: int | None = None
+    currency: str = "RUB"
     discount: int
     article: str | None
     characteristics: list[SKUCharacteristic]
@@ -254,6 +381,7 @@ class SKUPublicResponse(BaseModel):
                 "product_id": getattr(value, "product_id"),
                 "name": getattr(value, "name"),
                 "price": getattr(value, "price"),
+                "currency": getattr(value, "currency", "RUB"),
                 "stock_quantity": getattr(value, "stock"),
                 "active_quantity": max(
                     (stock if on_hand is None else on_hand) - reserved,
@@ -266,6 +394,8 @@ class SKUPublicResponse(BaseModel):
                 if hasattr(value, optional):
                     data[optional] = getattr(value, optional)
         data.setdefault("discount", 0)
+        data.setdefault("price_minor", data.get("price"))
+        data.setdefault("currency", "RUB")
         data.setdefault("article", None)
         if "stock_quantity" not in data and "stock" in data:
             data["stock_quantity"] = data["stock"]
@@ -283,9 +413,14 @@ class SKUPublicResponse(BaseModel):
 class ProductPublicResponse(ProductResponse):
     image: str
     price: int | None
+    price_minor: int | None = None
+    currency: str = "RUB"
     in_stock: bool
     is_in_cart: bool
     skus: list[SKUPublicResponse] = []
+    rating: float = 0.0
+    reviews_count: int = 0
+    category: str | None = None
 
 
 class ProductPublicShortResponse(BaseModel):
@@ -294,15 +429,18 @@ class ProductPublicShortResponse(BaseModel):
     title: str
     description: str | None
     category_id: UUID | None
+    brand_id: UUID | None = None
     slug: str
     images: list[ProductImageResponse]
     characteristics: list[CharacteristicResponse]
     status: ProductStatus
     image: str
     price: int | None
+    price_minor: int | None = None
     in_stock: bool
     is_in_cart: bool
     min_price: int | None
+    min_price_minor: int | None = None
     created_at: datetime
 
 
@@ -327,6 +465,8 @@ class BlockingReasonResponse(BaseModel):
 
 class FieldReportResponse(BaseModel):
     field_name: str
+    field_path: str | None = None
+    reason_code: str | None = None
     sku_id: UUID | None = None
     comment: str
 
@@ -343,6 +483,7 @@ class ProductListItem(BaseModel):
     title: str
     description: str | None
     category_id: UUID | None
+    brand_id: UUID | None = None
     slug: str
     images: list[ProductImageResponse]
     characteristics: list[CharacteristicResponse]
@@ -351,8 +492,10 @@ class ProductListItem(BaseModel):
     is_active: bool
     deleted: bool = False
     created_at: datetime
+    updated_at: datetime
     skus_count: int
     total_active_quantity: int
+    skus: list[SKUResponse] | None = None
 
 
 class ProductPaginatedResponse(BaseModel):

@@ -1,5 +1,7 @@
-import asyncio
-from datetime import datetime, timezone
+﻿import asyncio
+import hashlib
+import json
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from uuid import UUID, uuid4
 
@@ -12,6 +14,7 @@ from src.models.order import (
     Order,
     OrderItem,
     OrderStatus,
+    SellerOrderOutbox,
 )
 from src.schemas.order import OrderCreateRequest, OrderDetailResponse, OrderResponse
 from src.services import order_service as order_service_module
@@ -19,6 +22,97 @@ from src.services.order_service import OrderService
 
 
 pytestmark = pytest.mark.anyio
+
+
+def test_checkout_additive_contact_consent_and_quote_contract() -> None:
+    quote_id = uuid4()
+    request = OrderCreateRequest(
+        address_id=uuid4(),
+        delivery_method="courier",
+        contact={"name": "Alex Buyer", "email": "alex@example.com", "phone": "+79990000000"},
+        legal_consents=[{"type": "terms", "version": "2026-10", "accepted_at": datetime.now(timezone.utc)}],
+        quote_id=quote_id,
+    )
+    assert request.contact is not None
+    assert request.delivery_method == "courier"
+    assert request.contact.email == "alex@example.com"
+    assert request.quote_id == quote_id
+    assert request.legal_consents is not None and request.legal_consents[0].type == "terms"
+
+
+def test_checkout_rejects_invalid_contact_email() -> None:
+    with pytest.raises(ValueError):
+        OrderCreateRequest(
+            address_id=uuid4(),
+            delivery_method="courier",
+            contact={"name": "Alex Buyer", "email": "not-an-email", "phone": "+79990000000"},
+        )
+
+
+def test_checkout_legal_consent_requires_timezone_and_not_future() -> None:
+    base = {"address_id": uuid4(), "delivery_method": "STANDARD"}
+    with pytest.raises(ValueError):
+        OrderCreateRequest(**base, legal_consents=[{"type": "terms", "version": "2026-10", "accepted_at": datetime.now()}])
+    with pytest.raises(ValueError):
+        OrderCreateRequest(**base, legal_consents=[{"type": "terms", "version": "2026-10", "accepted_at": datetime.now(timezone.utc) + timedelta(minutes=1)}])
+
+
+def test_checkout_operation_id_is_stable_and_user_scoped() -> None:
+    user_id = uuid4()
+    other_user_id = uuid4()
+    key = str(uuid4())
+
+    first = OrderService._checkout_operation_id(user_id, key)
+    replay = OrderService._checkout_operation_id(user_id, key)
+    other = OrderService._checkout_operation_id(other_user_id, key)
+
+    assert first == replay
+    assert first != other
+
+
+async def test_checkout_persists_one_pii_free_allocation_per_seller() -> None:
+    user_id = uuid4()
+    seller_ids = [UUID(int=1), UUID(int=2)]
+    product_ids = [uuid4(), uuid4()]
+    sku_ids = [uuid4(), uuid4()]
+    FakeCartRepository.cart = _cart(
+        user_id=user_id,
+        items=[
+            _cart_item(product_id=product_ids[index], sku_id=sku_ids[index], quantity=index + 1)
+            for index in range(2)
+        ],
+    )
+    FakeB2BClient.products = [
+        {
+            "id": str(product_ids[index]),
+            "seller_id": str(seller_ids[index]),
+            "title": f"Product {index}",
+            "skus": [
+                {
+                    "id": str(sku_ids[index]),
+                    "name": "Variant",
+                    "price": 100 + index,
+                    "active_quantity": 10,
+                }
+            ],
+        }
+        for index in range(2)
+    ]
+    session = FakeSession()
+
+    order = await OrderService(session).checkout(
+        user_id=user_id,
+        cart_id=FakeCartRepository.cart.id,
+        idempotency_key="checkout-two-sellers",
+        order_request=_order_request(),
+    )
+
+    assert [item.seller_id for item in order.items] == seller_ids
+    allocations = [item for item in session.added if isinstance(item, SellerOrderOutbox)]
+    assert {item.payload["tenant_id"] for item in allocations} == {str(value) for value in seller_ids}
+    assert len(allocations) == 2
+    assert all(item.payload["payload"]["status"] == "CREATED" for item in allocations)
+    assert all("contact" not in item.payload["payload"] and "address" not in item.payload["payload"] for item in allocations)
 
 
 def _cart(*, user_id: UUID, items: list[SimpleNamespace]) -> SimpleNamespace:
@@ -445,7 +539,7 @@ def patch_dependencies(monkeypatch):
     monkeypatch.setattr(order_service_module, "B2BClient", FakeB2BClient, raising=False)
 
 
-async def test_checkout_creates_paid_order_with_fixed_prices() -> None:
+async def test_checkout_creates_created_order_with_fixed_prices() -> None:
     user_id = uuid4()
     product_id = uuid4()
     sku_id = uuid4()
@@ -461,6 +555,7 @@ async def test_checkout_creates_paid_order_with_fixed_prices() -> None:
     FakeB2BClient.products = [
         {
             "id": str(product_id),
+                "seller_id": str(UUID(int=1)),
             "title": "Phone",
             "skus": [
                 {
@@ -480,7 +575,7 @@ async def test_checkout_creates_paid_order_with_fixed_prices() -> None:
         order_request=order_request,
     )
 
-    assert order.status == OrderStatus.PAID
+    assert order.status == OrderStatus.CREATED
     assert order.total_amount == 300
     assert order.idempotency_key == "checkout-1"
     assert order.address_id == order_request.address_id
@@ -528,6 +623,7 @@ async def test_partial_reserve_failure_returns_409() -> None:
     FakeB2BClient.products = [
         {
             "id": str(product_id),
+                "seller_id": str(UUID(int=1)),
             "title": "Phone",
             "skus": [
                 {
@@ -603,6 +699,7 @@ async def test_concurrent_idempotency_race_returns_existing_order() -> None:
     FakeB2BClient.products = [
         {
             "id": str(product_id),
+                "seller_id": str(UUID(int=1)),
             "title": "Phone",
             "skus": [
                 {
@@ -655,6 +752,7 @@ async def test_duplicate_checkout_reuses_winning_reservation_without_compensatio
     )
     FakeB2BClient.products = [{
         "id": str(product_id),
+                "seller_id": str(UUID(int=1)),
         "title": "Phone",
         "skus": [{"id": str(sku_id), "name": "128 GB", "price": 150, "active_quantity": 5}],
     }]
@@ -781,6 +879,7 @@ async def test_b2b_unavailable_returns_503() -> None:
     FakeB2BClient.products = [
         {
             "id": str(product_id),
+                "seller_id": str(UUID(int=1)),
             "title": "Phone",
             "skus": [
                 {
@@ -869,6 +968,7 @@ async def test_checkout_compensates_reserve_when_persistence_fails() -> None:
     FakeB2BClient.products = [
         {
             "id": str(product_id),
+                "seller_id": str(UUID(int=1)),
             "title": "Phone",
             "skus": [
                 {"id": str(sku_id), "name": "128 GB", "price": 150, "active_quantity": 5}
@@ -907,6 +1007,7 @@ async def test_checkout_compensates_reserve_when_created_order_cannot_reload() -
     FakeB2BClient.products = [
         {
             "id": str(product_id),
+                "seller_id": str(UUID(int=1)),
             "title": "Phone",
             "skus": [
                 {"id": str(sku_id), "name": "128 GB", "price": 150, "active_quantity": 5}
@@ -944,7 +1045,8 @@ async def test_checkout_persists_compensation_when_unreserve_also_fails() -> Non
     )
     FakeCartRepository.cart = cart
     FakeB2BClient.products = [{
-        "id": str(product_id), "title": "Phone",
+        "id": str(product_id),
+                "seller_id": str(UUID(int=1)), "title": "Phone",
         "skus": [{"id": str(sku_id), "name": "128 GB", "price": 150, "active_quantity": 5}],
     }]
     FakeB2BClient.unreserve_error = HTTPException(status_code=503, detail="down")
@@ -988,6 +1090,7 @@ async def test_checkout_compensation_never_reads_expired_cart_items_after_rollba
     FakeCartRepository.cart = cart
     FakeB2BClient.products = [{
         "id": str(product_id),
+                "seller_id": str(UUID(int=1)),
         "title": "Phone",
         "skus": [{"id": str(sku_id), "name": "128 GB", "price": 150, "active_quantity": 5}],
     }]
@@ -1038,7 +1141,8 @@ async def test_compensated_ambiguous_checkout_cannot_create_order_on_late_retry(
     )
     FakeCartRepository.cart = cart
     FakeB2BClient.products = [{
-        "id": str(product_id), "title": "Phone",
+        "id": str(product_id),
+                "seller_id": str(UUID(int=1)), "title": "Phone",
         "skus": [{"id": str(sku_id), "name": "128 GB", "price": 150, "active_quantity": 5}],
     }]
     request = _order_request()
@@ -1078,7 +1182,8 @@ async def test_checkout_retry_is_rejected_while_compensation_is_in_progress() ->
     )
     FakeCartRepository.cart = cart
     FakeB2BClient.products = [{
-        "id": str(product_id), "title": "Phone",
+        "id": str(product_id),
+                "seller_id": str(UUID(int=1)), "title": "Phone",
         "skus": [{"id": str(sku_id), "name": "128 GB", "price": 150, "active_quantity": 5}],
     }]
     service = OrderService(FakeSession())
@@ -1113,7 +1218,8 @@ async def test_checkout_compensation_crash_after_unreserve_before_tombstone_is_s
     )
     FakeCartRepository.cart = cart
     FakeB2BClient.products = [{
-        "id": str(product_id), "title": "Phone",
+        "id": str(product_id),
+                "seller_id": str(UUID(int=1)), "title": "Phone",
         "skus": [{"id": str(sku_id), "name": "128 GB", "price": 150, "active_quantity": 5}],
     }]
     service = OrderService(FakeSession())
@@ -1199,7 +1305,8 @@ async def test_checkout_retry_racing_with_compensation_never_creates_unreserved_
     )
     FakeCartRepository.cart = cart
     FakeB2BClient.products = [{
-        "id": str(product_id), "title": "Phone",
+        "id": str(product_id),
+                "seller_id": str(UUID(int=1)), "title": "Phone",
         "skus": [{"id": str(sku_id), "name": "128 GB", "price": 150, "active_quantity": 5}],
     }]
     FakeB2BClient.reserve_started = asyncio.Event()
@@ -1243,7 +1350,8 @@ async def test_compensation_wins_race_leaves_tombstone_and_rejects_checkout() ->
     )
     FakeCartRepository.cart = cart
     FakeB2BClient.products = [{
-        "id": str(product_id), "title": "Phone",
+        "id": str(product_id),
+                "seller_id": str(UUID(int=1)), "title": "Phone",
         "skus": [{"id": str(sku_id), "name": "128 GB", "price": 150, "active_quantity": 5}],
     }]
     order_id = OrderService._checkout_operation_id(user_id, "checkout-race-compensation-wins")
@@ -1555,6 +1663,18 @@ async def test_cancel_delivering_order_transitions_to_cancelled() -> None:
     assert FakeB2BClient.unreserve_calls == [_unreserve_payload(order)]
 
 
+async def test_cancel_retry_after_terminal_cancel_is_idempotent() -> None:
+    user_id = uuid4()
+    order = _order(user_id=user_id, status=OrderStatus.CANCELLED)
+    FakeOrderRepository.orders_by_id[order.id] = order
+
+    retried = await OrderService(FakeSession()).cancel_order(order.id, user_id)
+
+    assert retried is order
+    assert retried.status == OrderStatus.CANCELLED
+    assert FakeB2BClient.unreserve_calls == []
+
+
 async def test_cancel_delivered_order_returns_409() -> None:
     user_id = uuid4()
     order = _order(user_id=user_id, status=OrderStatus.DELIVERED)
@@ -1596,7 +1716,8 @@ async def test_checkout_final_commit_failure_compensates_durable_reserve() -> No
     cart = _cart(user_id=user_id, items=[_cart_item(product_id=product_id, sku_id=sku_id)])
     FakeCartRepository.cart = cart
     FakeB2BClient.products = [{
-        "id": str(product_id), "title": "Phone",
+        "id": str(product_id),
+                "seller_id": str(UUID(int=1)), "title": "Phone",
         "skus": [{"id": str(sku_id), "name": "128 GB", "price": 150, "active_quantity": 5}],
     }]
     session = FakeSession()
@@ -1617,7 +1738,8 @@ async def test_checkout_commit_failure_with_unreserve_failure_keeps_durable_inte
     cart = _cart(user_id=user_id, items=[_cart_item(product_id=product_id, sku_id=sku_id)])
     FakeCartRepository.cart = cart
     FakeB2BClient.products = [{
-        "id": str(product_id), "title": "Phone",
+        "id": str(product_id),
+                "seller_id": str(UUID(int=1)), "title": "Phone",
         "skus": [{"id": str(sku_id), "name": "128 GB", "price": 150, "active_quantity": 5}],
     }]
     session = FakeSession()
@@ -1685,3 +1807,23 @@ async def test_cancel_pending_commit_failure_does_not_call_unreserve() -> None:
         await OrderService(session).cancel_order(order.id, order.user_id)
 
     assert FakeB2BClient.unreserve_calls == []
+
+
+async def test_cancellation_queues_pii_free_seller_event() -> None:
+    order = _order(user_id=uuid4(), status=OrderStatus.PAID)
+    seller_id = uuid4()
+    order.items[0].seller_id = seller_id
+    session = FakeSession()
+
+    await OrderService(session)._queue_seller_order_cancellations(order)
+
+    events = [event for event in session.added if isinstance(event, SellerOrderOutbox)]
+    assert len(events) == 1
+    event = events[0]
+    assert event.payload["event_type"] == "seller_order.cancelled.v1"
+    assert event.payload["tenant_id"] == str(seller_id)
+    assert event.payload["payload"]["seller_order_id"] == str(event.seller_order_id)
+    assert "contact" not in event.payload["payload"] and "address" not in event.payload["payload"]
+    assert event.payload["payload_hash"] == hashlib.sha256(
+        json.dumps(event.payload["payload"], sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()

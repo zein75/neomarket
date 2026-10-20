@@ -1,17 +1,21 @@
 import hashlib
 import json
 from datetime import datetime, timezone
+from uuid import UUID
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
+from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_db, verify_service_key
+from src.api.routers.admin_internal import verify_admin_service
 from src.clients.moderation import ModerationClient
 from src.models.inbox_event import InboxEvent
 from src.schemas.moderation_event import (
+    AdminModerationDecisionRequest,
     BlockingReason,
     ModerationDecisionEvent,
     ModerationEventRequest,
@@ -20,6 +24,70 @@ from src.schemas.moderation_event import (
 from src.services.moderation_event_service import ModerationEventService
 
 router = APIRouter(tags=["moderation-events"])
+
+
+@router.post(
+    "/internal/v1/moderation/decisions",
+    status_code=status.HTTP_202_ACCEPTED,
+    operation_id="post__internal_v1_moderation_decisions",
+    openapi_extra={"x-allowed-service": "service:admin"},
+)
+async def accept_admin_moderation_decision(
+    data: AdminModerationDecisionRequest,
+    idempotency_key: UUID = Header(alias="Idempotency-Key"),
+    if_match: str = Header(alias="If-Match"),
+    _: None = Depends(verify_admin_service),
+    db: AsyncSession = Depends(get_db),
+) -> JSONResponse:
+    if idempotency_key != data.correlation_id:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "IDEMPOTENCY_KEY_MISMATCH", "message": "Idempotency-Key must equal correlation_id"},
+        )
+    try:
+        expected_revision = int(if_match.strip().strip('"').removeprefix("v"))
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "INVALID_IF_MATCH", "message": "If-Match must contain submitted revision"},
+        ) from exc
+    if expected_revision != data.submitted_revision:
+        raise HTTPException(
+            status_code=412,
+            detail={"code": "REVISION_HEADER_MISMATCH", "message": "If-Match must equal submitted_revision"},
+        )
+
+    action = data.action
+    blocked = action != "APPROVE"
+    event = ModerationDecisionEvent(
+        idempotency_key=data.correlation_id,
+        decision_id=data.decision_id,
+        product_id=data.product_id,
+        seller_id=data.seller_id,
+        snapshot_hash=data.snapshot_hash,
+        status="BLOCKED" if blocked else "MODERATED",
+        occurred_at=datetime.now(timezone.utc),
+        reviewed_revision=data.submitted_revision,
+        action=action,
+        reason_code=data.reason_codes[0] if data.reason_codes else None,
+        hard_block=(action == "HARD_BLOCK") if blocked else None,
+        field_reports=[
+            {
+                "field_name": report.field_path,
+                "reason_code": report.reason_code,
+                "sku_id": report.sku_id,
+                "media_id": report.media_id,
+                "comment": report.comment,
+            }
+            for report in data.field_reports
+        ] or None,
+    )
+    await ModerationEventService(db).apply(event)
+    await db.commit()
+    return JSONResponse(
+        status_code=status.HTTP_202_ACCEPTED,
+        content={"command_id": str(data.decision_id), "status": "QUEUED"},
+    )
 
 
 async def _decision_event(event: ModerationEventRequest) -> ModerationDecisionEvent:
@@ -60,6 +128,10 @@ async def _decision_event(event: ModerationEventRequest) -> ModerationDecisionEv
         hard_block=event.hard_block if event.event_type.value == "BLOCKED" else None,
         blocking_reason=blocking_reason,
         field_reports=event.field_reports if event.event_type.value == "BLOCKED" else None,
+        actor_id=event.moderator_id,
+        action="APPROVE" if event.event_type.value == "MODERATED" else "BLOCK",
+        reason_code=str(event.blocking_reason_id) if event.blocking_reason_id else None,
+        comment=event.moderator_comment,
     )
 
 
@@ -80,8 +152,22 @@ async def apply_moderation_event_envelope_canonical(
         product_id=event.payload.product_id,
         status=status_value,
         occurred_at=event.occurred_at,
+        reviewed_revision=event.payload.reviewed_revision,
+        ticket_id=event.payload.ticket_id,
+        actor_id=event.payload.actor_id,
+        action=action,
+        reason_code=event.payload.reason_code,
+        comment=event.payload.comment,
         hard_block=(action == "HARD_BLOCK") if status_value == "BLOCKED" else None,
-        field_reports=None,
+        field_reports=[
+            {
+                "field_name": report.field_path,
+                "reason_code": report.reason_code,
+                "sku_id": report.sku_id,
+                "comment": report.comment,
+            }
+            for report in event.payload.field_reports
+        ] or None,
     )
     result = await ModerationEventService(db).apply(decision)
     await db.commit()
@@ -172,6 +258,12 @@ async def apply_moderation_event_envelope(
         product_id=event.payload.product_id,
         status=status_value,
         occurred_at=event.occurred_at,
+        reviewed_revision=event.payload.reviewed_revision,
+        ticket_id=event.payload.ticket_id,
+        actor_id=event.payload.actor_id,
+        action=action,
+        reason_code=event.payload.reason_code,
+        comment=event.payload.comment,
         hard_block=action == "HARD_BLOCK" if action != "APPROVE" else None,
         field_reports=None,
     )

@@ -405,6 +405,19 @@ class CatalogService:
         return normalized
 
     def _card(self, product: dict[str, Any]) -> dict[str, object]:
+        characteristics = product.get("characteristics") or {}
+        if isinstance(characteristics, list):
+            characteristics = {str(item.get("name")): item.get("value") for item in characteristics if isinstance(item, dict)}
+        if not isinstance(characteristics, dict):
+            characteristics = {}
+        is_seed_preview = characteristics.get("demo") is True or characteristics.get("source") == "seed"
+        images = [] if is_seed_preview else product.get("images") or []
+        skus = product.get("skus") or []
+        if is_seed_preview:
+            skus = [
+                {**sku, "images": []} if isinstance(sku, dict) else sku
+                for sku in skus
+            ]
         return {
             "id": product.get("id"),
             "name": product.get("title"),
@@ -412,9 +425,10 @@ class CatalogService:
             "category_id": product.get("category_id"),
             "category": product.get("category"),
             "min_price": self._min_price(product),
+            "min_price_minor": self._min_price(product),
             "has_stock": self._has_stock(product),
-            "images": product.get("images") or [],
-            "skus": product.get("skus") or [],
+            "images": images,
+            "skus": skus,
         }
 
     def _short_card(self, product: dict[str, Any]) -> dict[str, object]:
@@ -429,11 +443,23 @@ class CatalogService:
             "title": product.get("title") or product.get("name"),
             "image": image_url,
             "price": price,
+            "price_minor": price,
             "in_stock": bool(product.get("has_stock", price is not None)),
             "is_in_cart": False,
         }
 
     def _detail(self, product: dict[str, Any]) -> dict[str, object]:
+        skus = [self._public_sku(sku) for sku in product.get("skus", [])]
+        currencies = [sku.get("currency") for sku in skus if sku.get("currency")]
+        characteristics = product.get("characteristics") or {}
+        if isinstance(characteristics, list):
+            characteristics = {
+                str(item.get("name")): item.get("value")
+                for item in characteristics
+                if isinstance(item, dict) and item.get("name") is not None
+            }
+        if not isinstance(characteristics, dict):
+            characteristics = {}
         return {
             "id": product.get("id"),
             "name": product.get("title"),
@@ -442,10 +468,14 @@ class CatalogService:
             "category_id": product.get("category_id"),
             "category": product.get("category"),
             "images": product.get("images") or [],
-            "characteristics": product.get("characteristics") or {},
+            "characteristics": characteristics,
             "min_price": self._min_price(product),
+            "min_price_minor": self._min_price(product),
             "has_stock": self._has_stock(product),
-            "skus": [self._public_sku(sku) for sku in product.get("skus", [])],
+            "currency": currencies[0] if currencies else "RUB",
+            "skus": skus,
+            "rating": float(product.get("rating", 0.0) or 0.0),
+            "reviews_count": int(product.get("reviews_count", 0) or 0),
         }
 
     def _public_sku(self, sku: dict[str, Any]) -> dict[str, object]:
@@ -453,7 +483,10 @@ class CatalogService:
         return {
             "id": sku.get("id"),
             "name": sku.get("name"),
+            "article": sku.get("article"),
             "price": sku.get("price"),
+            "price_minor": sku.get("price_minor", sku.get("price")),
+            "currency": sku.get("currency") or "RUB",
             "discount": int(sku.get("discount", 0) or 0),
             "available_quantity": active_quantity,
             "in_stock": active_quantity > 0,

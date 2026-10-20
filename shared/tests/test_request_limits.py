@@ -46,3 +46,35 @@ def test_allows_form_login_payload() -> None:
 
     assert response.status_code == 200
     assert response.json() == {"ok": True}
+
+
+def test_allows_bounded_image_upload_content() -> None:
+    app = _app()
+
+    @app.put("/api/v1/media/uploads/{asset_id}")
+    async def upload(asset_id: str) -> dict[str, str]:
+        return {"asset_id": asset_id}
+
+    response = TestClient(app).put(
+        "/api/v1/media/uploads/asset",
+        content=b"png-data",
+        headers={"content-type": "image/png"},
+    )
+    assert response.status_code == 200
+    assert response.json() == {"asset_id": "asset"}
+
+
+def test_rejects_unsupported_media_upload_content() -> None:
+    app = _app()
+
+    @app.put("/api/v1/media/uploads/{asset_id}")
+    async def upload(asset_id: str) -> dict[str, str]:
+        return {"asset_id": asset_id}
+
+    response = TestClient(app).put(
+        "/api/v1/media/uploads/asset",
+        content=b"script",
+        headers={"content-type": "text/plain"},
+    )
+    assert response.status_code == 415
+    assert response.json()["code"] == "UNSUPPORTED_MEDIA_TYPE"

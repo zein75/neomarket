@@ -1,9 +1,12 @@
 from datetime import datetime, timezone
+import hashlib
+import json
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException, status
 import httpx
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.clients.b2c import B2CClient
@@ -15,7 +18,13 @@ from src.models.inventory_ledger import InventoryLedger
 from src.repositories.product_repo import ProductRepository
 from src.repositories.outbox_event_repo import OutboxEventRepository
 from src.repositories.sku_repo import SKURepository
-from src.schemas.sku import SKUCreate, SKUResponse, SKUUpdate, StockAdjustmentRequest
+from src.schemas.sku import (
+    SKUCreate,
+    SKUResponse,
+    SKUUpdate,
+    StockAdjustmentRequest,
+    StockAdjustmentStatusResponse,
+)
 
 
 class SKUService:
@@ -142,15 +151,16 @@ class SKUService:
         seller_id: UUID,
         data: StockAdjustmentRequest,
         idempotency_key: str,
-    ) -> SKU:
-        existing = await self.sku_repo.session.scalar(
-            select(StockAdjustment).where(StockAdjustment.idempotency_key == idempotency_key)
+    ) -> tuple[SKU, int, int]:
+        request_hash = self._stock_adjustment_hash(
+            sku_id=sku_id,
+            seller_id=seller_id,
+            delta=data.delta,
+            reason=data.reason,
         )
+        existing = await self._get_stock_adjustment(seller_id, idempotency_key)
         if existing is not None:
-            sku = await self.sku_repo.get_with_product(sku_id)
-            if sku is None:
-                raise HTTPException(status_code=404, detail="SKU not found")
-            return sku
+            return await self._replay_stock_adjustment(existing, request_hash)
         sku = await self.sku_repo.get_for_update(sku_id)
         if sku is None:
             raise HTTPException(status_code=404, detail="SKU not found")
@@ -167,6 +177,7 @@ class SKUService:
         sku.stock = new_stock
         if getattr(sku, "on_hand", None) is not None:
             sku.on_hand = int(sku.on_hand) + data.delta
+        ledger_entry_id = uuid4()
         self.sku_repo.session.add(
             StockAdjustment(
                 sku_id=sku.id,
@@ -174,10 +185,15 @@ class SKUService:
                 reason=data.reason,
                 seller_id=seller_id,
                 idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                result_on_hand=new_stock,
+                result_reserved=reserved,
+                ledger_entry_id=ledger_entry_id,
             )
         )
         self.sku_repo.session.add(
             InventoryLedger(
+                entry_id=ledger_entry_id,
                 event_id=uuid4(),
                 sku_id=sku.id,
                 delta_on_hand=data.delta,
@@ -189,10 +205,115 @@ class SKUService:
                 correlation_id=str(sku.id),
             )
         )
-        await self.sku_repo.session.flush()
-        return sku
+        try:
+            await self.sku_repo.session.flush()
+        except IntegrityError:
+            # A request using this key may have committed while this transaction
+            # was waiting on a different SKU row. Roll back before reading it.
+            await self.sku_repo.session.rollback()
+            existing = await self._get_stock_adjustment(seller_id, idempotency_key)
+            if existing is None:
+                raise
+            return await self._replay_stock_adjustment(existing, request_hash)
+        return sku, new_stock, reserved
 
-    async def update(self, sku_id: UUID, seller_id: UUID, data: SKUUpdate) -> SKU:
+    async def get_stock_adjustment_status(
+        self, seller_id: UUID, idempotency_key: str
+    ) -> StockAdjustmentStatusResponse:
+        operation = await self._get_stock_adjustment(seller_id, idempotency_key)
+        if operation is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"code": "OPERATION_NOT_FOUND", "message": "Stock adjustment was not committed"},
+            )
+        sku = await self.sku_repo.get_with_product(operation.sku_id)
+        product = getattr(sku, "product", None) if sku else None
+        if sku is None or product is None or product.seller_id != seller_id:
+            raise HTTPException(status_code=404, detail="SKU not found")
+        on_hand = (
+            operation.result_on_hand
+            if operation.result_on_hand is not None
+            else int(sku.on_hand if sku.on_hand is not None else sku.stock)
+        )
+        reserved = (
+            operation.result_reserved
+            if operation.result_reserved is not None
+            else int(sku.reserved_quantity)
+        )
+        return StockAdjustmentStatusResponse(
+            operation_id=operation.adjustment_id,
+            status="COMMITTED",
+            sku_id=operation.sku_id,
+            delta=operation.delta,
+            on_hand=on_hand,
+            reserved=reserved,
+            available=max(on_hand - reserved, 0),
+            ledger_entry_id=operation.ledger_entry_id,
+            as_of=operation.created_at,
+        )
+
+    @staticmethod
+    def _stock_adjustment_hash(
+        *, sku_id: UUID, seller_id: UUID, delta: int, reason: str
+    ) -> str:
+        canonical = json.dumps(
+            {
+                "delta": delta,
+                "reason": reason,
+                "seller_id": str(seller_id),
+                "sku_id": str(sku_id),
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        ).encode("utf-8")
+        return hashlib.sha256(canonical).hexdigest()
+
+    async def _get_stock_adjustment(
+        self, seller_id: UUID, idempotency_key: str
+    ) -> StockAdjustment | None:
+        return await self.sku_repo.session.scalar(
+            select(StockAdjustment).where(
+                StockAdjustment.seller_id == seller_id,
+                StockAdjustment.idempotency_key == idempotency_key,
+            )
+        )
+
+    async def _replay_stock_adjustment(
+        self, existing: StockAdjustment, request_hash: str
+    ) -> tuple[SKU, int, int]:
+        if existing.request_hash != request_hash:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "IDEMPOTENCY_CONFLICT",
+                    "message": "Idempotency-Key was already used for a different stock adjustment",
+                },
+            )
+        sku = await self.sku_repo.get_with_product(existing.sku_id)
+        product = getattr(sku, "product", None) if sku else None
+        if sku is None or product is None or product.seller_id != existing.seller_id:
+            raise HTTPException(status_code=404, detail="SKU not found")
+        # The endpoint applies these saved quantities to its response model,
+        # keeping the original operation result stable after later mutations.
+        return (
+            sku,
+            existing.result_on_hand
+            if existing.result_on_hand is not None
+            else int(sku.on_hand if sku.on_hand is not None else sku.stock),
+            existing.result_reserved
+            if existing.result_reserved is not None
+            else int(sku.reserved_quantity),
+        )
+
+    async def update(
+        self,
+        sku_id: UUID,
+        seller_id: UUID,
+        data: SKUUpdate,
+        *,
+        expected_revision: int | None = None,
+    ) -> SKU:
         get_for_update = getattr(
             self.sku_repo, "get_for_update", self.sku_repo.get_by_id
         )
@@ -205,6 +326,16 @@ class SKUService:
         if not product:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
+            )
+        current_revision = int(getattr(sku, "revision", 1))
+        if expected_revision is not None and current_revision != expected_revision:
+            raise HTTPException(
+                status_code=status.HTTP_412_PRECONDITION_FAILED,
+                detail={
+                    "code": "REVISION_CONFLICT",
+                    "message": "SKU revision is stale",
+                    "current_revision": current_revision,
+                },
             )
         if product.status == ProductStatus.HARD_BLOCKED:
             raise HTTPException(
@@ -265,6 +396,7 @@ class SKUService:
             sku.images = [image.url if hasattr(image, "url") else str(image) for image in data.images]
         if data.is_active is not None:
             sku.is_active = data.is_active
+        sku.revision = current_revision + 1
         should_send_to_moderation = product.status in {
             ProductStatus.MODERATED,
             ProductStatus.BLOCKED,

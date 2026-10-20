@@ -8,6 +8,7 @@ from src.schemas.catalog import (
     CategoryDetailResponse,
     CategoryTreeResponse,
     ProductShortListResponse,
+    ProductDetailResponse,
 )
 from src.services.catalog_service import CatalogService
 
@@ -169,7 +170,7 @@ async def similar_products(
     )
 
 
-@router.get("/api/v1/catalog/{product_id}")
+@router.get("/api/v1/catalog/{product_id}", response_model=ProductDetailResponse)
 @router.get("/api/v1/catalog/products/{product_id}", include_in_schema=False)
 @router.get("/api/v1/products/{product_id}", include_in_schema=False)
 @router.get("/catalog/products/{product_id}", include_in_schema=False)

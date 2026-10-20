@@ -78,7 +78,7 @@ install -d -o "$DEPLOY_USER" -g "$DEPLOY_USER" -m 0700 "$STATE" "$STATE/requests
 install -d -o root -g root -m 0750 /var/log/neomarket-staging
 install -d -o root -g root -m 0750 "$ETC"
 
-for f in docker-compose.staging.yml nginx.conf init.sql deploy.sh smoke.sh prepare_admin_db_isolation.py bootstrap_secrets.py; do
+for f in docker-compose.staging.yml nginx.conf init.sql deploy.sh smoke.sh status.sh prepare_admin_db_isolation.py bootstrap_secrets.py; do
   install -o root -g root -m 0644 "$SOURCE_ROOT/$f" "$ROOT/compose/$f"
 done
 install -o root -g root -m 0755 "$SCRIPT_DIR/complete_test_secrets.py" "$ROOT/compose/complete_test_secrets.py"

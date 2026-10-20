@@ -73,6 +73,10 @@ class B2BEventService:
             return False
         return True
 
+    async def handle_taxonomy_event(self, event: EventEnvelopeV1) -> bool:
+        """Persist taxonomy receipt; B2C catalog reads canonical B2B state directly."""
+        return await self.handle_catalog_event(event)
+
     @staticmethod
     def _payload_hash(event: object) -> str:
         payload = event.model_dump(mode="json")

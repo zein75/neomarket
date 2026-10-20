@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.models.order import (
+    CheckoutAttempt,
+    CheckoutAttemptStatus,
     Order,
     OrderStatus,
     PendingFulfillment,
@@ -43,6 +45,7 @@ class OrderRepository(BaseRepository[Order]):
             .options(selectinload(Order.items), selectinload(Order.status_history))
             .order_by(Order.cancel_retry_at.asc().nullsfirst())
             .limit(limit)
+            .with_for_update(skip_locked=True)
         )
         return list(result.scalars().all())
 
@@ -181,6 +184,7 @@ class OrderRepository(BaseRepository[Order]):
             .options(selectinload(PendingFulfillment.order).selectinload(Order.items))
             .order_by(PendingFulfillment.next_retry_at.asc().nullsfirst())
             .limit(limit)
+            .with_for_update(skip_locked=True)
         )
         return list(result.scalars().all())
 
@@ -236,6 +240,61 @@ class OrderRepository(BaseRepository[Order]):
             )
         )
         return order, pending
+
+    async def create_checkout_attempt(
+        self,
+        *,
+        attempt_id: UUID,
+        buyer_id: UUID,
+        idempotency_key: str,
+        request_fingerprint: str,
+    ) -> CheckoutAttempt:
+        attempt = await self.session.get(CheckoutAttempt, attempt_id)
+        if attempt is None:
+            attempt = CheckoutAttempt(
+                attempt_id=attempt_id,
+                buyer_id=buyer_id,
+                idempotency_key=idempotency_key,
+                request_fingerprint=request_fingerprint,
+                status=CheckoutAttemptStatus.PENDING.value,
+            )
+            self.session.add(attempt)
+            await self.session.flush()
+        elif attempt.buyer_id != buyer_id or attempt.idempotency_key != idempotency_key:
+            raise ValueError("checkout attempt ownership conflict")
+        elif attempt.request_fingerprint != request_fingerprint:
+            raise ValueError("checkout attempt payload mismatch")
+        return attempt
+
+    async def get_checkout_attempt(
+        self, attempt_id: UUID, buyer_id: UUID
+    ) -> CheckoutAttempt | None:
+        result = await self.session.execute(
+            select(CheckoutAttempt).where(
+                CheckoutAttempt.attempt_id == attempt_id,
+                CheckoutAttempt.buyer_id == buyer_id,
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def set_checkout_attempt_status(
+        self,
+        attempt_id: UUID,
+        *,
+        status: CheckoutAttemptStatus,
+        order_id: UUID | None = None,
+        error_code: str | None = None,
+    ) -> CheckoutAttempt | None:
+        attempt = await self.session.get(CheckoutAttempt, attempt_id)
+        if attempt is None:
+            return None
+        attempt.status = status.value
+        if order_id is not None:
+            attempt.order_id = order_id
+        if error_code is not None:
+            attempt.error_code = error_code[:128]
+        await self.session.flush()
+        return attempt
 
     async def mark_reservation_compensated(
         self, pending: PendingReservationCompensation, *, when: datetime
@@ -296,6 +355,7 @@ class OrderRepository(BaseRepository[Order]):
             )
             .order_by(PendingReservationCompensation.created_at)
             .limit(limit)
+            .with_for_update(skip_locked=True)
         )
         return list(result.scalars().all())
 

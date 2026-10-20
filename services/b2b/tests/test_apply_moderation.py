@@ -32,6 +32,7 @@ def _product(*, status=ProductStatus.ON_MODERATION):
         title="Wireless keyboard",
         description="Low-profile keyboard",
         category_id=uuid4(),
+        brand_id=None,
         images=["https://cdn.neomarket.test/products/keyboard.jpg"],
         characteristics={"layout": "US"},
         blocking_reason={
@@ -149,6 +150,46 @@ async def test_moderated_event_clears_blocking_data() -> None:
     assert product.is_active is True
     assert product.blocking_reason is None
     assert product.field_reports == []
+    assert product.published_revision == 1
+    assert product.published_snapshot["description"] == "Low-profile keyboard"
+
+
+@pytest.mark.asyncio
+async def test_stale_moderation_decision_cannot_publish_a_newer_revision() -> None:
+    product = _product()
+    product.revision = 3
+    FakeProductRepository.product = product
+    event = _event(product.id, status="MODERATED")
+    event.reviewed_revision = 2
+
+    with pytest.raises(Exception) as exc_info:
+        await ModerationEventService(FakeSession()).apply(event)
+
+    assert exc_info.value.status_code == 409
+    assert product.status == ProductStatus.ON_MODERATION
+    assert getattr(product, "published_revision", None) is None
+
+
+def test_public_response_keeps_the_approved_snapshot_during_resubmission() -> None:
+    product = _product(status=ProductStatus.ON_MODERATION)
+    product.published_revision = 2
+    product.published_snapshot = {
+        "title": "Approved title",
+        "description": "Approved description",
+        "category": None,
+        "category_id": None,
+        "images": [],
+        "characteristics": {},
+        "skus": [],
+    }
+    product.title = "Unapproved seller title"
+    product.description = "Unapproved seller description"
+
+    response = ProductService(FakeSession())._public_product_detail(product)
+
+    assert response["status"] == ProductStatus.MODERATED.value
+    assert response["title"] == "Approved title"
+    assert response["description"] == "Approved description"
 
 
 @pytest.mark.asyncio
@@ -349,6 +390,8 @@ def test_blocked_event_then_seller_view_returns_blocking_reason(monkeypatch) -> 
     assert body["field_reports"] == [
         {
             "field_name": "product_images",
+            "field_path": None,
+            "reason_code": None,
             "sku_id": None,
             "comment": "Image is blurry",
         }

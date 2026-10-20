@@ -16,7 +16,12 @@ from src.models.order import (
     OrderStatus,
     PendingReservationCompensation,
 )
-from src.models.user import User
+
+
+# These scenarios require a real PostgreSQL instance and are executed by the
+# dedicated CI integration job. Keeping an explicit marker prevents the unit
+# gate from reporting misleading skips while preserving local opt-in runs.
+pytestmark = pytest.mark.postgres_integration
 
 def _database_url() -> str:
     url = os.getenv("NEOMARKET_POSTGRES_TEST_URL")
@@ -135,7 +140,7 @@ def test_postgres_checkout_retry_vs_compensation_serializes_operation() -> None:
     """
     engine = create_engine(_database_url(), poolclass=NullPool)
     try:
-        user_id, key, operation_id = _prepare(engine), str(uuid4()), uuid4()
+        operation_id = uuid4()
         with Session(engine) as session:
             session.add(
                 PendingReservationCompensation(
@@ -208,7 +213,7 @@ async def test_postgres_compensating_state_blocks_checkout_retry() -> None:
     """
     engine = create_async_engine(_async_database_url(), poolclass=NullPool)
     try:
-        user_id, key, operation_id = uuid4(), str(uuid4()), uuid4()
+        user_id, operation_id = uuid4(), uuid4()
         async with engine.begin() as connection:
             await connection.execute(
                 text(

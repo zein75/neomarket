@@ -39,12 +39,15 @@ class BannerRepository(BaseRepository[Banner]):
         event: str,
         timestamp: datetime,
     ) -> BannerEvent:
-        return await super().create(
+        event_row = BannerEvent(
             banner_id=banner_id,
             user_id=user_id,
             event=event,
             timestamp=timestamp,
         )
+        self.session.add(event_row)
+        await self.session.flush()
+        return event_row
 
 
 class CollectionRepository(BaseRepository[Collection]):

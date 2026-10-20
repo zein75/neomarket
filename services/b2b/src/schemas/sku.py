@@ -1,10 +1,10 @@
 from datetime import datetime, timezone
-import ipaddress
-from urllib.parse import urlparse
-from typing import Any
+from typing import Any, Literal
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from src.schemas.media_url import validate_media_url
 
 
 class SKUImageCreate(BaseModel):
@@ -16,21 +16,7 @@ class SKUImageCreate(BaseModel):
     @field_validator("url")
     @classmethod
     def require_https_url(cls, value: str) -> str:
-        parsed = urlparse(value)
-        if parsed.scheme.lower() != "https" or not parsed.hostname:
-            raise ValueError("image URL must use https")
-        host = parsed.hostname.lower().rstrip(".")
-        if host in {"localhost", "localhost.localdomain"} or host.endswith(".local"):
-            raise ValueError("image URL host is not public")
-        try:
-            address = ipaddress.ip_address(host)
-        except ValueError:
-            address = None
-        if address is not None and (
-            address.is_private or address.is_loopback or address.is_link_local
-        ):
-            raise ValueError("image URL host is not public")
-        return value
+        return validate_media_url(value)
 
 
 class SKUImageResponse(BaseModel):
@@ -101,13 +87,25 @@ class StockAdjustmentRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     delta: int = Field(ge=-10_000_000, le=10_000_000)
-    reason: str = Field(min_length=3, max_length=500)
+    reason: str = Field(min_length=3, max_length=64)
 
     @model_validator(mode="after")
     def require_nonzero_delta(self) -> "StockAdjustmentRequest":
         if self.delta == 0:
             raise ValueError("delta must not be zero")
         return self
+
+
+class StockAdjustmentStatusResponse(BaseModel):
+    operation_id: UUID
+    status: Literal["COMMITTED"]
+    sku_id: UUID
+    delta: int
+    on_hand: int
+    reserved: int
+    available: int
+    ledger_entry_id: UUID | None
+    as_of: datetime
 
 
 class SKUResponse(BaseModel):
@@ -117,8 +115,12 @@ class SKUResponse(BaseModel):
     product_id: UUID
     name: str
     price: int
+    price_minor: int | None = None
+    currency: str = "RUB"
     discount: int
     article: str | None
+    seller_article: str | None = None
+    options: dict[str, str] = Field(default_factory=dict)
     characteristics: list[SKUCharacteristic]
     cost_price: int | None
     stock_quantity: int
@@ -128,18 +130,27 @@ class SKUResponse(BaseModel):
     is_active: bool
     created_at: datetime
     updated_at: datetime
+    revision: int = 1
 
     @model_validator(mode="before")
     @classmethod
     def from_sku_model(cls, value: Any) -> Any:
         if isinstance(value, dict):
             data = dict(value)
+        elif isinstance(value, BaseModel):
+            # FastAPI/Pydantic may validate an already-normalized public SKU
+            # against its inherited SKU schema while serializing the response.
+            data = value.model_dump()
         else:
             data = {
                 "id": getattr(value, "id"),
                 "product_id": getattr(value, "product_id"),
                 "name": getattr(value, "name"),
                 "price": getattr(value, "price"),
+                "price_minor": getattr(value, "price", None),
+                "currency": getattr(value, "currency", "RUB"),
+                "seller_article": getattr(value, "seller_article", None),
+                "options": getattr(value, "options", {}),
                 "stock_quantity": getattr(value, "stock"),
                 "active_quantity": getattr(value, "active_quantity", None),
                 "reserved_quantity": getattr(value, "reserved_quantity", 0),
@@ -147,18 +158,30 @@ class SKUResponse(BaseModel):
                 "is_active": getattr(value, "is_active"),
                 "created_at": getattr(value, "created_at"),
                 "updated_at": getattr(value, "updated_at"),
+                "revision": getattr(value, "revision", 1),
             }
             for optional in ("discount", "article", "characteristics", "cost_price"):
                 if hasattr(value, optional):
                     data[optional] = getattr(value, optional)
+            if hasattr(value, "seller_article"):
+                data["seller_article"] = value.seller_article
+            if hasattr(value, "currency"):
+                data["currency"] = value.currency
+            if hasattr(value, "options"):
+                data["options"] = value.options
 
         data.setdefault("discount", 0)
+        data.setdefault("price_minor", data.get("price"))
+        data.setdefault("currency", "RUB")
+        data.setdefault("seller_article", data.get("article"))
+        data.setdefault("options", {})
         data.setdefault("article", None)
         data["characteristics"] = cls._normalize_characteristics(
             data.get("characteristics", [])
         )
         data.setdefault("cost_price", None)
         data.setdefault("reserved_quantity", 0)
+        data.setdefault("revision", 1)
         now = datetime.now(timezone.utc)
         if data.get("created_at") is None:
             data["created_at"] = now

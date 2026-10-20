@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 from src.models.order import OrderStatus
 
@@ -13,6 +13,31 @@ class OrderItemSnapshot(BaseModel):
     sku_id: UUID
     quantity: int = Field(ge=1)
     unit_price: int = Field(ge=0)
+
+
+class CustomerContact(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=160)
+    email: EmailStr
+    phone: str = Field(min_length=3, max_length=64)
+
+
+class LegalConsent(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    type: str = Field(min_length=1, max_length=64)
+    version: str = Field(min_length=1, max_length=64)
+    accepted_at: datetime
+
+    @model_validator(mode="after")
+    def validate_timestamp(self) -> "LegalConsent":
+        accepted = self.accepted_at
+        if accepted.tzinfo is None or accepted.utcoffset() is None:
+            raise ValueError("accepted_at must include a timezone")
+        if accepted > datetime.now(timezone.utc):
+            raise ValueError("accepted_at cannot be in the future")
+        return self
 
 
 class OrderCreateRequest(BaseModel):
@@ -26,6 +51,9 @@ class OrderCreateRequest(BaseModel):
     payment_method_id: UUID | None = None
     comment: str | None = Field(default=None, max_length=1000)
     items_snapshot: list[OrderItemSnapshot] | None = Field(default=None, max_length=100)
+    contact: CustomerContact | None = None
+    legal_consents: list[LegalConsent] | None = Field(default=None, max_length=16)
+    quote_id: UUID | None = None
 
     @model_validator(mode="after")
     def validate_checkout_mode(self) -> "OrderCreateRequest":
@@ -109,10 +137,14 @@ class OrderResponse(BaseModel):
     subtotal: int
     total: int
     address: OrderAddressResponse
+    delivery_method: str | None = None
     cancel_reason: str | None = None
     status_history: list[OrderStatusHistoryResponse] = Field(default_factory=list)
     created_at: datetime
     items: list[OrderItemResponse]
+    contact: CustomerContact | None = None
+    legal_consents: list[LegalConsent] | None = None
+    quote_id: UUID | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -129,10 +161,14 @@ class OrderResponse(BaseModel):
                 "total": total_amount,
                 "address": getattr(value, "address", {}),
                 "address_id": getattr(value, "address_id", None),
+                "delivery_method": getattr(value, "delivery_method", None),
                 "cancel_reason": getattr(value, "cancel_reason", None),
                 "status_history": getattr(value, "status_history", []),
                 "created_at": getattr(value, "created_at", None),
                 "items": getattr(value, "items", []),
+                "contact": getattr(value, "contact", None),
+                "legal_consents": getattr(value, "legal_consents", None),
+                "quote_id": getattr(value, "quote_id", None),
             }
         if "buyer_id" not in data and "user_id" in data:
             data["buyer_id"] = data["user_id"]
@@ -160,6 +196,19 @@ class CheckoutOperationStatus(BaseModel):
     state: str
     order_id: UUID | None = None
     updated_at: datetime
+    attempt_id: UUID | None = None
+    idempotency_key: UUID | None = None
+    error_code: str | None = None
+
+
+class CheckoutAttemptResponse(BaseModel):
+    attempt_id: UUID
+    idempotency_key: UUID
+    status: str
+    order_id: UUID | None = None
+    created_at: datetime
+    updated_at: datetime
+    error_code: str | None = None
 
 
 class OrderDetailItemResponse(BaseModel):

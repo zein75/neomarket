@@ -9,13 +9,43 @@ from fastapi import HTTPException
 from src.api.routers import moderation as moderation_router
 from src.main import app
 from src.models.moderation import ModerationStatus
+from src.models.moderation_outbox_event import ModerationOutboxEvent
 from src.schemas.moderation import ModerationCardResponse
 from src.services import moderation_service as moderation_service_module
 from src.services.moderation_service import ModerationService
 from src.schemas.moderation import BlockDecisionRequest
+from src.schemas.admin_responses import ProductSnapshotResponse
 
 
 pytestmark = pytest.mark.anyio
+
+
+def test_review_checklist_exposes_product_rules_from_snapshot() -> None:
+    snapshot = ProductSnapshotResponse.model_validate({
+        "product_id": str(uuid4()),
+        "seller_id": str(uuid4()),
+        "revision": 1,
+        "snapshot_hash": "a" * 64,
+        "title": "Steel bottle",
+        "category_id": str(uuid4()),
+        "images": [{"url": "https://cdn.example.test/product.jpg"}],
+        "skus": [{
+            "sku_id": str(uuid4()),
+            "name": "500 ml",
+            "price_minor": 129900,
+            "currency": "RUB",
+            "images": [{"url": "https://cdn.example.test/sku.jpg"}],
+        }],
+        "attributes": {"volume": 500},
+        "policy_version": 1,
+    })
+    checklist = moderation_router._review_checklist(snapshot, revision_pinned=True, published_loaded=False)
+    results = {item["code"]: item["passed"] for item in checklist}
+    assert results["TITLE_RULES"] is True
+    assert results["CATEGORY_RULES"] is True
+    assert results["SKU_RULES"] is True
+    assert results["SKU_PRICE_RULES"] is True
+    assert results["MEDIA_RULES"] is True
 
 
 def _card(
@@ -33,11 +63,24 @@ def _card(
         moderator_id=moderator_id,
         status=status,
         sku_ids=sku_ids if sku_ids is not None else [uuid4()],
+        submitted_revision=1,
+        snapshot_hash="a" * 64,
+        version=1,
+        fencing_version=0,
+        lease_token_hash=None,
+        lease_expires_at=None,
+        updated_at=None,
+        created_at="2026-10-16T00:00:00Z",
     )
 
 
 class FakeSession:
-    flushed = False
+    def __init__(self):
+        self.flushed = False
+        self.added: list[object] = []
+
+    def add(self, item) -> None:
+        self.added.append(item)
 
     async def flush(self) -> None:
         self.flushed = True
@@ -62,6 +105,9 @@ class FakeModerationRepository:
             if card.product_id == product_id:
                 return card
         return None
+
+    async def get_by_product_id_for_update(self, product_id: UUID):
+        return await self.get_by_product_id(product_id)
 
     async def delete(self, card) -> None:
         self.deleted_cards.append(card.id)
@@ -123,7 +169,8 @@ async def test_approve_transitions_to_moderated_and_emits_event() -> None:
     card = _card(moderator_id=moderator_id)
     FakeModerationRepository.cards[card.id] = card
 
-    approved = await ModerationService(FakeSession()).approve_product(
+    session = FakeSession()
+    approved = await ModerationService(session).approve_product(
         card.id,
         moderator_id,
     )
@@ -132,11 +179,13 @@ async def test_approve_transitions_to_moderated_and_emits_event() -> None:
     response = ModerationCardResponse.model_validate(approved).model_dump(mode="json")
     assert response["seller_id"] == str(card.seller_id)
     assert response["kind"] == "CREATE"
-    assert response["queue_priority"] == 3
-    assert response["status"] == "APPROVED"
+    assert response["priority"] == 3
+    assert response["status"] == "DECISION_PENDING"
     assert response["created_at"]
-    assert len(FakeB2BClient.events) == 1
-    event = FakeB2BClient.events[0]
+    outbox = [item for item in session.added if isinstance(item, ModerationOutboxEvent)]
+    assert FakeB2BClient.events == []
+    assert len(outbox) == 1
+    event = outbox[0].payload
     assert UUID(str(event["idempotency_key"]))
     assert event["event_type"] == "MODERATED"
     assert event["product_id"] == str(card.product_id)
@@ -144,7 +193,7 @@ async def test_approve_transitions_to_moderated_and_emits_event() -> None:
     assert "PRODUCT_MODERATION_DECIDED" not in event.values()
 
 
-def test_approve_ticket_route_returns_contract_response() -> None:
+def test_legacy_approve_route_is_disabled() -> None:
     moderator_id = uuid4()
     card = _card(moderator_id=moderator_id)
     FakeModerationRepository.cards[card.id] = card
@@ -161,15 +210,9 @@ def test_approve_ticket_route_returns_contract_response() -> None:
     finally:
         app.dependency_overrides.clear()
 
-    assert response.status_code == 200
-    body = response.json()
-    assert body["id"] == str(card.id)
-    assert body["product_id"] == str(card.product_id)
-    assert body["seller_id"] == str(card.seller_id)
-    assert body["kind"] == "CREATE"
-    assert body["queue_priority"] == 3
-    assert body["status"] == "APPROVED"
-    assert body["created_at"]
+    assert response.status_code == 410
+    assert "LEGACY_DECISION_DISABLED" in response.text
+    assert FakeB2BClient.events == []
 
 
 async def test_approve_others_card_returns_409() -> None:
@@ -232,15 +275,16 @@ async def test_hard_block_transitions_to_terminal_and_emits_event() -> None:
         hard_block=True,
     )
 
-    blocked = await ModerationService(FakeSession()).block_product(
+    session = FakeSession()
+    blocked = await ModerationService(session).block_product(
         card.id,
         moderator_id,
         blocking_reason_ids=[reason_id],
     )
 
     assert blocked.status == ModerationStatus.HARD_BLOCKED
-    assert len(FakeB2BClient.events) == 1
-    event = FakeB2BClient.events[0]
+    assert FakeB2BClient.events == []
+    event = next(item.payload for item in session.added if isinstance(item, ModerationOutboxEvent))
     assert UUID(str(event["idempotency_key"]))
     assert event["event_type"] == "BLOCKED"
     assert event["product_id"] == str(card.product_id)
@@ -251,7 +295,7 @@ async def test_hard_block_transitions_to_terminal_and_emits_event() -> None:
     assert "PRODUCT_MODERATION_DECIDED" not in event.values()
 
 
-def test_block_ticket_route_returns_contract_response_and_emits_event() -> None:
+def test_legacy_block_route_is_disabled() -> None:
     moderator_id = uuid4()
     reason_id = uuid4()
     card = _card(moderator_id=moderator_id)
@@ -279,20 +323,9 @@ def test_block_ticket_route_returns_contract_response_and_emits_event() -> None:
     finally:
         app.dependency_overrides.clear()
 
-    assert response.status_code == 200
-    body = response.json()
-    assert body["id"] == str(card.id)
-    assert body["seller_id"] == str(card.seller_id)
-    assert body["kind"] == "CREATE"
-    assert body["queue_priority"] == 3
-    assert body["status"] == "HARD_BLOCKED"
-    assert body["created_at"]
-    assert FakeB2BClient.events[0]["event_type"] == "BLOCKED"
-    assert FakeB2BClient.events[0]["blocking_reason_id"] == str(reason_id)
-    assert (
-        FakeB2BClient.events[0]["moderator_comment"]
-        == "Photos and description contradict each other"
-    )
+    assert response.status_code == 410
+    assert "LEGACY_DECISION_DISABLED" in response.text
+    assert FakeB2BClient.events == []
 
 
 def test_blocking_reasons_route_returns_hard_block_catalog() -> None:
@@ -334,7 +367,6 @@ def test_blocking_reasons_route_returns_hard_block_catalog() -> None:
             "id": str(hard_reason_id),
             "code": "COUNTERFEIT_PRODUCT",
             "title": "Контрафактный товар",
-            "description": None,
             "hard_block": True,
             "is_active": True,
         }
@@ -351,14 +383,16 @@ async def test_hard_block_event_carries_hard_block_true() -> None:
         hard_block=True,
     )
 
-    await ModerationService(FakeSession()).block_product(
+    session = FakeSession()
+    await ModerationService(session).block_product(
         card.id,
         moderator_id,
         blocking_reason_ids=[reason_id],
     )
 
-    assert FakeB2BClient.events[0]["event_type"] == "BLOCKED"
-    assert FakeB2BClient.events[0]["hard_block"] is True
+    event = next(item.payload for item in session.added if isinstance(item, ModerationOutboxEvent))
+    assert event["event_type"] == "BLOCKED"
+    assert event["hard_block"] is True
 
 
 async def test_any_modify_on_hard_blocked_returns_409() -> None:
@@ -431,7 +465,7 @@ async def test_edited_event_returns_card_to_pending_queue() -> None:
     assert card.queue_priority == 3
 
 
-async def test_deleted_event_removes_hard_blocked() -> None:
+async def test_deleted_event_cancels_hard_blocked_ticket_without_erasing_history() -> None:
     moderator_id = uuid4()
     card = _card(moderator_id=moderator_id, status=ModerationStatus.HARD_BLOCKED)
     FakeModerationRepository.cards[card.id] = card
@@ -443,22 +477,26 @@ async def test_deleted_event_removes_hard_blocked() -> None:
         }
     )
 
-    assert result == {"status": "DELETED"}
-    assert FakeModerationRepository.deleted_cards == [card.id]
-    assert card.id not in FakeModerationRepository.cards
+    assert result == {"status": "CANCELLED"}
+    assert FakeModerationRepository.deleted_cards == []
+    assert card.id in FakeModerationRepository.cards
+    assert card.status == ModerationStatus.CANCELLED
 
 
 def test_product_event_route_requires_service_key() -> None:
-    response = TestClient(app).post(
-        "/api/v1/b2b/events",
-        json={"event_type": "PRODUCT_EDITED", "product_id": str(uuid4())},
-    )
+    async def fake_db():
+        yield FakeSession()
+
+    app.dependency_overrides[moderation_router.get_db] = fake_db
+    try:
+        response = TestClient(app).post(
+            "/internal/v1/events/products",
+            json={"event_type": "PRODUCT_EDITED", "product_id": str(uuid4())},
+        )
+    finally:
+        app.dependency_overrides.clear()
 
     assert response.status_code == 401
-    assert response.json() == {
-        "code": "UNAUTHORIZED",
-        "message": "Invalid service key",
-    }
 
 
 def test_product_event_route_accepts_service_key() -> None:
@@ -472,7 +510,7 @@ def test_product_event_route_accepts_service_key() -> None:
     app.dependency_overrides[moderation_router.get_db] = fake_db
     try:
         response = TestClient(app).post(
-            "/api/v1/b2b/events",
+            "/api/v1/events/products",
             json={"event_type": "PRODUCT_EDITED", "product_id": str(card.product_id)},
             headers={"X-Service-Key": "dev-service-key"},
         )

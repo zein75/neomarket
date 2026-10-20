@@ -199,7 +199,7 @@ def test_create_invoice_response_matches_contract() -> None:
     seller_id = uuid4()
     sku = _sku(seller_id=seller_id)
     FakeSKURepository.skus = {sku.id: sku}
-    app.dependency_overrides[invoices_router.get_current_seller] = _fake_seller(
+    app.dependency_overrides[invoices_router.finance_seller_permission] = _fake_seller(
         seller_id
     )
     app.dependency_overrides[invoices_router.get_db] = _fake_db
@@ -220,7 +220,7 @@ def test_create_invoice_response_matches_contract() -> None:
 
 
 def test_empty_items_response_matches_error_contract() -> None:
-    app.dependency_overrides[invoices_router.get_current_seller] = _fake_seller(
+    app.dependency_overrides[invoices_router.finance_seller_permission] = _fake_seller(
         uuid4()
     )
     app.dependency_overrides[invoices_router.get_db] = _fake_db

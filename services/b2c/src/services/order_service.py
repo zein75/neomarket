@@ -3,6 +3,7 @@ import json
 import logging
 from datetime import datetime, timedelta, timezone
 import inspect
+from sqlalchemy import select
 from uuid import UUID
 from uuid import NAMESPACE_URL, uuid4, uuid5
 
@@ -13,11 +14,13 @@ from sqlalchemy.exc import IntegrityError
 from src.clients.b2b_client import B2BClient
 from src.core.config import settings
 from src.models.order import (
+    CheckoutAttemptStatus,
     CheckoutCompensationState,
     Order,
     OrderItem,
     OrderStatus,
     OrderStatusHistory,
+    SellerOrderOutbox,
 )
 from src.repositories.cart_repo import CartRepository
 from src.repositories.address_repo import AddressRepository
@@ -98,6 +101,12 @@ class OrderService:
                 items=reservation_items,
                 request_fingerprint=request_fingerprint,
             )
+            await self._create_checkout_attempt(
+                attempt_id=order_id,
+                buyer_id=user_id,
+                idempotency_key=idempotency_key,
+                request_fingerprint=request_fingerprint,
+            )
             await self.order_repo.session.commit()
         except IntegrityError:
             # Another same-buyer/same-key request created the intent first.
@@ -144,11 +153,17 @@ class OrderService:
             # intent for idempotent replay or worker compensation.
             if exc.status_code != status.HTTP_503_SERVICE_UNAVAILABLE:
                 await self._delete_checkout_intent(order_id, best_effort=True)
+                await self._set_checkout_attempt_status(
+                    order_id, status=CheckoutAttemptStatus.FAILED, error_code="RESERVATION_REJECTED"
+                )
             else:
                 # The intent was committed before the operation lock.  Release
                 # this request transaction/lock while retaining that durable
                 # record for a same-key retry or the recovery worker.
                 await self.order_repo.session.rollback()
+                await self._set_checkout_attempt_status(
+                    order_id, status=CheckoutAttemptStatus.PENDING, error_code="CHECKOUT_UNAVAILABLE"
+                )
             raise
         except Exception:
             # Transport exceptions have the same ambiguous outcome as a lost
@@ -165,13 +180,30 @@ class OrderService:
                 order = await self.order_repo.create(
                     id=order_id,
                     user_id=user_id,
-                    status=OrderStatus.PAID,
+                    # Checkout only reserves inventory and persists the order.
+                    # Payment is confirmed separately by a verified PSP
+                    # webhook; never report PAID from a local checkout call.
+                    status=OrderStatus.CREATED,
                     total_amount=total,
                     currency=cart.currency,
                     address_id=order_request.address_id if order_request else None,
+                    delivery_method=(
+                        order_request.delivery_method if order_request else None
+                    ),
                     payment_method_id=(
                         order_request.payment_method_id if order_request else None
                     ),
+                    contact=(
+                        order_request.contact.model_dump(mode="json")
+                        if order_request and order_request.contact
+                        else None
+                    ),
+                    legal_consents=(
+                        [consent.model_dump(mode="json") for consent in order_request.legal_consents]
+                        if order_request and order_request.legal_consents
+                        else None
+                    ),
+                    quote_id=order_request.quote_id if order_request else None,
                     address=self._address_snapshot(order_request, address),
                     idempotency_key=idempotency_key,
                     request_fingerprint=request_fingerprint,
@@ -206,6 +238,7 @@ class OrderService:
                     order_id=order.id,
                     sku_id=cart_item.sku_id,
                     product_id=cart_item.product_id,
+                    seller_id=UUID(str(snapshot["seller_id"])),
                     product_title=str(snapshot["product_title"]),
                     sku_name=str(snapshot["sku_name"]),
                     quantity=cart_item.quantity,
@@ -216,6 +249,10 @@ class OrderService:
                 order.__dict__.setdefault("items", []).append(order_item)
 
             await self.order_repo.session.flush()
+            await self._queue_seller_order_allocations(order)
+            await self._set_checkout_attempt_status(
+                order_id, status=CheckoutAttemptStatus.COMPLETED, order_id=order.id
+            )
             # The order is the durable confirmation of the saga.  It must be
             # committed here, not in the HTTP router after this method returns.
             await self.order_repo.session.commit()
@@ -234,6 +271,9 @@ class OrderService:
                 user_id,
                 reservation_items,
                 f"{type(checkout_error).__name__}: {checkout_error}",
+            )
+            await self._set_checkout_attempt_status(
+                order_id, status=CheckoutAttemptStatus.FAILED, error_code="CHECKOUT_FAILED"
             )
             raise
 
@@ -314,6 +354,11 @@ class OrderService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={"code": "ORDER_NOT_FOUND", "message": "Order not found"},
             )
+        # Cancellation is a durable state transition. A client retry after a
+        # lost response must observe the accepted result instead of issuing a
+        # second unreserve or receiving a misleading conflict.
+        if order.status in {OrderStatus.CANCEL_PENDING, OrderStatus.CANCELLED}:
+            return order
         cancellable_statuses = {
             OrderStatus.CREATED,
             OrderStatus.PAID,
@@ -336,6 +381,7 @@ class OrderService:
         # request transaction persists it even when unreserve fails, so retry
         # can safely continue after a restart.
         order.status = OrderStatus.CANCEL_PENDING
+        await self._queue_seller_order_cancellations(order)
         order.status_history.append(
             OrderStatusHistory(
                 order_id=order.id,
@@ -429,6 +475,10 @@ class OrderService:
 
     async def retry_pending_cancellations(self, limit: int = 100) -> int:
         retried = 0
+        # Cancellation retries commit each successful row to make progress
+        # durable. Select one row per transaction so that a worker never holds
+        # locks for a batch it will later commit item-by-item.
+        limit = min(limit, 1)
         orders = await self.order_repo.list_due_cancellation_retries(
             datetime.now(timezone.utc), limit
         )
@@ -514,6 +564,7 @@ class OrderService:
             for sku in product.get("skus", []):
                 snapshots[str(sku.get("id"))] = {
                     "product_id": str(product.get("id")),
+                    "seller_id": str(product.get("seller_id") or ""),
                     "product_title": product.get("title") or "",
                     "sku_name": sku.get("name") or "",
                     "price": int(sku.get("price", 0)),
@@ -535,6 +586,10 @@ class OrderService:
             if str(snapshot["product_id"]) != str(item.product_id):
                 failed_items.append({"sku_id": str(item.sku_id), "reason": "SKU_NOT_FOUND"})
                 continue
+            try:
+                UUID(str(snapshot.get("seller_id") or ""))
+            except ValueError:
+                raise self._b2b_unavailable() from None
             if int(snapshot["active_quantity"]) < item.quantity:
                 failed_items.append(
                     {"sku_id": str(item.sku_id), "reason": "INSUFFICIENT_STOCK"}
@@ -744,6 +799,198 @@ class OrderService:
         ).parameters:
             kwargs["buyer_id"] = buyer_id
         await self.order_repo.queue_reservation_compensation(**kwargs)
+
+    async def _create_checkout_attempt(
+        self,
+        *,
+        attempt_id: UUID,
+        buyer_id: UUID,
+        idempotency_key: str,
+        request_fingerprint: str,
+    ) -> None:
+        creator = getattr(self.order_repo, "create_checkout_attempt", None)
+        if creator is None:
+            return
+        try:
+            await creator(
+                attempt_id=attempt_id,
+                buyer_id=buyer_id,
+                idempotency_key=idempotency_key,
+                request_fingerprint=request_fingerprint,
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"code": "CHECKOUT_ATTEMPT_CONFLICT", "message": str(exc)},
+            ) from exc
+
+    async def _queue_seller_order_allocations(self, order: Order) -> None:
+        """Persist one PII-free seller allocation event per owner in the order txn."""
+        grouped: dict[UUID, list[OrderItem]] = {}
+        for item in order.items:
+            if item.seller_id is None:
+                raise self._b2b_unavailable()
+            grouped.setdefault(item.seller_id, []).append(item)
+
+        for seller_id, items in grouped.items():
+            seller_order_id = uuid5(NAMESPACE_URL, f"neomarket:seller-order:{order.id}:{seller_id}")
+            event_id = uuid5(NAMESPACE_URL, f"neomarket:seller-order-allocation:{order.id}:{seller_id}:v1")
+            lines = [
+                {
+                    "sku_id": str(item.sku_id),
+                    "product_id": str(item.product_id),
+                    "product_title": item.product_title,
+                    "sku_name": item.sku_name,
+                    "quantity": item.quantity,
+                    "unit_price_minor": item.unit_price,
+                    "line_total_minor": item.line_total,
+                }
+                for item in items
+            ]
+            payload = {
+                "schema_version": 1,
+                "event_id": str(event_id),
+                "event_type": "seller_order.allocated.v1",
+                "producer": "b2c",
+                "aggregate_type": "seller_order",
+                "aggregate_id": str(seller_order_id),
+                "aggregate_version": 1,
+                "tenant_id": str(seller_id),
+                "occurred_at": datetime.now(timezone.utc).isoformat(),
+                "correlation_id": str(order.id),
+                "payload": {
+                    "buyer_order_id": str(order.id),
+                    "seller_order_id": str(seller_order_id),
+                    "seller_id": str(seller_id),
+                    "currency": order.currency,
+                    "status": "CREATED",
+                    "total_minor": sum(line["line_total_minor"] for line in lines),
+                    "items": lines,
+                },
+            }
+            payload["payload_hash"] = hashlib.sha256(
+                json.dumps(
+                    payload["payload"], sort_keys=True, separators=(",", ":")
+                ).encode()
+            ).hexdigest()
+            digest = hashlib.sha256(
+                json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+            ).hexdigest()
+            self.order_repo.session.add(
+                SellerOrderOutbox(
+                    event_id=event_id,
+                    seller_order_id=seller_order_id,
+                    payload=payload,
+                    payload_sha256=digest,
+                )
+            )
+
+    async def _queue_seller_order_cancellations(self, order: Order) -> None:
+        """Persist PII-free seller cancellation events with the buyer intent."""
+        seller_ids = {item.seller_id for item in order.items if item.seller_id is not None}
+        for seller_id in seller_ids:
+            seller_order_id = uuid5(NAMESPACE_URL, f"neomarket:seller-order:{order.id}:{seller_id}")
+            event_id = uuid5(
+                NAMESPACE_URL, f"neomarket:seller-order-cancellation:{order.id}:{seller_id}:v1"
+            )
+            payload = {
+                "schema_version": 1,
+                "event_id": str(event_id),
+                "event_type": "seller_order.cancelled.v1",
+                "producer": "b2c",
+                "aggregate_type": "seller_order",
+                "aggregate_id": str(seller_order_id),
+                "aggregate_version": 2,
+                "tenant_id": str(seller_id),
+                "occurred_at": datetime.now(timezone.utc).isoformat(),
+                "correlation_id": str(order.id),
+                "payload": {
+                    "buyer_order_id": str(order.id),
+                    "seller_order_id": str(seller_order_id),
+                    "seller_id": str(seller_id),
+                },
+            }
+            payload["payload_hash"] = hashlib.sha256(
+                json.dumps(payload["payload"], sort_keys=True, separators=(",", ":")).encode()
+            ).hexdigest()
+            digest = hashlib.sha256(
+                json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+            ).hexdigest()
+            self.order_repo.session.add(
+                SellerOrderOutbox(
+                    event_id=event_id,
+                    seller_order_id=seller_order_id,
+                    payload=payload,
+                    payload_sha256=digest,
+                )
+            )
+
+    async def retry_pending_seller_order_events(self, limit: int = 50) -> int:
+        now = datetime.now(timezone.utc)
+        result = await self.order_repo.session.execute(
+            select(SellerOrderOutbox)
+            .where(
+                SellerOrderOutbox.status.in_(["PENDING", "RETRY"]),
+                (SellerOrderOutbox.next_retry_at.is_(None) | (SellerOrderOutbox.next_retry_at <= now)),
+                (SellerOrderOutbox.lease_until.is_(None) | (SellerOrderOutbox.lease_until < now)),
+            )
+            .order_by(SellerOrderOutbox.created_at)
+            .limit(limit)
+            .with_for_update(skip_locked=True)
+        )
+        events = list(result.scalars().all())
+        delivered = 0
+        for event in events:
+            event.lease_until = now + timedelta(seconds=30)
+            event.attempts += 1
+            actual_hash = hashlib.sha256(
+                json.dumps(event.payload, sort_keys=True, separators=(",", ":")).encode()
+            ).hexdigest()
+            if actual_hash != event.payload_sha256:
+                event.status = "DEAD"
+                event.last_error = "OUTBOX_PAYLOAD_HASH_MISMATCH"
+                event.lease_until = None
+                continue
+            try:
+                async with B2BClient(settings.b2b_base_url) as client:
+                    if event.payload.get("event_type") == "seller_order.cancelled.v1":
+                        await client.send_seller_order_cancellation(event.payload)
+                    else:
+                        await client.send_seller_order_allocation(event.payload)
+                event.status = "SENT"
+                event.last_error = None
+                delivered += 1
+            except Exception as exc:  # noqa: BLE001 - retry after transient upstream failure
+                event.status = "RETRY"
+                event.last_error = str(exc)[:500]
+                event.next_retry_at = now + timedelta(seconds=min(900, 2 ** min(event.attempts, 10)))
+            finally:
+                event.lease_until = None
+        await self.order_repo.session.flush()
+        return delivered
+
+    async def _set_checkout_attempt_status(
+        self,
+        attempt_id: UUID,
+        *,
+        status: CheckoutAttemptStatus,
+        order_id: UUID | None = None,
+        error_code: str | None = None,
+    ) -> None:
+        updater = getattr(self.order_repo, "set_checkout_attempt_status", None)
+        if updater is None:
+            return
+        try:
+            await updater(
+                attempt_id,
+                status=status,
+                order_id=order_id,
+                error_code=error_code,
+            )
+            await self.order_repo.session.commit()
+        except Exception:  # noqa: BLE001 - status projection must not hide saga result
+            await self.order_repo.session.rollback()
+            logger.exception("Could not update checkout attempt %s", attempt_id)
 
     async def _delete_checkout_intent(
         self, order_id: UUID, *, best_effort: bool = False

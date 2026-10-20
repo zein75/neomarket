@@ -1,8 +1,9 @@
 from datetime import datetime
 from enum import StrEnum
+from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from shared.schemas.events import EventEnvelopeV1
 
 
@@ -25,7 +26,9 @@ class FieldReport(BaseModel):
     # The protocol accepts concrete paths such as "images[0]" as well as
     # common field names.
     field_name: str
+    reason_code: str | None = None
     sku_id: UUID | None = None
+    media_id: UUID | None = None
     comment: str
 
 
@@ -33,9 +36,18 @@ class ModerationDecisionEvent(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     idempotency_key: UUID
+    decision_id: UUID | None = None
     product_id: UUID
+    seller_id: UUID | None = None
+    snapshot_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     status: ModerationEventType
     occurred_at: datetime
+    reviewed_revision: int | None = Field(default=None, ge=1)
+    ticket_id: UUID | None = None
+    actor_id: UUID | None = None
+    action: str | None = Field(default=None, max_length=32)
+    reason_code: str | None = Field(default=None, max_length=128)
+    comment: str | None = Field(default=None, max_length=4000)
     hard_block: bool | None = None
     blocking_reason: BlockingReason | None = None
     field_reports: list[FieldReport] | None = None
@@ -92,6 +104,16 @@ class ModerationEventRequest(BaseModel):
         return self
 
 
+class ModerationFieldReport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    field_path: str
+    reason_code: str
+    comment: str
+    sku_id: UUID | None = None
+    media_id: UUID | None = None
+
+
 class ModerationEnvelopePayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -103,6 +125,7 @@ class ModerationEnvelopePayload(BaseModel):
     action: str
     reason_code: str | None = None
     comment: str | None = None
+    field_reports: list[ModerationFieldReport] = Field(default_factory=list)
 
 
 class ModerationEventEnvelope(EventEnvelopeV1):
@@ -125,4 +148,39 @@ class ModerationEventEnvelope(EventEnvelopeV1):
             raise ValueError("unsupported moderation event type")
         if self.payload.action not in {"APPROVE", "BLOCK", "HARD_BLOCK"}:
             raise ValueError("unsupported moderation action")
+        return self
+
+
+class AdminModerationFieldReport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    field_path: str = Field(min_length=1, max_length=255)
+    reason_code: str = Field(min_length=1, max_length=64)
+    comment: str = Field(min_length=1, max_length=2000)
+    sku_id: UUID | None = None
+    media_id: UUID | None = None
+
+
+class AdminModerationDecisionRequest(BaseModel):
+    """Revision-bound decision command sent by Admin over service auth."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    decision_id: UUID
+    product_id: UUID
+    seller_id: UUID | None = None
+    submitted_revision: int = Field(ge=1)
+    snapshot_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    policy_version: int = Field(ge=1)
+    action: Literal["APPROVE", "CHANGES_REQUESTED", "REJECT", "HARD_BLOCK"]
+    reason_codes: list[str] = Field(default_factory=list, max_length=100)
+    field_reports: list[AdminModerationFieldReport] = Field(default_factory=list, max_length=100)
+    correlation_id: UUID
+
+    @model_validator(mode="after")
+    def validate_action_requirements(self) -> "AdminModerationDecisionRequest":
+        if self.action in {"CHANGES_REQUESTED", "REJECT", "HARD_BLOCK"} and not self.reason_codes:
+            raise ValueError("non-approval decisions require at least one reason code")
+        if self.action == "CHANGES_REQUESTED" and not self.field_reports:
+            raise ValueError("change requests require actionable field reports")
         return self

@@ -15,7 +15,7 @@ class EventEnvelopeV1(BaseModel):
     event_type: str = Field(pattern=r"^[a-z][a-z0-9_.]{2,99}$")
     producer: Literal["b2b", "b2c", "admin"]
     aggregate_type: Literal[
-        "product", "inventory_order", "order", "moderation_ticket"
+        "product", "inventory_order", "order", "moderation_ticket", "brand"
     ]
     aggregate_id: UUID
     aggregate_version: int = Field(ge=1)

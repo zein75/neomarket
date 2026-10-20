@@ -22,6 +22,15 @@ class ProductRepository(BaseRepository[Product]):
         )
         return result.scalar_one_or_none()
 
+    async def get_for_moderation(self, product_id: UUID) -> Product | None:
+        result = await self.session.execute(
+            select(Product)
+            .where(Product.id == product_id)
+            .options(selectinload(Product.skus))
+            .with_for_update()
+        )
+        return result.scalar_one_or_none()
+
     async def list_active(
         self,
         page: int = 1,
@@ -74,6 +83,7 @@ class ProductRepository(BaseRepository[Product]):
         status: str | None = None,
         include_deleted: bool = False,
         search: str | None = None,
+        include_skus: bool = False,
     ) -> tuple[list[tuple[Product, int, int]], int]:
         sku_stats = (
             select(
@@ -106,7 +116,7 @@ class ProductRepository(BaseRepository[Product]):
             )
         ).scalar_one()
 
-        rows = (
+        query = (
             await self.session.execute(
                 base_query
                 .outerjoin(sku_stats, sku_stats.c.product_id == Product.id)
@@ -119,7 +129,18 @@ class ProductRepository(BaseRepository[Product]):
                 .offset(offset)
                 .limit(limit)
             )
-        ).all()
+        )
+        rows = query.all()
+        if include_skus and rows:
+            products = [row[0] for row in rows]
+            # One batched selectin load replaces the inventory page's N+1
+            # product/SKU requests while preserving owner-scoped filtering.
+            loaded_products = await self.session.execute(
+                select(Product)
+                .where(Product.id.in_([product.id for product in products]))
+                .options(selectinload(Product.skus))
+            )
+            loaded_products.scalars().all()
         return [(row[0], int(row[1]), int(row[2])) for row in rows], total
 
     async def list_public_catalog(
@@ -139,8 +160,15 @@ class ProductRepository(BaseRepository[Product]):
         query = (
             select(Product)
             .where(
-                Product.status == "MODERATED",
+                or_(
+                    Product.status == "MODERATED",
+                    and_(
+                        Product.published_revision.is_not(None),
+                        Product.status.in_(["ON_MODERATION", "BLOCKED"]),
+                    ),
+                ),
                 Product.deleted == False,  # noqa: E712
+                Product.category_id.is_not(None),
             )
             .options(selectinload(Product.skus))
         )
@@ -150,6 +178,11 @@ class ProductRepository(BaseRepository[Product]):
         active_sku = and_(SKU.is_active == True, active_quantity > 0)  # noqa: E712
         if category_id is not None:
             query = query.where(Product.category_id == category_id)
+        # Keep the public list consistent with get_public_detail: a public
+        # product must have at least one active SKU with stock available.
+        # Without this, sold-out products appear in the catalog but their
+        # detail route returns 404, breaking product and favorite flows.
+        query = query.where(select(SKU.id).where(SKU.product_id == Product.id, active_sku).exists())
         if seller_id is not None:
             query = query.where(Product.seller_id == seller_id)
         if search:
@@ -157,8 +190,8 @@ class ProductRepository(BaseRepository[Product]):
             query = query.where(
                 or_(func.lower(Product.title).like(pattern), func.lower(Product.description).like(pattern))
             )
-        if in_stock is True:
-            query = query.where(select(SKU.id).where(SKU.product_id == Product.id, active_sku).exists())
+        if in_stock is False:
+            query = query.where(~select(SKU.id).where(SKU.product_id == Product.id, active_sku).exists())
         public_price = (
             select(func.min(SKU.price))
             .where(SKU.product_id == Product.id, active_sku)
@@ -220,10 +253,21 @@ class ProductRepository(BaseRepository[Product]):
         active_quantity = func.coalesce(SKU.on_hand, SKU.stock) - SKU.reserved_quantity
         active_sku = and_(SKU.is_active == True, active_quantity > 0)  # noqa: E712
         query = select(Product).where(
-            Product.status == "MODERATED", Product.deleted == False  # noqa: E712
+            or_(
+                Product.status == "MODERATED",
+                and_(
+                    Product.published_revision.is_not(None),
+                    Product.status.in_(["ON_MODERATION", "BLOCKED"]),
+                ),
+            ),
+            Product.deleted == False,  # noqa: E712
+            Product.category_id.is_not(None),
         )
         if category_id is not None:
             query = query.where(Product.category_id == category_id)
+        # Exclude moderated records without any SKU; they are incomplete and
+        # cannot be purchased or rendered as a valid public catalog card.
+        query = query.where(select(SKU.id).where(SKU.product_id == Product.id).exists())
         if seller_id is not None:
             query = query.where(Product.seller_id == seller_id)
         if search:
@@ -318,6 +362,7 @@ class ProductRepository(BaseRepository[Product]):
         title: str,
         description: str | None,
         category_id: UUID,
+        brand_id: UUID | None = None,
         images: list[str],
         characteristics: dict[str, object],
         category: str | None = None,
@@ -330,6 +375,7 @@ class ProductRepository(BaseRepository[Product]):
             slug=Product.make_slug(title, product_id),
             description=description,
             category_id=category_id,
+            brand_id=brand_id,
             images=images,
             characteristics=characteristics,
             category=category,

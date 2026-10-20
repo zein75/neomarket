@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import InvalidTokenError
 from passlib.context import CryptContext
 
 from .config import settings
@@ -16,27 +17,33 @@ def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
 
 
-def create_access_token(subject: str) -> str:
+def create_access_token(
+    subject: str, session_version: int = 0, *, seller_id: str | None = None
+) -> str:
     now = datetime.now(timezone.utc)
     expire = datetime.now(timezone.utc) + timedelta(
         minutes=settings.access_token_expire_minutes
     )
-    return jwt.encode(
-        {
+    payload: dict[str, object] = {
             "sub": subject,
             "iat": now,
             "nbf": now,
             "exp": expire,
             "iss": settings.jwt_issuer,
             "aud": settings.jwt_audience,
-        },
+            "session_version": session_version,
+        }
+    if seller_id is not None:
+        payload["seller_id"] = seller_id
+    return jwt.encode(
+        payload,
         settings.secret_key,
         algorithm=settings.algorithm,
         headers={"kid": settings.jwt_kid},
     )
 
 
-def decode_access_token(token: str) -> str | None:
+def decode_access_token_payload(token: str) -> dict[str, object] | None:
     try:
         header = jwt.get_unverified_header(token)
         if header.get("kid") != settings.jwt_kid:
@@ -48,13 +55,15 @@ def decode_access_token(token: str) -> str | None:
             issuer=settings.jwt_issuer,
             audience=settings.jwt_audience,
             options={
-                "require_sub": True,
-                "require_iat": True,
-                "require_nbf": True,
-                "require_exp": True,
+                "require": ["sub", "iat", "nbf", "exp"],
             },
         )
-        subject = payload.get("sub")
-        return str(subject) if subject else None
-    except JWTError:
+        return payload if isinstance(payload, dict) else None
+    except InvalidTokenError:
         return None
+
+
+def decode_access_token(token: str) -> str | None:
+    payload = decode_access_token_payload(token)
+    subject = payload.get("sub") if payload else None
+    return str(subject) if subject else None

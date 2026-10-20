@@ -36,3 +36,20 @@ def test_moderation_envelope_is_validated():
 def test_moderation_envelope_rejects_unknown_action():
     with pytest.raises(ValidationError):
         ModerationEventEnvelope.model_validate(_event("DELETE"))
+
+
+def test_moderation_envelope_preserves_field_level_reports():
+    event = _event("BLOCK")
+    event["event_type"] = "moderation.blocked"
+    event["payload"]["field_reports"] = [
+        {
+            "field_path": "/description",
+            "reason_code": "DESCRIPTION_MISMATCH",
+            "comment": "Please correct the description.",
+        }
+    ]
+
+    parsed = ModerationEventEnvelope.model_validate(event)
+
+    assert parsed.payload.field_reports[0].field_path == "/description"
+    assert parsed.payload.field_reports[0].reason_code == "DESCRIPTION_MISMATCH"

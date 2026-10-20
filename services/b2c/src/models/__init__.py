@@ -8,10 +8,13 @@ from .order import (
     Order,
     OrderItem,
     OrderStatus,
+    CheckoutAttempt,
+    CheckoutAttemptStatus,
     CheckoutCompensationState,
     OrderStatusHistory,
     PendingFulfillment,
     PendingReservationCompensation,
+    SellerOrderOutbox,
 )
 from .password_reset import PasswordResetToken
 from .refresh_session import RefreshSession
@@ -33,10 +36,13 @@ __all__ = [
     "Order",
     "OrderItem",
     "OrderStatus",
+    "CheckoutAttempt",
+    "CheckoutAttemptStatus",
     "CheckoutCompensationState",
     "OrderStatusHistory",
     "PendingFulfillment",
     "PendingReservationCompensation",
+    "SellerOrderOutbox",
     "PasswordResetToken",
     "RefreshSession",
     "ProcessedB2BEvent",

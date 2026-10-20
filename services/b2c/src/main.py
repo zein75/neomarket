@@ -28,6 +28,7 @@ async def _retry_pending_cancellations(stop: asyncio.Event) -> None:
                 await OrderService(session).retry_pending_cancellations()
                 await OrderService(session).retry_pending_reservation_compensations()
                 await OrderService(session).retry_pending_fulfillments()
+                await OrderService(session).retry_pending_seller_order_events()
                 await session.commit()
         except Exception:  # noqa: BLE001 - a later iteration must still run
             logger.exception("Failed to retry pending order cancellations")
@@ -42,13 +43,18 @@ async def _retry_pending_cancellations(stop: asyncio.Event) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     stop = asyncio.Event()
-    retry_task = asyncio.create_task(_retry_pending_cancellations(stop))
+    retry_task = (
+        asyncio.create_task(_retry_pending_cancellations(stop))
+        if settings.recovery_worker_enabled
+        else None
+    )
     try:
         yield
     finally:
         stop.set()
-        retry_task.cancel()
-        await asyncio.gather(retry_task, return_exceptions=True)
+        if retry_task is not None:
+            retry_task.cancel()
+            await asyncio.gather(retry_task, return_exceptions=True)
 
 
 app = FastAPI(

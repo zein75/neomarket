@@ -1,6 +1,7 @@
+from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -32,29 +33,66 @@ class ModerationRepository(BaseRepository[ModerationCard]):
 
     async def get_by_product_id(self, product_id: UUID) -> ModerationCard | None:
         result = await self.session.execute(
-            select(ModerationCard).where(ModerationCard.product_id == product_id)
+            select(ModerationCard)
+            .where(ModerationCard.product_id == product_id)
+            .order_by(ModerationCard.submitted_revision.desc().nullslast(), ModerationCard.created_at.desc())
+            .limit(1)
         )
         return result.scalar_one_or_none()
 
-    async def list_tickets(
+    async def get_by_product_id_for_update(self, product_id: UUID) -> ModerationCard | None:
+        result = await self.session.execute(
+            select(ModerationCard)
+            .where(ModerationCard.product_id == product_id)
+            .order_by(ModerationCard.submitted_revision.desc().nullslast(), ModerationCard.created_at.desc())
+            .limit(1)
+            .with_for_update()
+        )
+        return result.scalar_one_or_none()
+
+    async def list_tickets_keyset(
         self,
         *,
         limit: int,
-        offset: int,
         status: ModerationStatus | None = None,
-    ) -> tuple[list[ModerationCard], int]:
+        priority: int | None = None,
+        seller_id: UUID | None = None,
+        seller_ids: set[UUID] | None = None,
+        cursor: tuple[int, datetime, UUID] | None = None,
+    ) -> tuple[list[ModerationCard], bool]:
         query = select(ModerationCard)
-        count_query = select(func.count()).select_from(ModerationCard)
         if status is not None:
             query = query.where(ModerationCard.status == status)
-            count_query = count_query.where(ModerationCard.status == status)
-        total = int((await self.session.execute(count_query)).scalar_one())
+        if priority is not None:
+            query = query.where(ModerationCard.queue_priority == priority)
+        if seller_id is not None:
+            query = query.where(ModerationCard.seller_id == seller_id)
+        elif seller_ids is not None:
+            if not seller_ids:
+                return [], False
+            query = query.where(ModerationCard.seller_id.in_(seller_ids))
+        if cursor is not None:
+            priority, created_at, card_id = cursor
+            query = query.where(
+                or_(
+                    ModerationCard.queue_priority < priority,
+                    and_(ModerationCard.queue_priority == priority, ModerationCard.created_at > created_at),
+                    and_(
+                        ModerationCard.queue_priority == priority,
+                        ModerationCard.created_at == created_at,
+                        ModerationCard.id > card_id,
+                    ),
+                )
+            )
         result = await self.session.execute(
-            query.order_by(ModerationCard.queue_priority.desc(), ModerationCard.created_at)
-            .offset(offset)
-            .limit(limit)
+            query.order_by(
+                ModerationCard.queue_priority.desc(),
+                ModerationCard.created_at.asc(),
+                ModerationCard.id.asc(),
+            ).limit(limit + 1)
         )
-        return list(result.scalars().all()), total
+        rows = list(result.scalars().all())
+        return rows[:limit], len(rows) > limit
 
     async def delete(self, card: ModerationCard) -> None:
         await self.session.delete(card)

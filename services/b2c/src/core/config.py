@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     service_private_key: str = ""
     trusted_service_public_keys: str = ""
     service_key_id: str = "managed-v1"
+    recovery_worker_enabled: bool = True
     recovery_worker_poll_interval_seconds: float = 30.0
 
     @model_validator(mode="after")

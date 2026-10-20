@@ -44,11 +44,14 @@ class CategoryService:
             if include_product_count
             else None
         )
+        product_count_as_of = datetime.now(timezone.utc) if include_product_count else None
+        seo_title = getattr(category, "seo_title", None)
+        image_media_id = getattr(category, "image_media_id", None)
         return CategoryDetailResponse(
             id=category.id,
             name=category.name,
             slug=category.slug,
-            description=None,
+            description=getattr(category, "description", None),
             parent=(
                 CategoryParentResponse(
                     id=parent.id,
@@ -59,10 +62,13 @@ class CategoryService:
                 else None
             ),
             product_count=product_count,
-            seo={},
+            product_count_as_of=product_count_as_of,
+            seo={"title": seo_title} if seo_title else {},
             meta_tags={},
-            image_url=None,
+            image_url=str(image_media_id) if image_media_id else None,
             is_active=category.is_active,
+            attribute_schema=getattr(category, "attribute_schema", []),
+            revision=getattr(category, "revision", 1),
             created_at=getattr(category, "created_at", datetime.now(timezone.utc)),
             updated_at=getattr(category, "updated_at", datetime.now(timezone.utc)),
         )
@@ -74,6 +80,8 @@ class CategoryService:
             slug=category.slug,
             parent_id=category.parent_id,
             is_active=category.is_active,
+            attribute_schema=getattr(category, "attribute_schema", []),
+            revision=getattr(category, "revision", 1),
             created_at=getattr(category, "created_at", datetime.now(timezone.utc)),
             updated_at=getattr(category, "updated_at", datetime.now(timezone.utc)),
         )

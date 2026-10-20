@@ -178,3 +178,9 @@ class B2BClient:
 
     async def fulfill(self, payload: dict[str, Any]) -> Any:
         return await self._post_service("/api/v1/inventory/fulfill", payload)
+
+    async def send_seller_order_allocation(self, payload: dict[str, Any]) -> Any:
+        return await self._post_service("/internal/v1/seller-orders/allocations", payload)
+
+    async def send_seller_order_cancellation(self, payload: dict[str, Any]) -> Any:
+        return await self._post_service("/internal/v1/seller-orders/cancellations", payload)

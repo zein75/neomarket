@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, DateTime, Enum, ForeignKey, Integer, String
+from sqlalchemy import JSON, DateTime, Enum, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 
@@ -32,6 +32,13 @@ class CheckoutCompensationState(enum.Enum):
     COMPENSATED = "COMPENSATED"
 
 
+class CheckoutAttemptStatus(enum.Enum):
+    PENDING = "PENDING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    RECONCILE_REQUIRED = "RECONCILE_REQUIRED"
+
+
 class Order(Base, TimestampMixin):
     __tablename__ = "orders"
 
@@ -49,7 +56,11 @@ class Order(Base, TimestampMixin):
     total_amount: Mapped[int] = mapped_column(Integer, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), default="RUB", nullable=False)
     address_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    delivery_method: Mapped[str | None] = mapped_column(String(64), nullable=True)
     payment_method_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    contact: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
+    legal_consents: Mapped[list[dict[str, object]] | None] = mapped_column(JSON, nullable=True)
+    quote_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     address: Mapped[dict[str, object]] = mapped_column(JSON, default=dict, nullable=False)
     idempotency_key: Mapped[str] = mapped_column(
         String(128), unique=True, nullable=False
@@ -82,6 +93,9 @@ class OrderItem(Base, TimestampMixin):
     )
     sku_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     product_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    # Nullable only for historical/legacy rows. New checkout requires the owner
+    # from the authenticated B2B product snapshot before it reserves stock.
+    seller_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     product_title: Mapped[str] = mapped_column(String(255), nullable=False)
     sku_name: Mapped[str] = mapped_column(String(255), nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -164,4 +178,44 @@ class PendingReservationCompensation(Base, TimestampMixin):
     compensated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    last_error: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+
+class CheckoutAttempt(Base, TimestampMixin):
+    """Public durable checkout-attempt projection.
+
+    The order and reservation tables remain the transactional source of truth;
+    this owner-scoped row provides a stable status record for a lost HTTP
+    response and is keyed by the same buyer/idempotency pair as the saga.
+    """
+
+    __tablename__ = "checkout_attempts"
+    __table_args__ = (
+        UniqueConstraint("buyer_id", "idempotency_key", name="uq_checkout_attempts_buyer_key"),
+    )
+
+    attempt_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    buyer_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    idempotency_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(32), default=CheckoutAttemptStatus.PENDING.value, nullable=False
+    )
+    order_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(128), nullable=True)
+
+
+class SellerOrderOutbox(Base, TimestampMixin):
+    """B2C's durable, PII-free seller allocation delivery queue."""
+
+    __tablename__ = "seller_order_outbox"
+
+    event_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    seller_order_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    payload: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+    payload_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), default="PENDING", nullable=False)
+    attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    next_retry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_error: Mapped[str | None] = mapped_column(String(500), nullable=True)

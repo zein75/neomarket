@@ -9,6 +9,7 @@ from src.schemas.b2b_event import (
     LegacyB2BEventRequest,
     ProductEventRequest,
     ProductEventResponse,
+    TaxonomyEventEnvelope,
 )
 from src.services.b2b_event_service import B2BEventService
 
@@ -27,6 +28,26 @@ async def receive_catalog_event(
     db: AsyncSession = Depends(get_db),
 ) -> ProductEventResponse:
     accepted = await B2BEventService(db).handle_catalog_event(event)
+    await db.commit()
+    payload = ProductEventResponse(accepted=accepted).model_dump(mode="json")
+    return JSONResponse(
+        status_code=status.HTTP_202_ACCEPTED if accepted else status.HTTP_200_OK,
+        content=payload,
+    )
+
+
+@router.post(
+    "/internal/v1/events/taxonomy",
+    response_model=ProductEventResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    responses={200: {"model": ProductEventResponse, "description": "Already applied"}},
+)
+async def receive_taxonomy_event(
+    event: TaxonomyEventEnvelope,
+    _: None = Depends(verify_service_key),
+    db: AsyncSession = Depends(get_db),
+) -> ProductEventResponse:
+    accepted = await B2BEventService(db).handle_taxonomy_event(event)
     await db.commit()
     payload = ProductEventResponse(accepted=accepted).model_dump(mode="json")
     return JSONResponse(

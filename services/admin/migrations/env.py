@@ -9,6 +9,19 @@ from src.models.base import Base
 from src.models.moderation import BlockingReason, ModerationCard, ModerationSKU  # noqa: F401
 from src.models.moderation_outbox_event import ModerationOutboxEvent  # noqa: F401
 from src.models.processed_product_event import ProcessedProductEvent  # noqa: F401
+from src.models.moderation_decision_receipt import ModerationDecisionReceipt  # noqa: F401
+from src.models.moderation_snapshot import ModerationSnapshot  # noqa: F401
+from src.models.moderation_claim_receipt import ModerationClaimReceipt  # noqa: F401
+from src.models.staff_principal import StaffPrincipal, StaffRoleGrant  # noqa: F401
+from src.models.admin_operation import AdminOperation  # noqa: F401
+from src.models.admin_policy import AdminPolicy  # noqa: F401
+from src.models.complaint import Complaint, ComplaintAction  # noqa: F401
+from src.models.appeal import Appeal, AppealDecision  # noqa: F401
+from src.models.revoked_admin_session import RevokedAdminSession  # noqa: F401
+from src.models.audit_chain_head import AuditChainHead  # noqa: F401
+from src.models.audit_export import AuditExportArtifact  # noqa: F401
+from src.models.admin_web_session import AdminWebSession  # noqa: F401
+from src.models.admin_oidc_token_receipt import AdminOidcTokenReceipt  # noqa: F401
 
 config = context.config
 

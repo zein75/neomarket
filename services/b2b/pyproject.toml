@@ -9,12 +9,13 @@ dependencies = [
     "asyncpg>=0.30.0",
     "alembic>=1.14.0",
     "redis>=5.2.0",
-    "pydantic-settings>=2.0.0",
+    "pydantic-settings>=2.14.2",
     "psycopg2-binary>=2.9.0",
-    "python-multipart>=0.0.9",
+    "python-multipart>=0.0.31",
     "email-validator>=2.0.0",
     "httpx>=0.28.0",
     "shared",
+    "pillow>=12.1,<13",
 ]
 
 [tool.uv.sources]

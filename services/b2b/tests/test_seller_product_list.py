@@ -8,12 +8,18 @@ from fastapi.testclient import TestClient
 from src.api.routers import products as products_router
 from src.main import app
 from src.models.product import ProductStatus
+from src.repositories.product_repo import ProductRepository
 from src.services import product_service as product_service_module
 from src.services.product_service import ProductService
 
 
 def _sku(*, stock: int = 10, reserved_quantity: int = 2):
-    return SimpleNamespace(stock=stock, reserved_quantity=reserved_quantity)
+    now = datetime.now(timezone.utc)
+    return SimpleNamespace(
+        id=uuid4(), product_id=uuid4(), name="SKU", price=100,
+        stock=stock, reserved_quantity=reserved_quantity, images=[],
+        is_active=True, created_at=now, updated_at=now,
+    )
 
 
 def _product(
@@ -57,6 +63,7 @@ class FakeProductRepository:
         status=None,
         include_deleted=False,
         search=None,
+        include_skus=False,
     ):
         products = [product for product in self.products if product.seller_id == seller_id]
         if not include_deleted:
@@ -102,8 +109,72 @@ async def test_list_returns_only_own_products() -> None:
     assert [str(item.id) for item in body.items] == [str(own.id)]
     assert body.items[0].slug.startswith("wireless-keyboard-")
     assert body.items[0].created_at == own.created_at
+    assert body.items[0].updated_at == own.updated_at
     assert body.items[0].skus_count == 1
     assert body.items[0].total_active_quantity == 7
+
+
+@pytest.mark.asyncio
+async def test_inventory_projection_can_include_batched_skus() -> None:
+    seller_id = uuid4()
+    own = _product(seller_id=seller_id, skus=[_sku(stock=10, reserved_quantity=3)])
+    FakeProductRepository.products = [own]
+
+    body = await ProductService(SimpleNamespace()).list_for_seller_cabinet(
+        seller_id=seller_id,
+        include_skus=True,
+    )
+
+    assert body.items[0].skus is not None
+    assert len(body.items[0].skus or []) == 1
+
+
+@pytest.mark.asyncio
+async def test_repository_materializes_batched_sku_relationships() -> None:
+    seller_id = uuid4()
+    sku = _sku(stock=17, reserved_quantity=4)
+    product = SimpleNamespace(id=uuid4(), skus=[])
+
+    class Result:
+        def __init__(self, rows=()):
+            self.rows = rows
+
+        def scalar_one(self):
+            return 1
+
+        def all(self):
+            return self.rows
+
+        def scalars(self):
+            return self
+
+    class BatchSkuResult(Result):
+        def all(self):
+            product.skus = [sku]
+            return [product]
+
+    class Session:
+        executions = 0
+
+        async def execute(self, statement):
+            self.executions += 1
+            if self.executions == 1:
+                return Result()
+            if self.executions == 2:
+                return Result([(product, 1, 13)])
+            return BatchSkuResult()
+
+    session = Session()
+    rows, total = await ProductRepository(session).list_for_seller_cabinet(
+        seller_id=seller_id,
+        limit=100,
+        offset=0,
+        include_skus=True,
+    )
+
+    assert total == 1
+    assert session.executions == 3
+    assert rows[0][0].skus == [sku]
 
 
 def test_idor_query_param_seller_id_ignored(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -326,8 +326,16 @@ def test_update_sku_response_matches_contract(monkeypatch: pytest.MonkeyPatch) -
         def __init__(self, db: object) -> None:
             self.db = db
 
-        async def update(self, update_sku_id: UUID, seller_id: UUID, data: object):
+        async def update(
+            self,
+            update_sku_id: UUID,
+            seller_id: UUID,
+            data: object,
+            *,
+            expected_revision: int,
+        ):
             assert update_sku_id == sku_id
+            assert expected_revision == 1
             return SimpleNamespace(
                 id=sku_id,
                 product_id=product_id,
@@ -339,6 +347,7 @@ def test_update_sku_response_matches_contract(monkeypatch: pytest.MonkeyPatch) -
                 is_active=True,
                 created_at=datetime.now(timezone.utc),
                 updated_at=datetime.now(timezone.utc),
+                revision=2,
             )
 
     monkeypatch.setattr(skus_router, "SKUService", FakeRouteSKUService)
@@ -347,6 +356,7 @@ def test_update_sku_response_matches_contract(monkeypatch: pytest.MonkeyPatch) -
     try:
         response = TestClient(app).put(
             f"/api/v1/skus/{sku_id}",
+            headers={"If-Match": "1"},
             json={"price": 139900, "stock": 25},
         )
     finally:
@@ -355,6 +365,7 @@ def test_update_sku_response_matches_contract(monkeypatch: pytest.MonkeyPatch) -
     assert response.status_code == 200
     body = response.json()
     assert body["stock_quantity"] == 25
+    assert body["revision"] == 2
     assert "stock" not in body
     assert body["discount"] == 0
     assert body["article"] is None
@@ -429,14 +440,14 @@ def test_missing_image_returns_400() -> None:
 
 
 @pytest.mark.asyncio
-async def test_duplicate_moderation_event_treated_as_delivered(
+async def test_moderation_client_accepts_duplicate_canonical_receipt(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class FakeResponse:
-        status_code = 409
+        status_code = 200
 
         def raise_for_status(self) -> None:
-            raise AssertionError("duplicate moderation event should not raise")
+            return None
 
     class FakeAsyncClient:
         def __init__(self, timeout: float) -> None:

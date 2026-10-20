@@ -9,7 +9,8 @@ import json
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import InvalidTokenError
 
 
 def service_headers(
@@ -56,8 +57,8 @@ def verify_service_token(
             algorithms=["RS256"],
             issuer="neomarket-services",
             audience=audience,
-            options={"require_sub": True, "require_iat": True, "require_nbf": True, "require_exp": True},
+            options={"require": ["sub", "iat", "nbf", "exp"]},
         )
         return str(payload.get("sub")) in allowed_subjects
-    except (JWTError, ValueError, TypeError, json.JSONDecodeError):
+    except (InvalidTokenError, ValueError, TypeError, json.JSONDecodeError):
         return False

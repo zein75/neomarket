@@ -3,7 +3,7 @@ import json
 from uuid import uuid4
 from datetime import datetime, timedelta, timezone
 
-from jose import jwt
+import jwt
 
 from src.core import security
 from src.core.config import settings

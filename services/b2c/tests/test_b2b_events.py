@@ -42,6 +42,7 @@ def _product_event(**overrides: object) -> ProductEventRequest:
 
 class FakeSession:
     processed_keys: set[object] = set()
+    processed_records: dict[object, object] = {}
     added = []
     rolled_back = False
     committed = False
@@ -66,6 +67,10 @@ class FakeSession:
             if key in self.processed_keys:
                 raise IntegrityError("insert", {}, Exception("duplicate"))
             self.processed_keys.add(key)
+            self.processed_records[key] = obj
+
+    async def get(self, _model, key):
+        return self.processed_records.get(key)
 
     async def rollback(self) -> None:
         self.rolled_back = True
@@ -77,11 +82,13 @@ class FakeSession:
 @pytest.fixture(autouse=True)
 def patch_dependencies():
     FakeSession.processed_keys = set()
+    FakeSession.processed_records = {}
     session = FakeSession()
 
     async def fake_db():
         yield session
 
+    app.state.test_session = session
     app.dependency_overrides[get_db] = fake_db
     yield
     app.dependency_overrides.clear()
@@ -139,6 +146,39 @@ def test_catalog_envelope_is_durably_accepted() -> None:
     assert response.json() == {"accepted": True}
 
 
+def test_catalog_safety_hold_event_is_durably_accepted() -> None:
+    event_id = uuid4()
+    product_id = uuid4()
+    event = {
+        "schema_version": 1,
+        "event_id": str(event_id),
+        "event_type": "product.safety_hold.v1",
+        "producer": "b2b",
+        "aggregate_type": "product",
+        "aggregate_id": str(product_id),
+        "aggregate_version": 4,
+        "occurred_at": datetime.now(timezone.utc).isoformat(),
+        "correlation_id": str(uuid4()),
+        "causation_id": str(uuid4()),
+        "payload": {
+            "product_id": str(product_id),
+            "revision": 4,
+            "expires_at": (datetime.now(timezone.utc).replace(microsecond=0)).isoformat(),
+            "reason_code": "RISK_REVIEW",
+        },
+    }
+
+    response = TestClient(app).post(
+        "/internal/v1/events/catalog",
+        headers={"X-Service-Key": "dev-service-key-change-in-production"},
+        json=event,
+    )
+
+    assert response.status_code == 202
+    assert response.json() == {"accepted": True}
+    assert any(getattr(item, "event", None) == "product.safety_hold.v1" for item in app.state.test_session.added)
+
+
 def test_catalog_envelope_rejects_wrong_producer() -> None:
     event = {
         "schema_version": 1,
@@ -159,6 +199,83 @@ def test_catalog_envelope_rejects_wrong_producer() -> None:
     )
 
     assert response.status_code == 400
+
+
+def _brand_merge_event(**overrides: object) -> dict[str, object]:
+    source_id, target_id = uuid4(), uuid4()
+    event: dict[str, object] = {
+        "schema_version": 1,
+        "event_id": str(uuid4()),
+        "event_type": "brand.merged.v1",
+        "producer": "b2b",
+        "aggregate_type": "brand",
+        "aggregate_id": str(source_id),
+        "aggregate_version": 2,
+        "occurred_at": datetime.now(timezone.utc).isoformat(),
+        "correlation_id": str(uuid4()),
+        "causation_id": str(uuid4()),
+        "payload": {
+            "source_brand_id": str(source_id),
+            "target_brand_id": str(target_id),
+            "source_version": 2,
+            "target_version": 4,
+            "taxonomy_version": 12,
+            "product_references_moved": 3,
+            "impact_hash": "a" * 64,
+        },
+    }
+    event.update(overrides)
+    return event
+
+
+def test_brand_merge_event_is_accepted_by_taxonomy_inbox() -> None:
+    response = TestClient(app).post(
+        "/internal/v1/events/taxonomy",
+        headers={"X-Service-Key": "dev-service-key-change-in-production"},
+        json=_brand_merge_event(),
+    )
+
+    assert response.status_code == 202
+    assert response.json() == {"accepted": True}
+    assert app.state.test_session.added[-1].event == "brand.merged.v1"
+
+
+def test_brand_merge_event_requires_service_authentication() -> None:
+    response = TestClient(app).post(
+        "/internal/v1/events/taxonomy", json=_brand_merge_event()
+    )
+
+    assert response.status_code == 401
+
+
+def test_brand_merge_event_rejects_inconsistent_source_version() -> None:
+    event = _brand_merge_event()
+    event["aggregate_version"] = 3
+    response = TestClient(app).post(
+        "/internal/v1/events/taxonomy",
+        headers={"X-Service-Key": "dev-service-key-change-in-production"},
+        json=event,
+    )
+
+    assert response.status_code == 400
+
+
+def test_brand_merge_event_replay_is_idempotent_and_conflicting_replay_rejected() -> None:
+    event = _brand_merge_event()
+    headers = {"X-Service-Key": "dev-service-key-change-in-production"}
+    with TestClient(app) as client:
+        accepted = client.post("/internal/v1/events/taxonomy", headers=headers, json=event)
+        replay = client.post("/internal/v1/events/taxonomy", headers=headers, json=event)
+        conflicting = client.post(
+            "/internal/v1/events/taxonomy",
+            headers=headers,
+            json={**event, "payload": {**event["payload"], "target_version": 5}},
+        )
+
+    assert accepted.status_code == 202
+    assert replay.status_code == 200
+    assert replay.json() == {"accepted": False}
+    assert conflicting.status_code == 409
 
 
 async def test_product_blocked_does_not_persist_cart_availability() -> None:

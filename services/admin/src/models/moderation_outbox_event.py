@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, JSON, String, func
+from sqlalchemy import DateTime, Index, Integer, JSON, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -10,6 +10,7 @@ from .base import Base
 
 class ModerationOutboxEvent(Base):
     __tablename__ = "moderation_outbox_events"
+    __table_args__ = (Index("ix_moderation_outbox_created_id", "created_at", "id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     idempotency_key: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
