@@ -1,7 +1,7 @@
 # NeoMarket B2B blocker closure
 
 Дата: 2026-10-20  
-Текущий staging release: `ee079032cfd234ddd3232c4dfc74fc84b1a5bc22`  
+Текущий staging release: `b0fd2323d8fa5c6df166018f0e5f7c0cfdb4c565`  
 Сервер: `192.168.0.112`  
 
 Этот документ перечисляет только подтверждённые незакрытые требования. Нельзя переводить пункт в `PASS` по наличию кода или документации: для каждого пункта нужен runtime evidence на зафиксированном staging release.

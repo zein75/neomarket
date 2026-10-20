@@ -10,6 +10,8 @@
 
 ## Evidence executed
 
+- Source verification at `ccc04941739e7f679937858f9e7fddc2e31bdfb4`: `uv run pytest services/b2b/tests -q` returned **285 passed, 38 skipped, 0 failed**; `uv run ruff check services/b2b frontend/apps/seller` returned **All checks passed**. Evidence: `evidence/staging/b2b-regression-source-ccc0494-20261020.txt`. The source commit is documentation-only relative to the deployed application image; runtime remains the immutable `b0fd232` release below.
+- The release checker was rerun against the current acceptance matrix: **BLOCKED**, 202 required cases, `0/3` independent authenticated manifests. Evidence: `evidence/staging/release-check-ccc0494-20261020.json`. No manifest was fabricated.
 - Local B2B regression: **285 passed, 38 skipped, 0 failed**.
 - Isolated PostgreSQL integration subset: **32 passed, 0 failed** after applying B2B migrations through `0065_product_safety_holds` in a disposable database.
 - Isolated PostgreSQL auth/draft subset: **7 passed, 0 failed** covering session revocation, draft autosave fencing and membership management.

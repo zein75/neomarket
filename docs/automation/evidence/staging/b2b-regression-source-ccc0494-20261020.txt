@@ -1,0 +1,23 @@
+NeoMarket B2B source regression evidence
+Date: 2026-10-20
+Source SHA: ccc04941739e7f679937858f9e7fddc2e31bdfb4
+Runtime SHA: b0fd2323d8fa5c6df166018f0e5f7c0cfdb4c565
+
+Command:
+  uv run pytest services/b2b/tests -q
+Result:
+  285 passed, 38 skipped, 0 failed, 2 warnings
+
+Command:
+  uv run ruff check services/b2b frontend/apps/seller
+Result:
+  All checks passed
+
+Staging fixture:
+  An isolated fixture was created through the protected QA command and destroyed
+  successfully after the check. Credentials are intentionally omitted.
+
+Runtime status:
+  All application services, workers, gateway and Keycloak reported healthy on
+  the immutable b0fd232 runtime. This source commit contains documentation only
+  after that deployed runtime; it was not promoted as a new application image.

@@ -14,6 +14,9 @@
 
 ### Current staging release `b0fd232` — 2026-10-20
 
+- Source verification at documentation commit `ccc04941739e7f679937858f9e7fddc2e31bdfb4` re-ran the B2B regression (`285 passed, 38 skipped, 0 failed`) and Ruff (`All checks passed`). An isolated QA fixture was created through the protected runner and destroyed successfully; credentials were not retained. Evidence: `docs/automation/evidence/staging/b2b-regression-source-ccc0494-20261020.txt`. The deployed application image remains the immutable `b0fd232` SHA.
+- The current release checker still returns `BLOCKED` for the honest reason `Exactly 3 independent manifests required, found 0` across 202 required cases. Evidence: `docs/automation/evidence/staging/release-check-ccc0494-20261020.json`.
+
 - The full verify/build workflow `39441458390` passed and the protected deployment promoted immutable SHA `b0fd2323d8fa5c6df166018f0e5f7c0cfdb4c565`. All application services, workers, gateway and Keycloak are healthy in `docs/automation/evidence/staging/status-b0fd232-20261020.txt`.
 - The first official three-project Seller keyboard run exposed two moderation filter buttons with `outline: none` on desktop/tablet. Diagnosis is recorded in `docs/automation/evidence/staging/seller-focus-diagnose-0fcb935-20261020.json`; source fix `b0fd232` adds an explicit 3px cobalt focus ring.
 - The repeat official `seller-keyboard-focus.spec.ts` run passed 9/9 tests across desktop, tablet and mobile with no skipped or unexpected tests: `docs/automation/evidence/staging/keyboard-b0fd232-playwright.json`. UI-06 is still PARTIAL only for its remaining manual screen-reader/modal review requirement.
