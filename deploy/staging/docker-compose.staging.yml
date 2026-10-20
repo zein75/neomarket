@@ -35,6 +35,42 @@ services:
     logging:
       options: {max-size: "5m", max-file: "3"}
 
+  admin-postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: admin_owner
+      POSTGRES_PASSWORD: ${ADMIN_POSTGRES_PASSWORD:?set ADMIN_POSTGRES_PASSWORD}
+      POSTGRES_DB: admin
+    volumes: ["adminpgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin_owner -d admin"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 384m
+    networks: [admin-data]
+    logging:
+      options: {max-size: "5m", max-file: "3"}
+
+  keycloak-postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?set KEYCLOAK_DB_PASSWORD}
+      POSTGRES_DB: keycloak
+    volumes: ["keycloakpgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 384m
+    networks: [identity-data]
+    logging:
+      options: {max-size: "5m", max-file: "3"}
+
   redis:
     image: redis:7-alpine
     restart: unless-stopped
@@ -52,6 +88,79 @@ services:
     logging:
       options: {max-size: "5m", max-file: "3"}
 
+  clamd:
+    image: clamav/clamav:1.5.4
+    restart: unless-stopped
+    # The official image initializes the virus database and writes runtime
+    # state during startup. Keep its persistent database isolated, but do not
+    # make the container root filesystem read-only or the entrypoint exits
+    # before clamd can become healthy.
+    tmpfs: [/tmp]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    volumes:
+      - clamavdata:/var/lib/clamav
+    healthcheck:
+      test: ["CMD-SHELL", "clamdscan --ping 2 >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+    mem_limit: 768m
+    networks: [backend]
+    logging:
+      options: {max-size: "5m", max-file: "3"}
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.3.2
+    command: ["start", "--http-enabled=true", "--hostname-strict=false", "--proxy-headers=xforwarded", "--health-enabled=true", "--import-realm"]
+    restart: unless-stopped
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?set KEYCLOAK_DB_PASSWORD}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:?set KEYCLOAK_ADMIN_USERNAME}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?set KEYCLOAK_ADMIN_PASSWORD}
+      KC_HOSTNAME: keycloak.neomarket.test
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+    volumes:
+      - ./keycloak/realm.json:/opt/keycloak/data/import/neomarket-staging.json:ro
+    depends_on:
+      keycloak-postgres: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/9000'"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 45s
+    mem_limit: 768m
+    networks: [backend, identity-data]
+    logging:
+      options: {max-size: "5m", max-file: "3"}
+
+  mailpit:
+    image: axllent/mailpit:v1.21.8
+    restart: unless-stopped
+    environment:
+      MP_UI_BIND_ADDR: 0.0.0.0:8025
+      MP_SMTP_BIND_ADDR: 0.0.0.0:1025
+      # This is an isolated staging sandbox. Mailpit 1.21 validates TLS
+      # certificate paths at startup; use its local plain SMTP listener so
+      # the B2B test mail workflow is deterministic without fake certificates.
+      MP_SMTP_REQUIRE_STARTTLS: "false"
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+    volumes: ["mailpitdata:/data"]
+    healthcheck:
+      test: ["CMD", "mailpit", "readyz"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+    mem_limit: 256m
+    networks: [backend]
+    logging:
+      options: {max-size: "5m", max-file: "3"}
+
   b2b:
     <<: *app-common
     image: ${REGISTRY_IMAGE:?set REGISTRY_IMAGE}/b2b:${RELEASE_SHA:?set RELEASE_SHA}
@@ -61,9 +170,24 @@ services:
       APP_ENV: production
       DATABASE_URL: postgresql+asyncpg://neomarket:${POSTGRES_PASSWORD}@postgres:5432/b2b
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      EMAIL_SMTP_HOST: ${SELLER_EMAIL_SMTP_HOST:?}
+      EMAIL_SMTP_PORT: ${SELLER_EMAIL_SMTP_PORT:-1025}
+      EMAIL_SMTP_USERNAME: ${SELLER_EMAIL_SMTP_USERNAME:-}
+      EMAIL_SMTP_PASSWORD: ${SELLER_EMAIL_SMTP_PASSWORD:-}
+      EMAIL_SMTP_MODE: plain
+      EMAIL_FROM_ADDRESS: ${SELLER_EMAIL_FROM_ADDRESS:?}
+      SELLER_VERIFICATION_URL: ${SELLER_VERIFICATION_URL:?}
+      SELLER_INVITATION_URL: ${SELLER_INVITATION_URL:?}
+      SELLER_INVITATION_TTL_HOURS: ${SELLER_INVITATION_TTL_HOURS:-72}
+      MEDIA_UPLOAD_SIGNING_SECRET: ${MEDIA_UPLOAD_SIGNING_SECRET:?}
+      MEDIA_PUBLIC_BASE_URL: ${MEDIA_PUBLIC_BASE_URL:?}
+      MEDIA_STORAGE_ROOT: /app/media
+      MEDIA_SCANNER_HOST: clamd
+      MEDIA_SCANNER_PORT: "3310"
       SECRET_KEY: ${B2B_SECRET_KEY:?}
       SERVICE_KEY: ${SERVICE_KEY:?}
       SERVICE_NAME: b2b
+      RELEASE_SHA: ${RELEASE_SHA:?}
       SERVICE_PRIVATE_KEY: ${B2B_SERVICE_PRIVATE_KEY:?}
       TRUSTED_SERVICE_PUBLIC_KEYS: ${TRUSTED_SERVICE_PUBLIC_KEYS:?}
       SERVICE_KEY_ID: b2b-v1
@@ -72,6 +196,10 @@ services:
     depends_on:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}
+      clamd: {condition: service_healthy}
+      mailpit: {condition: service_healthy}
+    volumes:
+      - media_data:/app/media
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/ready', timeout=3)"]
       interval: 15s
@@ -79,6 +207,18 @@ services:
       retries: 8
       start_period: 20s
     mem_limit: 640m
+
+  b2b-taxonomy-worker:
+    <<: *app-common
+    image: ${REGISTRY_IMAGE}/b2b:${RELEASE_SHA}
+    command: ["uv", "run", "--no-sync", "python", "-m", "src.taxonomy_worker"]
+    environment:
+      <<: *b2b-env
+      SERVICE_NAME: b2b-taxonomy-worker
+      TAXONOMY_IMPACT_POLL_INTERVAL_SECONDS: "1"
+    depends_on:
+      b2b: {condition: service_healthy}
+    mem_limit: 384m
 
   b2c:
     <<: *app-common
@@ -97,6 +237,7 @@ services:
       SERVICE_KEY_ID: b2c-v1
       B2B_BASE_URL: http://b2b:8002
       RECOVERY_WORKER_POLL_INTERVAL_SECONDS: "30"
+      RECOVERY_WORKER_ENABLED: "false"
     depends_on:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}
@@ -108,23 +249,53 @@ services:
       start_period: 20s
     mem_limit: 640m
 
+  b2c-recovery-worker:
+    <<: *app-common
+    image: ${REGISTRY_IMAGE}/b2c:${RELEASE_SHA}
+    command: ["uv", "run", "--no-sync", "python", "-m", "src.recovery_worker"]
+    environment:
+      <<: *b2c-env
+      SERVICE_NAME: b2c-recovery-worker
+      RECOVERY_WORKER_ENABLED: "true"
+    depends_on:
+      b2c: {condition: service_healthy}
+    restart: unless-stopped
+    mem_limit: 384m
+
   admin:
     <<: *app-common
+    networks: [backend, admin-data]
     image: ${REGISTRY_IMAGE}/admin:${RELEASE_SHA}
     command: ["uv", "run", "--no-sync", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8003"]
     environment: &admin-env
       UV_CACHE_DIR: /tmp/uv-cache
       APP_ENV: production
-      DATABASE_URL: postgresql+asyncpg://neomarket:${POSTGRES_PASSWORD}@postgres:5432/admin
+      ADMIN_ALLOW_DEV_AUTH: "false"
+      DATABASE_URL: postgresql+asyncpg://admin_runtime:${ADMIN_RUNTIME_DB_PASSWORD:?set ADMIN_RUNTIME_DB_PASSWORD}@admin-postgres:5432/admin
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       SECRET_KEY: ${ADMIN_SECRET_KEY:?}
       SERVICE_KEY: ${SERVICE_KEY:?}
       SERVICE_NAME: admin
       SERVICE_PRIVATE_KEY: ${ADMIN_SERVICE_PRIVATE_KEY:?}
       TRUSTED_SERVICE_PUBLIC_KEYS: ${TRUSTED_SERVICE_PUBLIC_KEYS:?}
       SERVICE_KEY_ID: admin-v1
+      OIDC_ISSUER: ${ADMIN_OIDC_ISSUER:?set ADMIN_OIDC_ISSUER}
+      OIDC_JWKS_URL: ${ADMIN_OIDC_JWKS_URL:?set ADMIN_OIDC_JWKS_URL}
+      OIDC_AUDIENCE: ${ADMIN_OIDC_AUDIENCE:?set ADMIN_OIDC_AUDIENCE}
+      ADMIN_SAFETY_HOLD_MAX_SECONDS: ${ADMIN_SAFETY_HOLD_MAX_SECONDS:-}
+      OIDC_REQUIRED_AMR: ${ADMIN_OIDC_REQUIRED_AMR:-}
+      OIDC_REQUIRED_ACR: ${ADMIN_OIDC_REQUIRED_ACR:-}
+      OIDC_STEP_UP_REQUIRED_AMR: ${ADMIN_OIDC_STEP_UP_REQUIRED_AMR:-}
+      OIDC_STEP_UP_REQUIRED_ACR: ${ADMIN_OIDC_STEP_UP_REQUIRED_ACR:-}
+      ADMIN_STEP_UP_MAX_AGE_SECONDS: ${ADMIN_STEP_UP_MAX_AGE_SECONDS:-300}
+      ADMIN_PUBLIC_ORIGIN: ${ADMIN_PUBLIC_ORIGIN:?set ADMIN_PUBLIC_ORIGIN}
+      ADMIN_SESSION_IDLE_TTL_SECONDS: ${ADMIN_SESSION_IDLE_TTL_SECONDS:-1800}
+      ADMIN_SESSION_ABSOLUTE_TTL_SECONDS: ${ADMIN_SESSION_ABSOLUTE_TTL_SECONDS:-28800}
+      ADMIN_RUN_OUTBOX_WORKER: "false"
       B2B_BASE_URL: http://b2b:8002
     depends_on:
-      postgres: {condition: service_healthy}
+      admin-postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8003/ready', timeout=3)"]
       interval: 15s
@@ -132,6 +303,103 @@ services:
       retries: 8
       start_period: 20s
     mem_limit: 512m
+
+  admin-worker:
+    <<: *app-common
+    networks: [backend, admin-data]
+    image: ${REGISTRY_IMAGE}/admin:${RELEASE_SHA}
+    command: ["uv", "run", "--no-sync", "python", "-m", "src.worker"]
+    environment:
+      <<: *admin-env
+      SERVICE_NAME: admin
+      ADMIN_RUN_OUTBOX_WORKER: "true"
+    depends_on:
+      admin-postgres: {condition: service_healthy}
+      b2b: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import json,pathlib,sys,time; p=pathlib.Path('/tmp/admin-worker-heartbeat'); h=json.loads(p.read_text()) if p.exists() else {}; sys.exit(0 if time.time()-h.get('updated_at',0) < 90 and h.get('retry',0)==0 and h.get('dead',0)==0 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    mem_limit: 384m
+
+  storefront:
+    image: ${REGISTRY_IMAGE}/storefront:${RELEASE_SHA}
+    init: true
+    read_only: true
+    tmpfs: [/tmp]
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    networks: [backend]
+    environment:
+      NODE_ENV: production
+      NEOMARKET_B2C_URL: http://b2c:8001
+      NEOMARKET_PUBLIC_ORIGIN: ${STOREFRONT_PUBLIC_ORIGIN:?set STOREFRONT_PUBLIC_ORIGIN}
+    depends_on:
+      b2c: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+    mem_limit: 384m
+
+  seller-frontend:
+    image: ${REGISTRY_IMAGE}/seller:${RELEASE_SHA}
+    init: true
+    read_only: true
+    tmpfs: [/tmp]
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    networks: [backend]
+    environment:
+      NODE_ENV: production
+      NEOMARKET_B2B_URL: http://b2b:8002
+      NEOMARKET_PUBLIC_ORIGIN: ${SELLER_PUBLIC_ORIGIN:?set SELLER_PUBLIC_ORIGIN}
+      NEOMARKET_SELLER_ORIGIN: ${SELLER_PUBLIC_ORIGIN:?set SELLER_PUBLIC_ORIGIN}
+      NEOMARKET_CSRF_SECRET: ${B2B_SECRET_KEY:?}
+    depends_on:
+      b2b: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+    mem_limit: 384m
+
+  admin-frontend:
+    image: ${REGISTRY_IMAGE}/admin-frontend:${RELEASE_SHA}
+    init: true
+    read_only: true
+    tmpfs: [/tmp]
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    networks: [backend]
+    environment:
+      NODE_ENV: production
+      NEOMARKET_ADMIN_URL: http://admin:8003
+      NEOMARKET_ADMIN_SESSION_SERVICE_URL: http://admin:8003
+      NEOMARKET_PUBLIC_ORIGIN: ${ADMIN_PUBLIC_ORIGIN:?set ADMIN_PUBLIC_ORIGIN}
+      ADMIN_OIDC_ISSUER: ${ADMIN_OIDC_ISSUER:-}
+      ADMIN_OIDC_CLIENT_ID: ${ADMIN_OIDC_CLIENT_ID:-}
+      ADMIN_OIDC_CLIENT_SECRET: ${ADMIN_OIDC_CLIENT_SECRET:-}
+      ADMIN_OIDC_REQUIRED_AMR: ${ADMIN_OIDC_REQUIRED_AMR:-}
+      ADMIN_OIDC_REQUIRED_ACR: ${ADMIN_OIDC_REQUIRED_ACR:-}
+      ADMIN_OIDC_STEP_UP_REQUIRED_AMR: ${ADMIN_OIDC_STEP_UP_REQUIRED_AMR:-}
+      ADMIN_OIDC_STEP_UP_REQUIRED_ACR: ${ADMIN_OIDC_STEP_UP_REQUIRED_ACR:-}
+      ADMIN_STEP_UP_MAX_AGE_SECONDS: ${ADMIN_STEP_UP_MAX_AGE_SECONDS:-300}
+    depends_on:
+      admin: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+    mem_limit: 384m
 
   b2b-migrate:
     image: ${REGISTRY_IMAGE}/b2b:${RELEASE_SHA}
@@ -156,11 +424,14 @@ services:
   admin-migrate:
     image: ${REGISTRY_IMAGE}/admin:${RELEASE_SHA}
     command: ["uv", "run", "--no-sync", "alembic", "upgrade", "head"]
-    environment: *admin-env
+    environment:
+      <<: *admin-env
+      DATABASE_URL: postgresql+asyncpg://admin_owner:${ADMIN_POSTGRES_PASSWORD}@admin-postgres:5432/admin
+      ADMIN_RUNTIME_DB_PASSWORD: ${ADMIN_RUNTIME_DB_PASSWORD:?set ADMIN_RUNTIME_DB_PASSWORD}
     depends_on:
-      postgres: {condition: service_healthy}
+      admin-postgres: {condition: service_healthy}
     restart: "no"
-    networks: [backend]
+    networks: [admin-data]
     profiles: [migrate]
 
   gateway:
@@ -178,6 +449,10 @@ services:
     depends_on:
       b2b: {condition: service_healthy}
       b2c: {condition: service_healthy}
+      storefront: {condition: service_healthy}
+      seller-frontend: {condition: service_healthy}
+      admin-frontend: {condition: service_healthy}
+      keycloak: {condition: service_healthy}
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null --header='Host: b2c.internal' http://127.0.0.1/health && wget -q -O /dev/null --header='Host: b2b.internal' http://127.0.0.1/health"]
       interval: 15s
@@ -191,7 +466,16 @@ services:
 networks:
   backend:
     internal: true
+  admin-data:
+    internal: true
   edge: {}
+  identity-data:
+    internal: true
 volumes:
   pgdata:
+  adminpgdata:
   redisdata:
+  media_data:
+  clamavdata:
+  keycloakpgdata:
+  mailpitdata:

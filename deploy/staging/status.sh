@@ -14,7 +14,7 @@ fi
 printf '%s\n' '=== compose status ==='
 "${COMPOSE[@]}" ps --all
 printf '%s\n' '=== health states ==='
-for service in admin admin-worker b2b b2c gateway; do
+for service in admin admin-worker b2b b2c b2b-taxonomy-worker b2c-recovery-worker clamd mailpit keycloak storefront seller-frontend admin-frontend gateway; do
   id="$("${COMPOSE[@]}" ps -q "$service" 2>/dev/null || true)"
   if [[ -z "$id" ]]; then
     printf '%s\n' "$service: missing"
@@ -26,3 +26,5 @@ printf '%s\n' '=== recent admin-worker logs ==='
 "${COMPOSE[@]}" logs --no-color --tail=120 admin-worker 2>&1 || true
 printf '%s\n' '=== recent admin/b2b logs ==='
 "${COMPOSE[@]}" logs --no-color --tail=40 admin b2b 2>&1 || true
+printf '%s\n' '=== recent infrastructure logs ==='
+"${COMPOSE[@]}" logs --no-color --tail=80 clamd mailpit keycloak gateway 2>&1 || true
