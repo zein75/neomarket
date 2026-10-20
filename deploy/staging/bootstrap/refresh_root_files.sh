@@ -27,6 +27,7 @@ COMPOSE_DST=/opt/neomarket-staging/compose/docker-compose.staging.yml
 STATUS_DST=/opt/neomarket-staging/compose/status.sh
 NGINX_DST=/opt/neomarket-staging/compose/nginx.conf
 CADDY_DST=/etc/caddy/Caddyfile
+DEPLOY_WRAPPER_SRC="$SOURCE_ROOT/bootstrap/neomarket-staging-deploy"
 
 for path in "$COMPOSE_SRC" "$STATUS_SRC" "$CADDY_SRC" "$NGINX_SRC"; do
   [[ -f "$path" ]] || { echo "Missing $path" >&2; exit 1; }
@@ -39,6 +40,9 @@ install -o root -g root -m 0644 "$CADDY_SRC" "$CADDY_DST"
 install -o root -g root -m 0644 "$COMPOSE_SRC" "$COMPOSE_DST"
 install -o root -g root -m 0755 "$STATUS_SRC" "$STATUS_DST"
 install -o root -g root -m 0644 "$NGINX_SRC" "$NGINX_DST"
+if [[ -f "$DEPLOY_WRAPPER_SRC" ]]; then
+  install -o root -g root -m 0755 "$DEPLOY_WRAPPER_SRC" /usr/local/sbin/neomarket-staging-deploy
+fi
 systemctl reload caddy
 rm -f "$COMPOSE_SRC" "$STATUS_SRC" "$CADDY_SRC" "$NGINX_SRC"
 echo "Installed staging Compose, diagnostics and Caddy configuration. Backup: $backup"
