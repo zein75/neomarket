@@ -6,7 +6,7 @@
 |---|---|---|
 | Fixed image release and deployment provenance | PASS | image SHA `ee079032cfd234ddd3232c4dfc74fc84b1a5bc22`, protected deployment status, `DEPLOY_SUCCESS` |
 | Compose static security | PASS | `ci/check_staging_config.py` |
-| Runtime health/readiness | PASS | all required services, both workers and gateway healthy; deployment smoke passed |
+| Runtime health/readiness | PASS | all required services, both workers and gateway healthy; `smoke-ee07903-20261020.txt` contains `SMOKE PASS` |
 | Real PostgreSQL/Redis migrations | PASS for current heads | B2B/B2C/Admin migration jobs completed |
 | Keycloak availability | PASS | realm imported; container healthy |
 | OIDC/MFA/RBAC browser proof | BLOCKED | anonymous boundary is verified; real staff credentials/MFA browser manifests are missing; Keycloak advertises only ACR `0`/`1` |
