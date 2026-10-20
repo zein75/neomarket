@@ -2,6 +2,8 @@
 
 Latest read-only SSH/runtime verification is [`server-check-45ebbae-20261020T1523Z.json`](evidence/staging/server-check-45ebbae-20261020T1523Z.json). It confirms the pinned `45ebbae` services are reachable and healthy at their public boundaries while Admin OIDC remains fail-closed until the explicit Keycloak MFA claim mapping is configured.
 
+The latest source and disposable-PostgreSQL verification is [`admin-gates-20261020/REPORT.md`](evidence/admin-gates-20261020/REPORT.md). It passes the Admin unit, Admin PostgreSQL migration/integration, B2B, B2C, OpenAPI, Ruff/compile and Admin frontend build gates; it does not replace authenticated Keycloak or external-provider evidence.
+
 **Current status:** `BLOCKED`.
 
 Latest checker run on the current source/runtime record is [`release-check-45ebbae-20261020T151000Z.json`](evidence/staging/release-check-45ebbae-20261020T151000Z.json). It reports 202 required cases and zero of the three required independent manifests. The deployed application image is immutable SHA `45ebbae37cb5104decf7a586e767a55cd41cd0cf`.
