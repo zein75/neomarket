@@ -1,0 +1,12 @@
+{
+  "environment": "local-source-regression-for-staging-release",
+  "runtime_commit": "45ebbae37cb5104decf7a586e767a55cd41cd0cf",
+  "source_commit": "9d17367",
+  "command": "uv run pytest services/b2b/tests -q",
+  "runs": [
+    {"run_id": "b2b-full-1", "result": "285 passed, 38 skipped, 0 failed", "exit_code": 0, "log": "run-1.txt"},
+    {"run_id": "b2b-full-2", "result": "285 passed, 38 skipped, 0 failed", "exit_code": 0, "log": "run-2.txt"},
+    {"run_id": "b2b-full-3", "result": "285 passed, 38 skipped, 0 failed", "exit_code": 0, "log": "run-3.txt"}
+  ],
+  "note": "The 38 skips are integration tests requiring unavailable external test service URLs or protected staging fixtures; they are not counted as passes."
+}
