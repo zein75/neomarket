@@ -113,6 +113,18 @@ async def test_postgres_audit_chain_verifier_detects_modified_event() -> None:
                 match=rf"Audit event hash mismatch at {sequence_no}",
             ):
                 await verify_audit_chain(session)
+
+        # This test deliberately bypasses the append-only trigger to prove
+        # tamper detection. Restore the fixture before releasing the shared
+        # integration database; otherwise a later verifier test would fail on
+        # the intentionally corrupted row rather than its own assertion.
+        async with engine.begin() as connection:
+            await connection.execute(text("ALTER TABLE audit_logs DISABLE TRIGGER trg_audit_logs_append_only"))
+            await connection.execute(
+                text("UPDATE audit_logs SET details = '{\"original\": true}'::json WHERE id = :event_id"),
+                {"event_id": event_id},
+            )
+            await connection.execute(text("ALTER TABLE audit_logs ENABLE TRIGGER trg_audit_logs_append_only"))
     finally:
         await engine.dispose()
 
