@@ -17,5 +17,6 @@ FIXTURE="$ROOT/qa/b2b_fixture.py"
 # The service, image, command and mount are fixed. User input is only a
 # validated action and run id; no arbitrary shell, compose file or path is accepted.
 exec docker compose --project-name neomarket-staging --env-file "$ENV_FILE" --env-file "$RELEASE_ENV" -f "$COMPOSE" run --rm --no-deps \
+  -e PYTHONPATH=/app/services/b2b \
   -v "$FIXTURE:/qa/b2b_fixture.py:ro" b2b \
   uv run --no-sync python /qa/b2b_fixture.py "$action" "$run_id"
