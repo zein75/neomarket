@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-ROOT=/opt/neomarket-staging
+STATE_ROOT=/opt/neomarket-staging
+ROOT="$STATE_ROOT/compose"
 cd "$ROOT"
 SECRETS=/etc/neomarket/staging.env
-COMPOSE=(docker compose --project-name neomarket-staging --env-file "$SECRETS" --env-file "$ROOT/.release.env" -f "$ROOT/docker-compose.staging.yml")
+COMPOSE=(docker compose --project-name neomarket-staging --env-file "$SECRETS" --env-file "$STATE_ROOT/.release.env" -f "$ROOT/docker-compose.staging.yml")
 "${COMPOSE[@]}" ps
 for component in b2b b2c admin gateway; do
   container_id="$("${COMPOSE[@]}" ps -q "$component")"
