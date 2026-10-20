@@ -5,6 +5,7 @@ ROOT = Path(__file__).resolve().parents[1]
 NGINX = ROOT / "deploy" / "staging" / "nginx.conf"
 REFRESH = ROOT / "deploy" / "staging" / "bootstrap" / "refresh_root_files.sh"
 DEPLOY = ROOT / "deploy" / "staging" / "bootstrap" / "neomarket-staging-deploy"
+SMOKE = ROOT / "deploy" / "staging" / "smoke.sh"
 
 
 def _server_block(config: str, server_name: str) -> str:
@@ -36,3 +37,12 @@ def test_root_refresh_and_deploy_reload_gateway_config() -> None:
     assert "NGINX_SRC=/tmp/ter0o-neomarket-nginx.conf" in refresh
     assert "NGINX_DST=/opt/neomarket-staging/compose/nginx.conf" in refresh
     assert "--force-recreate gateway" in deploy
+
+
+def test_smoke_rejects_stale_frontend_host_routes() -> None:
+    smoke = SMOKE.read_text(encoding="utf-8")
+
+    assert "FRONTEND ROUTE MISMATCH" in smoke
+    assert "check_frontend_route storefront.neomarket.test" in smoke
+    assert "check_frontend_route seller.neomarket.test" in smoke
+    assert "check_frontend_route admin.neomarket.test" in smoke
