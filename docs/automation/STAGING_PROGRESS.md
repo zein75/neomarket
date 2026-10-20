@@ -1,6 +1,6 @@
-﻿# Staging progress
+# Staging progress
 
-**Updated:** 2026-10-20 (runtime verification after deployment)
+**Latest verification:** 2026-10-20 (local regression and frontend release checks)`n`nThe staging refresh helper was hardened in `bcdcddb`: when run from `/tmp/neomarket-src/deploy/staging/bootstrap/refresh_root_files.sh`, it reads the checked-out manifests directly and updates the root-owned deployment wrapper. The host has not yet applied this commit; live route probes therefore still show `STAGING-GW-001`.`n`nIndependent local checks on the current checkout:`n`n- B2B: `285 passed, 38 skipped`.`n- B2C (excluding opt-in PostgreSQL integration): `154 passed, 10 deselected`.`n- Admin: `56 passed, 65 skipped`.`n- Shared/target tests: `27 passed`.`n- Ruff, OpenAPI target validation, Compose security, and Python compilation: PASS.`n- Frontend typecheck and production build for Storefront, Seller, Admin, and shared packages: PASS.`n`n**Updated:** 2026-10-20 (runtime verification after deployment)
 
 | Phase | Status | Evidence |
 |---|---|---|
