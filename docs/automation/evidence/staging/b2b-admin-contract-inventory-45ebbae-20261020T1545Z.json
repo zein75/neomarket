@@ -1,0 +1,70 @@
+{
+  "run_id": "b2b-admin-contract-inventory-45ebbae-20261020T1545Z",
+  "environment": "staging source/runtime inspection; no production data",
+  "deployed_sha": "45ebbae37cb5104decf7a586e767a55cd41cd0cf",
+  "source_files": {
+    "services/b2b/src/api/routers/admin_internal.py": [
+      "get__internal_v1_sellers",
+      "get__internal_v1_sellers_seller_id",
+      "post__internal_v1_sellers_seller_id_restrictions",
+      "post__internal_v1_products_product_id_safety_hold",
+      "post__internal_v1_taxonomy_categories_category_id_impact_preview",
+      "get__internal_v1_taxonomy_impact_preview_jobs_job_id",
+      "post__internal_v1_taxonomy_brands_brand_id_merge_preview",
+      "post__internal_v1_taxonomy_commands",
+      "get__internal_v1_taxonomy_commands_command_id",
+      "get__internal_v1_taxonomy_snapshot",
+      "get__internal_v1_products",
+      "get__internal_v1_products_product_id_publication",
+      "get__internal_v1_products_product_id_revisions_revision_"
+    ],
+    "services/b2b/src/api/routers/moderation_events.py": [
+      "post__internal_v1_moderation_decisions"
+    ]
+  },
+  "target_file": "docs/NeoMarket_Admin_Production_Spec_2026-10-16/contracts/b2b-admin-internal-target.openapi.yaml",
+  "target_operation_count": 12,
+  "target_operation_ids": [
+    "get__internal_v1_taxonomy_snapshot",
+    "post__internal_v1_taxonomy_categories_category_id_impact_preview",
+    "get__internal_v1_taxonomy_impact_preview_jobs_job_id",
+    "post__internal_v1_taxonomy_brands_brand_id_merge_preview",
+    "post__internal_v1_taxonomy_commands",
+    "get__internal_v1_taxonomy_commands_command_id",
+    "post__internal_v1_moderation_decisions",
+    "get__internal_v1_products",
+    "get__internal_v1_products_product_id_publication",
+    "post__internal_v1_sellers_seller_id_restrictions",
+    "post__internal_v1_products_product_id_safety_hold",
+    "get__internal_v1_products_product_id_revisions_revision_"
+  ],
+  "source_operation_count": 14,
+  "source_operation_ids": [
+    "get__internal_v1_sellers",
+    "get__internal_v1_sellers_seller_id",
+    "post__internal_v1_sellers_seller_id_restrictions",
+    "post__internal_v1_products_product_id_safety_hold",
+    "post__internal_v1_taxonomy_categories_category_id_impact_preview",
+    "get__internal_v1_taxonomy_impact_preview_jobs_job_id",
+    "post__internal_v1_taxonomy_brands_brand_id_merge_preview",
+    "post__internal_v1_taxonomy_commands",
+    "get__internal_v1_taxonomy_commands_command_id",
+    "get__internal_v1_taxonomy_snapshot",
+    "get__internal_v1_products",
+    "get__internal_v1_products_product_id_publication",
+    "get__internal_v1_products_product_id_revisions_revision_",
+    "post__internal_v1_moderation_decisions"
+  ],
+  "missing_target_operation_ids": [],
+  "source_only_operation_ids": [
+    "get__internal_v1_sellers",
+    "get__internal_v1_sellers_seller_id"
+  ],
+  "gateway_isolation": "deploy/staging/nginx.conf contains location ^~ /internal/ { return 404; } for b2b.internal",
+  "evidence_limits": [
+    "Target OpenAPI is explicitly marked PROPOSED and is not a substitute for authenticated live contract interaction.",
+    "No service token or secret was extracted.",
+    "OIDC MFA claims, object storage/AV, search projection/cache/reconcile, and offsite backup contracts remain unconfigured and fail-closed."
+  ],
+  "result": "SOURCE_OPERATION_INVENTORY_COMPLETE"
+}

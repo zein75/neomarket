@@ -16,6 +16,8 @@ The source audit confirms that AT-100, AT-104 and AT-105 still lack an authorita
 
 The current Admin/backend/frontend gate rerun is recorded in [`admin-gates-20261020`](evidence/admin-gates-20261020/REPORT.md): Admin unit `58 passed, 65 skipped`, Admin PostgreSQL `63 passed, 2 skipped`, B2B `285 passed, 38 skipped`, B2C `154 passed, 10 deselected`, Admin OpenAPI `76` operations, B2B internal OpenAPI `12` operations, and Admin frontend typecheck/build all pass. These are source and disposable-database checks; they do not replace the unavailable authenticated Keycloak browser gate.
 
+The current source/runtime contract inventory confirms that all 12 operation IDs in the proposed B2B Admin internal target are implemented across the B2B routers; two additional seller-read operations are also present. The gateway keeps `/internal/` private. This inventory is recorded in [`b2b-admin-contract-inventory-45ebbae-20261020T1545Z.json`](evidence/staging/b2b-admin-contract-inventory-45ebbae-20261020T1545Z.json). The target document remains explicitly proposed, so this does not close the authenticated cross-service acceptance rows.
+
 ## Release status
 
 ### Current runtime correction (2026-10-20)
