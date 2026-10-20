@@ -2,7 +2,7 @@
 
 **Current status:** `BLOCKED`.
 
-Latest checker run on the current source/runtime record is [`release-check-ccc0494-20261020.json`](evidence/staging/release-check-ccc0494-20261020.json). It reports 202 required cases and zero of the three required independent manifests. The deployed application image remains immutable SHA `b0fd2323d8fa5c6df166018f0e5f7c0cfdb4c565`.
+Latest checker run on the current source/runtime record is [`release-check-fd02bd8-20261020.json`](evidence/staging/release-check-fd02bd8-20261020.json). It reports 202 required cases and zero of the three required independent manifests. The deployed application image remains immutable SHA `b0fd2323d8fa5c6df166018f0e5f7c0cfdb4c565`.
 
 | Gate | Status | Evidence |
 |---|---|---|
