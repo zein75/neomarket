@@ -1,0 +1,4997 @@
+openapi: 3.1.0
+info:
+  title: NeoMarket Admin BFF API (TARGET ONLY)
+  version: 1.0.0-draft
+  description: Proposed contract for implementation. NOT an inventory of currently working endpoints. All authorization
+    and mutation constraints apply server-side. Internal B2B taxonomy commands are specified separately in the architecture.
+servers:
+- url: https://admin.market.example.invalid
+  description: Placeholder; replace with approved real domain
+tags:
+- name: me
+- name: session
+- name: dashboard
+- name: moderation
+- name: products
+- name: taxonomy
+- name: blocking-reasons
+- name: sellers
+- name: complaints
+- name: appeals
+- name: bulk-operations
+- name: operations
+- name: audit-events
+- name: staff
+- name: policies
+- name: settings
+paths:
+  /admin/v1/me:
+    get:
+      operationId: GET_admin_v1_me
+      summary: Get authenticated staff principal
+      tags:
+      - me
+      security:
+      - adminSession: []
+      x-required-permission: session.read
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Principal'
+        '401': &id001
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403': &id002
+          description: Insufficient permission
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409': &id003
+          description: Conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '412': &id004
+          description: Stale resource version
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422': &id005
+          description: Validation failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /admin/v1/session/logout:
+    post:
+      operationId: POST_admin_v1_session_logout
+      summary: Revoke own admin session
+      tags:
+      - session
+      security:
+      - adminSession: []
+      x-required-permission: session.revoke
+      responses:
+        '202':
+          description: Accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: &id006
+          type: string
+          format: uuid
+  /admin/v1/dashboard:
+    get:
+      operationId: GET_admin_v1_dashboard
+      summary: Real queue and delivery metrics
+      tags:
+      - dashboard
+      security:
+      - adminSession: []
+      x-required-permission: dashboard.read
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardMetrics'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /admin/v1/moderation/tickets:
+    get:
+      operationId: GET_admin_v1_moderation_tickets
+      summary: Cursor-paginated moderation queue
+      tags:
+      - moderation
+      security:
+      - adminSession: []
+      x-required-permission: moderation.ticket.read
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketPage'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      parameters:
+      - &id007
+        name: cursor
+        in: query
+        schema:
+          type: string
+      - &id008
+        name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: status
+        in: query
+        schema:
+          type: string
+      - name: priority
+        in: query
+        schema:
+          type: integer
+          minimum: 0
+      - name: seller_id
+        in: query
+        schema: *id006
+  /admin/v1/moderation/tickets/{ticket_id}:
+    get:
+      operationId: GET_admin_v1_moderation_tickets_ticket_id
+      summary: Immutable ticket snapshot and workflow
+      tags:
+      - moderation
+      security:
+      - adminSession: []
+      x-required-permission: moderation.ticket.read
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketDetail'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      parameters:
+      - name: ticket_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/moderation/tickets/{ticket_id}/claim:
+    post:
+      operationId: POST_admin_v1_moderation_tickets_ticket_id_claim
+      summary: Acquire fencing lease
+      tags:
+      - moderation
+      security:
+      - adminSession: []
+      x-required-permission: moderation.ticket.claim
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimResult'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+        description: Resource ETag / expected version
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+      - name: ticket_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/moderation/tickets/{ticket_id}/heartbeat:
+    post:
+      operationId: POST_admin_v1_moderation_tickets_ticket_id_heartbeat
+      summary: Renew lease
+      tags:
+      - moderation
+      security:
+      - adminSession: []
+      x-required-permission: moderation.ticket.claim
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimResult'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LeaseInput'
+      parameters:
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+        description: Resource ETag / expected version
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+      - name: ticket_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/moderation/tickets/{ticket_id}/release:
+    post:
+      operationId: POST_admin_v1_moderation_tickets_ticket_id_release
+      summary: Release lease
+      tags:
+      - moderation
+      security:
+      - adminSession: []
+      x-required-permission: moderation.ticket.claim
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModerationTicket'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LeaseInput'
+      parameters:
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+        description: Resource ETag / expected version
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+      - name: ticket_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/moderation/tickets/{ticket_id}/decisions:
+    post:
+      operationId: POST_admin_v1_moderation_tickets_ticket_id_decisions
+      summary: Record one version-bound decision
+      tags:
+      - moderation
+      security:
+      - adminSession: []
+      x-required-permission: moderation.decision.write
+      responses:
+        '202':
+          description: Accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecisionResult'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecisionInput'
+      parameters:
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+        description: Resource ETag / expected version
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+      - name: ticket_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/moderation/tickets/{ticket_id}/history:
+    get:
+      operationId: GET_admin_v1_moderation_tickets_ticket_id_history
+      summary: Decision and assignment timeline
+      tags:
+      - moderation
+      security:
+      - adminSession: []
+      x-required-permission: moderation.ticket.read
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditPage'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      parameters:
+      - *id007
+      - *id008
+      - name: ticket_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/products:
+    get:
+      operationId: GET_admin_v1_products
+      summary: Search all products and publication states
+      tags:
+      - products
+      security:
+      - adminSession: []
+      x-required-permission: products.read
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductPage'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      parameters:
+      - *id007
+      - *id008
+      - name: search
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 200
+  /admin/v1/products/{product_id}:
+    get:
+      operationId: GET_admin_v1_products_product_id
+      summary: Product with published/current versions
+      tags:
+      - products
+      security:
+      - adminSession: []
+      x-required-permission: products.read
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductOverview'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      parameters:
+      - name: product_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/products/{product_id}/safety-hold:
+    post:
+      operationId: POST_admin_v1_products_product_id_safety_hold
+      summary: Apply temporary product visibility hold
+      description: Requires an approved ADMIN_SAFETY_HOLD_MAX_SECONDS policy. Holds within that duration are queued immediately; longer holds wait for independent approval. Returns 503 and writes nothing when the policy is not configured. Expiry and policy are revalidated at approval time.
+      tags:
+      - products
+      security:
+      - adminSession: []
+      x-required-permission: products.safety_hold
+      responses:
+        '202':
+          description: Accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HoldInput'
+      parameters:
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+        description: Resource ETag / expected version
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+      - name: product_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/products/{product_id}/recheck:
+    post:
+      operationId: POST_admin_v1_products_product_id_recheck
+      summary: Start new review of current revision
+      tags:
+      - products
+      security:
+      - adminSession: []
+      x-required-permission: products.recheck
+      responses:
+        '202':
+          description: Accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReasonAction'
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+      - name: product_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/taxonomy/categories:
+    get:
+      operationId: GET_admin_v1_taxonomy_categories
+      summary: Read authoritative category tree
+      tags:
+      - taxonomy
+      security:
+      - adminSession: []
+      x-required-permission: taxonomy.category.read
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryTree'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    post:
+      operationId: POST_admin_v1_taxonomy_categories
+      summary: Propose new category
+      tags:
+      - taxonomy
+      security:
+      - adminSession: []
+      x-required-permission: taxonomy.category.write
+      responses:
+        '202':
+          description: Accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryInput'
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+  /admin/v1/taxonomy/categories/{category_id}:
+    get:
+      operationId: GET_admin_v1_taxonomy_categories_category_id
+      summary: Read category current version
+      tags:
+      - taxonomy
+      security:
+      - adminSession: []
+      x-required-permission: taxonomy.category.read
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      parameters:
+      - name: category_id
+        in: path
+        required: true
+        schema: *id006
+    patch:
+      operationId: PATCH_admin_v1_taxonomy_categories_category_id
+      summary: Propose category edit
+      tags:
+      - taxonomy
+      security:
+      - adminSession: []
+      x-required-permission: taxonomy.category.write
+      responses:
+        '202':
+          description: Accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryInput'
+      parameters:
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+        description: Resource ETag / expected version
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+      - name: category_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/taxonomy/categories/{category_id}/impact-preview:
+    post:
+      operationId: POST_admin_v1_taxonomy_categories_category_id_impact_preview
+      summary: Preview move/archive affected products
+      tags:
+      - taxonomy
+      security:
+      - adminSession: []
+      x-required-permission: taxonomy.category.read
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImpactPreview'
+        '202':
+          description: Impact preview is being calculated in resumable batches
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImpactPreviewJob'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImpactPreviewInput'
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+      - name: category_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/taxonomy/impact-preview-jobs/{job_id}:
+    get:
+      operationId: GET_admin_v1_taxonomy_impact_preview_jobs_job_id
+      summary: Read resumable impact preview progress
+      tags:
+      - taxonomy
+      security:
+      - adminSession: []
+      x-required-permission: taxonomy.category.read
+      responses:
+        '200':
+          description: Current job progress or completed impact preview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImpactPreviewJob'
+        '401': *id001
+        '403': *id002
+        '404': *id003
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      parameters:
+      - name: job_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/taxonomy/categories/{category_id}/move:
+    post:
+      operationId: POST_admin_v1_taxonomy_categories_category_id_move
+      summary: Request subtree move
+      tags:
+      - taxonomy
+      security:
+      - adminSession: []
+      x-required-permission: taxonomy.category.write
+      responses:
+        '202':
+          description: Accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MoveCategoryInput'
+      parameters:
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+        description: Resource ETag / expected version
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+      - name: category_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/taxonomy/categories/{category_id}/archive:
+    post:
+      operationId: POST_admin_v1_taxonomy_categories_category_id_archive
+      summary: Archive with impact approval
+      tags:
+      - taxonomy
+      security:
+      - adminSession: []
+      x-required-permission: taxonomy.category.publish
+      responses:
+        '202':
+          description: Accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReasonAction'
+      parameters:
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+        description: Resource ETag / expected version
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+      - name: category_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/taxonomy/categories/{category_id}/publish:
+    post:
+      operationId: POST_admin_v1_taxonomy_categories_category_id_publish
+      summary: Publish reviewed category revision
+      tags:
+      - taxonomy
+      security:
+      - adminSession: []
+      x-required-permission: taxonomy.category.publish
+      responses:
+        '202':
+          description: Accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishInput'
+      parameters:
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+        description: Resource ETag / expected version
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+      - name: category_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/taxonomy/attributes:
+    get:
+      operationId: GET_admin_v1_taxonomy_attributes
+      summary: List typed attributes
+      tags:
+      - taxonomy
+      security:
+      - adminSession: []
+      x-required-permission: taxonomy.attribute.read
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttributePage'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      parameters:
+      - *id007
+      - *id008
+    post:
+      operationId: POST_admin_v1_taxonomy_attributes
+      summary: Create attribute definition draft
+      tags:
+      - taxonomy
+      security:
+      - adminSession: []
+      x-required-permission: taxonomy.attribute.write
+      responses:
+        '202':
+          description: Accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttributeInput'
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+  /admin/v1/taxonomy/attributes/{attribute_id}:
+    patch:
+      operationId: PATCH_admin_v1_taxonomy_attributes_attribute_id
+      summary: Edit attribute definition
+      tags:
+      - taxonomy
+      security:
+      - adminSession: []
+      x-required-permission: taxonomy.attribute.write
+      responses:
+        '202':
+          description: Accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttributeInput'
+      parameters:
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+        description: Resource ETag / expected version
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+      - name: attribute_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/taxonomy/categories/{category_id}/attribute-rules:
+    get:
+      operationId: GET_admin_v1_taxonomy_categories_category_id_attribute_rules
+      summary: Read effective category attributes
+      tags:
+      - taxonomy
+      security:
+      - adminSession: []
+      x-required-permission: taxonomy.attribute.read
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryRulePage'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      parameters:
+      - name: category_id
+        in: path
+        required: true
+        schema: *id006
+    put:
+      operationId: PUT_admin_v1_taxonomy_categories_category_id_attribute_rules
+      summary: Propose new category schema version
+      tags:
+      - taxonomy
+      security:
+      - adminSession: []
+      x-required-permission: taxonomy.attribute.write
+      responses:
+        '202':
+          description: Accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryRuleSet'
+      parameters:
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+        description: Resource ETag / expected version
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+      - name: category_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/taxonomy/categories/{category_id}/schema-validate:
+    post:
+      operationId: POST_admin_v1_taxonomy_categories_category_id_schema_validate
+      summary: Validate sample product against draft schema
+      tags:
+      - taxonomy
+      security:
+      - adminSession: []
+      x-required-permission: taxonomy.attribute.read
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchemaValidation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttributeValues'
+      parameters:
+      - name: category_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/taxonomy/brands:
+    get:
+      operationId: GET_admin_v1_taxonomy_brands
+      summary: Browse canonical brands and aliases
+      tags:
+      - taxonomy
+      security:
+      - adminSession: []
+      x-required-permission: taxonomy.brand.read
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrandPage'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      parameters:
+      - *id007
+      - *id008
+    post:
+      operationId: POST_admin_v1_taxonomy_brands
+      summary: Create brand draft
+      tags:
+      - taxonomy
+      security:
+      - adminSession: []
+      x-required-permission: taxonomy.brand.write
+      responses:
+        '202':
+          description: Accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BrandInput'
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+  /admin/v1/taxonomy/brands/{brand_id}:
+    patch:
+      operationId: PATCH_admin_v1_taxonomy_brands_brand_id
+      summary: Edit brand draft
+      tags:
+      - taxonomy
+      security:
+      - adminSession: []
+      x-required-permission: taxonomy.brand.write
+      responses:
+        '202':
+          description: Accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BrandInput'
+      parameters:
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+        description: Resource ETag / expected version
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+      - name: brand_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/taxonomy/brands/{brand_id}/verify:
+    post:
+      operationId: POST_admin_v1_taxonomy_brands_brand_id_verify
+      summary: Propose brand evidence verification
+      tags: [taxonomy]
+      security: [{adminSession: []}]
+      x-required-permission: taxonomy.brand.publish
+      parameters:
+      - name: brand_id
+        in: path
+        required: true
+        schema: *id006
+      - name: If-Match
+        in: header
+        required: true
+        schema: {type: string}
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                evidence_ref: {type: string, minLength: 1, maxLength: 2048}
+                reason_code: {type: string, pattern: '^[A-Z][A-Z0-9_]*$'}
+              required: [evidence_ref, reason_code]
+      responses:
+        '202':
+          description: Brand verification proposal submitted for independent approval
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Operation'}
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+  /admin/v1/taxonomy/brands/{brand_id}/merge-preview:
+    post:
+      operationId: POST_admin_v1_taxonomy_brands_brand_id_merge_preview
+      summary: Preview affected products before brand merge
+      tags: [taxonomy]
+      security: [{adminSession: []}]
+      x-required-permission: taxonomy.brand.read
+      parameters:
+      - name: brand_id
+        in: path
+        required: true
+        schema: *id006
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                target_brand_id: *id006
+              required: [target_brand_id]
+      responses:
+        '200':
+          description: Authoritative B2B merge preview
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  change_id: *id006
+                  source_brand_id: *id006
+                  target_brand_id: *id006
+                  affected_products: {type: integer, minimum: 0}
+                  hash: {type: string, pattern: '^[0-9a-f]{64}$'}
+                  expires_at: {type: string, format: date-time}
+                required: [change_id, source_brand_id, target_brand_id, affected_products, hash, expires_at]
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '503': {$ref: '#/components/responses/ServiceUnavailable'}
+  /admin/v1/taxonomy/brands/{brand_id}/merge:
+    post:
+      operationId: POST_admin_v1_taxonomy_brands_brand_id_merge
+      summary: Merge brand with impact preview hash
+      tags:
+      - taxonomy
+      security:
+      - adminSession: []
+      x-required-permission: taxonomy.brand.publish
+      responses:
+        '202':
+          description: Accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BrandMerge'
+      parameters:
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+        description: Resource ETag / expected version
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+      - name: brand_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/blocking-reasons:
+    get:
+      operationId: GET_admin_v1_blocking_reasons
+      summary: List versioned moderation reasons
+      tags:
+      - blocking-reasons
+      security:
+      - adminSession: []
+      x-required-permission: policy.reason.read
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReasonPage'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      parameters:
+      - *id007
+      - *id008
+    post:
+      operationId: POST_admin_v1_blocking_reasons
+      summary: Create moderation reason
+      tags:
+      - blocking-reasons
+      security:
+      - adminSession: []
+      x-required-permission: policy.reason.write
+      responses:
+        '202':
+          description: Accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReasonInput'
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+  /admin/v1/blocking-reasons/{reason_id}:
+    patch:
+      operationId: PATCH_admin_v1_blocking_reasons_reason_id
+      summary: Edit reason draft
+      tags:
+      - blocking-reasons
+      security:
+      - adminSession: []
+      x-required-permission: policy.reason.write
+      responses:
+        '202':
+          description: Accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReasonInput'
+      parameters:
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+        description: Resource ETag / expected version
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+      - name: reason_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/blocking-reasons/{reason_id}/archive:
+    post:
+      operationId: POST_admin_v1_blocking_reasons_reason_id_archive
+      summary: Archive reason (retain historical references)
+      tags:
+      - blocking-reasons
+      security:
+      - adminSession: []
+      x-required-permission: policy.reason.write
+      responses:
+        '202':
+          description: Accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReasonAction'
+      parameters:
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+        description: Resource ETag / expected version
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+      - name: reason_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/sellers:
+    get:
+      operationId: GET_admin_v1_sellers
+      summary: Search sellers and verification cases
+      tags:
+      - sellers
+      security:
+      - adminSession: []
+      x-required-permission: seller.review.read
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SellerPage'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      parameters:
+      - *id007
+      - *id008
+  /admin/v1/sellers/{seller_id}:
+    get:
+      operationId: GET_admin_v1_sellers_seller_id
+      summary: Read seller case scoped data
+      tags:
+      - sellers
+      security:
+      - adminSession: []
+      x-required-permission: seller.review.read
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SellerCase'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      parameters:
+      - name: seller_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/sellers/{seller_id}/restrictions:
+    post:
+      operationId: POST_admin_v1_sellers_seller_id_restrictions
+      summary: Apply seller restriction with reason
+      tags:
+      - sellers
+      security:
+      - adminSession: []
+      x-required-permission: seller.restrict
+      responses:
+        '202':
+          description: Accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SellerRestrictionInput'
+      parameters:
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+        description: Resource ETag / expected version
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+      - name: seller_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/sellers/{seller_id}/history:
+    get:
+      operationId: GET_admin_v1_sellers_seller_id_history
+      summary: Seller moderation history
+      tags:
+      - sellers
+      security:
+      - adminSession: []
+      x-required-permission: seller.review.read
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditPage'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      parameters:
+      - *id007
+      - *id008
+      - name: seller_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/complaints:
+    get:
+      operationId: GET_admin_v1_complaints
+      summary: Browse visible complaint queue
+      tags:
+      - complaints
+      x-order-by: priority DESC, created_at ASC, id ASC
+      security:
+      - adminSession: []
+      x-required-permission: complaint.read
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplaintPage'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      parameters:
+      - *id007
+      - *id008
+  /admin/v1/complaints/{complaint_id}:
+    get:
+      operationId: GET_admin_v1_complaints_complaint_id
+      summary: Read complaint details and case timeline
+      tags:
+      - complaints
+      security:
+      - adminSession: []
+      x-required-permission: complaint.read
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplaintDetail'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      parameters:
+      - name: complaint_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/complaints/{complaint_id}/actions:
+    post:
+      operationId: POST_admin_v1_complaints_complaint_id_actions
+      summary: Decide complaint investigation step
+      description: REQUEST_INFO, WARN and CLOSE return 503 NOTICE_DELIVERY_NOT_CONFIGURED until case notice delivery is available; no action receipt is written.
+      tags:
+      - complaints
+      security:
+      - adminSession: []
+      x-required-permission: complaint.decide
+      responses:
+        '202':
+          description: Accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComplaintAction'
+      parameters:
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+        description: Resource ETag / expected version
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+      - name: complaint_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/complaints/{complaint_id}/evidence:
+    get:
+      operationId: GET_admin_v1_complaints_complaint_id_evidence
+      summary: Read complaint evidence references
+      tags:
+      - complaints
+      security:
+      - adminSession: []
+      x-required-permission: complaint.evidence.read
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplaintEvidence'
+        '401': *id001
+        '403': *id002
+        '404':
+          description: Complaint not found or not assigned to this reviewer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422': *id005
+        '409': *id003
+        '412': *id004
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      parameters:
+      - name: complaint_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/appeals:
+    get:
+      operationId: GET_admin_v1_appeals
+      summary: Browse appeals
+      tags:
+      - appeals
+      security:
+      - adminSession: []
+      x-required-permission: appeal.read
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppealPage'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      parameters:
+      - *id007
+      - *id008
+  /admin/v1/appeals/{appeal_id}:
+    get:
+      operationId: GET_admin_v1_appeals_appeal_id
+      summary: Read appeal and original decision
+      tags:
+      - appeals
+      security:
+      - adminSession: []
+      x-required-permission: appeal.read
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppealDetail'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      parameters:
+      - name: appeal_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/appeals/{appeal_id}/evidence:
+    get:
+      operationId: GET_admin_v1_appeals_appeal_id_evidence
+      summary: Read appeal evidence references
+      tags:
+      - appeals
+      security:
+      - adminSession: []
+      x-required-permission: appeal.evidence.read
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppealEvidence'
+        '401': *id001
+        '403': *id002
+        '404':
+          description: Appeal not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422': *id005
+        '409': *id003
+        '412': *id004
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      parameters:
+      - name: appeal_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/appeals/{appeal_id}/decisions:
+    post:
+      operationId: POST_admin_v1_appeals_appeal_id_decisions
+      summary: Independent review outcome
+      description: Returns 503 NOTICE_DELIVERY_NOT_CONFIGURED until recipient-scoped appeal notices are available; no decision is recorded.
+      tags:
+      - appeals
+      security:
+      - adminSession: []
+      x-required-permission: appeal.decide
+      responses:
+        '202':
+          description: Accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '404':
+          description: Appeal not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppealAction'
+      parameters:
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+        description: Resource ETag / expected version
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+      - name: appeal_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/bulk-operations/preview:
+    post:
+      operationId: POST_admin_v1_bulk_operations_preview
+      summary: Validate scope/impact before bulk action
+      tags:
+      - bulk-operations
+      security:
+      - adminSession: []
+      x-required-permission: bulk.preview
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImpactPreview'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkInput'
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+  /admin/v1/bulk-operations:
+    post:
+      operationId: POST_admin_v1_bulk_operations
+      summary: Submit bulk change for approvals
+      tags:
+      - bulk-operations
+      security:
+      - adminSession: []
+      x-required-permission: bulk.propose
+      responses:
+        '202':
+          description: Accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkInput'
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+  /admin/v1/operations:
+    get:
+      operationId: GET_admin_v1_operations
+      summary: List owned, reviewable, and reviewer-owned background operations
+      tags:
+      - operations
+      security:
+      - adminSession: []
+      x-required-permission: operations.read
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationReviewPage'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      parameters:
+      - *id007
+      - *id008
+  /admin/v1/operations/{operation_id}:
+    get:
+      operationId: GET_admin_v1_operations_operation_id
+      summary: Get asynchronous command state
+      tags:
+      - operations
+      security:
+      - adminSession: []
+      x-required-permission: operations.read
+      responses:
+        '200':
+          description: Successful result
+          headers:
+            ETag:
+              description: Current operation version used by If-Match for a review decision
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationReview'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      parameters:
+      - name: operation_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/operations/{operation_id}/approve:
+    post:
+      operationId: POST_admin_v1_operations_operation_id_approve
+      summary: Independent approve operation
+      tags:
+      - operations
+      security:
+      - adminSession: []
+      x-required-permission: operations.approve
+      responses:
+        '202':
+          description: Accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReasonAction'
+      parameters:
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+        description: Resource ETag / expected version
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+      - name: operation_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/operations/{operation_id}/cancel:
+    post:
+      operationId: POST_admin_v1_operations_operation_id_cancel
+      summary: Request safe cancellation
+      tags:
+      - operations
+      security:
+      - adminSession: []
+      x-required-permission: operations.cancel
+      responses:
+        '202':
+          description: Accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReasonAction'
+      parameters:
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+        description: Resource ETag / expected version
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+      - name: operation_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/operations/events:
+    get:
+      operationId: GET_admin_v1_operations_events
+      summary: Outbox and DLQ metadata
+      tags:
+      - operations
+      security:
+      - adminSession: []
+      x-required-permission: operations.events.read
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutboxPage'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      parameters:
+      - *id007
+      - *id008
+  /admin/v1/operations/events/{event_id}/retry:
+    post:
+      operationId: POST_admin_v1_operations_events_event_id_retry
+      summary: Audit-approved event retry
+      tags:
+      - operations
+      security:
+      - adminSession: []
+      x-required-permission: operations.events.retry
+      responses:
+        '202':
+          description: Accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReasonAction'
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+      - name: event_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/audit-events:
+    get:
+      operationId: GET_admin_v1_audit_events
+      summary: Read redacted tamper-evident events
+      tags:
+      - audit-events
+      security:
+      - adminSession: []
+      x-required-permission: audit.read
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditPage'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      parameters:
+      - *id007
+      - *id008
+  /admin/v1/audit-events/export:
+    post:
+      operationId: POST_admin_v1_audit_events_export
+      summary: Request permission-gated audit export
+      tags:
+      - audit-events
+      security:
+      - adminSession: []
+      x-required-permission: audit.export
+      responses:
+        '202':
+          description: Accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuditExportInput'
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+  /admin/v1/staff:
+    get:
+      operationId: GET_admin_v1_staff
+      summary: List staff identity and grants
+      tags:
+      - staff
+      security:
+      - adminSession: []
+      x-required-permission: iam.read
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffPage'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      parameters:
+      - *id007
+      - *id008
+  /admin/v1/audit-events/exports/{export_id}:
+    get:
+      operationId: GET_admin_v1_audit_events_exports_export_id
+      summary: Download a previously generated audit export
+      tags:
+      - audit-events
+      security:
+      - adminSession: []
+      x-required-permission: audit.export
+      responses:
+        '200':
+          description: Integrity-verified audit archive
+          headers:
+            X-Content-SHA256:
+              schema:
+                type: string
+                pattern: '^[a-f0-9]{64}$'
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        '401': *id001
+        '403': *id002
+        '404':
+          description: Export not found or not owned by the current staff member
+        '410':
+          description: Export has expired
+        '503':
+          description: Stored export failed integrity verification
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+      parameters:
+      - name: export_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/auth/session:
+    post:
+      operationId: POST_admin_v1_auth_session
+      summary: Exchange a verified OIDC bearer for an opaque Admin web session
+      tags:
+      - session
+      security:
+      - oidcBearer: []
+      responses:
+        '201':
+          description: Session created; opaque access and CSRF cookies are set
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionCreated'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '422': *id005
+        '412': *id004
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - name: Origin
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uri
+  /admin/v1/auth/step-up:
+    post:
+      operationId: POST_admin_v1_auth_step_up
+      summary: Bind recent OIDC step-up authentication to the current Admin session
+      tags:
+      - session
+      security:
+      - adminSession: []
+        oidcBearer: []
+      responses:
+        '204':
+          description: Recent step-up authentication was recorded
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      parameters:
+      - name: Origin
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uri
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        schema:
+          type: string
+  /admin/v1/staff/{staff_id}/sessions:
+    get:
+      operationId: GET_admin_v1_staff_staff_id_sessions
+      summary: List a staff member's active and historical Admin sessions
+      tags:
+      - staff
+      security:
+      - adminSession: []
+      x-required-permission: staff.read
+      responses:
+        '200':
+          description: Staff sessions, newest first
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: private, no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffSessionPage'
+        '401': *id001
+        '403': *id002
+        '404':
+          description: Staff principal not found
+        '422': *id005
+        '409': *id003
+        '412': *id004
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      parameters:
+      - name: staff_id
+        in: path
+        required: true
+        schema: *id006
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+  /admin/v1/staff/{staff_id}:
+    get:
+      operationId: GET_admin_v1_staff_staff_id
+      summary: Staff profile and permissions
+      tags:
+      - staff
+      security:
+      - adminSession: []
+      x-required-permission: iam.read
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffProfile'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      parameters:
+      - name: staff_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/staff/{staff_id}/grants:
+    post:
+      operationId: POST_admin_v1_staff_staff_id_grants
+      summary: Propose role/permission grant
+      tags:
+      - staff
+      security:
+      - adminSession: []
+      x-required-permission: iam.grant
+      responses:
+        '202':
+          description: Accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PermissionChange'
+      parameters:
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+        description: Resource ETag / expected version
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+      - name: staff_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/staff/{staff_id}/grants/{grant_id}/revoke:
+    post:
+      operationId: POST_admin_v1_staff_staff_id_grants_grant_id_revoke
+      summary: Propose permission grant revocation
+      tags:
+      - staff
+      security:
+      - adminSession: []
+      x-required-permission: iam.revoke
+      responses:
+        '202':
+          description: Accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PermissionGrantRevocation'
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+      - name: staff_id
+        in: path
+        required: true
+        schema: *id006
+      - name: grant_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/staff/{staff_id}/revoke-sessions:
+    post:
+      operationId: POST_admin_v1_staff_staff_id_revoke_sessions
+      summary: Revoke staff sessions
+      tags:
+      - staff
+      security:
+      - adminSession: []
+      x-required-permission: iam.revoke
+      responses:
+        '202':
+          description: Accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReasonAction'
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+      - name: staff_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/policies:
+    get:
+      operationId: GET_admin_v1_policies
+      summary: Read effective versioned policies
+      tags:
+      - policies
+      security:
+      - adminSession: []
+      x-required-permission: policy.read
+      responses:
+        '200':
+          description: Successful result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyPage'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      parameters:
+      - *id007
+      - *id008
+    post:
+      operationId: POST_admin_v1_policies
+      summary: Propose policy change
+      tags:
+      - policies
+      security:
+      - adminSession: []
+      x-required-permission: policy.write
+      responses:
+        '202':
+          description: Accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolicyInput'
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+  /admin/v1/policies/{policy_id}/publish:
+    post:
+      operationId: POST_admin_v1_policies_policy_id_publish
+      summary: Publish approved policy
+      tags:
+      - policies
+      security:
+      - adminSession: []
+      x-required-permission: policy.publish
+      responses:
+        '202':
+          description: Accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishInput'
+      parameters:
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+        description: Resource ETag / expected version
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+      - name: policy_id
+        in: path
+        required: true
+        schema: *id006
+  /admin/v1/settings/integrations:
+    get:
+      operationId: GET_admin_v1_settings_integrations
+      summary: Read configuration status for external Admin integrations
+      tags:
+      - settings
+      security:
+      - adminSession: []
+      x-required-permission: settings.read
+      responses:
+        '200':
+          description: Integration configuration inventory; CONFIGURED_UNVERIFIED does not assert provider health
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationStatus'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /admin/v1/settings:
+    get:
+      operationId: GET_admin_v1_settings
+      summary: Read effective runtime settings and their provenance
+      tags:
+      - settings
+      security:
+      - adminSession: []
+      x-required-permission: settings.read
+      responses:
+        '200':
+          description: Current non-secret settings; environment values are explicitly marked unversioned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuntimeSettings'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /admin/v1/settings/{section}/versions:
+    post:
+      operationId: POST_admin_v1_settings_section_versions
+      summary: Propose a versioned queue or workflow settings policy
+      tags:
+      - settings
+      security:
+      - adminSession: []
+      x-required-permission: settings.write
+      responses:
+        '202':
+          description: Accepted policy proposal; a distinct policy approver must approve and publish it
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '401': *id001
+        '403': *id002
+        '409': *id003
+        '412': *id004
+        '422': *id005
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RuntimeSettingsProposalInput'
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: *id006
+      - name: section
+        in: path
+        required: true
+        schema:
+          type: string
+          enum:
+          - queue_policy
+          - workflow_settings
+components:
+  securitySchemes:
+    adminSession:
+      type: apiKey
+      in: cookie
+      name: __Host-nm_admin_access
+      description: Opaque BFF session; server-side OIDC+MFA required. Mutations also validate CSRF
+    oidcBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Short-lived bearer from the configured OIDC provider; accepted only for session exchange and step-up
+  responses:
+    RateLimited:
+      description: Request rate limit exceeded
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying
+          schema:
+            type: string
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    ServiceUnavailable:
+      description: Required service or audit storage unavailable
+      headers:
+        Retry-After:
+          description: Minimum delay before retrying
+          schema:
+            type: string
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    PayloadTooLarge:
+      description: Request body exceeds the configured size limit
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    UnsupportedMediaType:
+      description: JSON content type is required for request bodies
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  schemas:
+    IntegrationCapability:
+      type: object
+      properties:
+        key:
+          type: string
+          enum:
+          - identity_provider
+          - mfa_step_up
+          - b2b_admin_api
+          - seller_kyc
+          - evidence_av_scan
+          - case_notice_delivery
+          - payment_disputes
+          - delivery_logs
+        status:
+          type: string
+          enum:
+          - CONFIGURED_UNVERIFIED
+          - NOT_CONFIGURED
+        blocked_actions:
+          type: array
+          items:
+            type: string
+        detail:
+          type: string
+      required:
+      - key
+      - status
+      - blocked_actions
+      - detail
+      additionalProperties: false
+    IntegrationStatus:
+      type: object
+      properties:
+        as_of:
+          type: string
+          format: date-time
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/IntegrationCapability'
+      required:
+      - as_of
+      - items
+      additionalProperties: false
+    RuntimeSettingSection:
+      type: object
+      properties:
+        key:
+          type: string
+          enum:
+          - queue_policy
+          - workflow_settings
+          - deployment_settings
+          - moderation_sla
+          - safety_hold_policy
+          - notification_settings
+          - retention_status
+        status:
+          type: string
+          enum:
+          - CONFIGURED_VERSIONED
+          - CONFIGURED_UNVERSIONED
+          - NOT_CONFIGURED
+          - BLOCKED_PENDING_DECISION
+        source:
+          type: string
+          enum:
+          - database
+          - environment
+          - none
+        version:
+          type: integer
+          minimum: 1
+        writable:
+          type: boolean
+        values:
+          type: object
+          additionalProperties:
+            anyOf:
+            - type: integer
+            - type: number
+            - type: boolean
+            - type: string
+            - type: 'null'
+        detail:
+          type: string
+      required:
+      - key
+      - status
+      - source
+      - writable
+      - values
+      - detail
+      additionalProperties: false
+    RuntimeSettingsProposalInput:
+      type: object
+      properties:
+        expected_version:
+          type: integer
+          minimum: 0
+        values:
+          type: object
+          additionalProperties:
+            anyOf:
+            - type: integer
+            - type: number
+        reason_code:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: '^[A-Z][A-Z0-9_]*$'
+      required:
+      - expected_version
+      - values
+      - reason_code
+      additionalProperties: false
+    RuntimeSettings:
+      type: object
+      properties:
+        as_of:
+          type: string
+          format: date-time
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RuntimeSettingSection'
+      required:
+      - as_of
+      - items
+      additionalProperties: false
+    SessionCreated:
+      type: object
+      properties:
+        authenticated:
+          type: boolean
+          const: true
+        csrf_token:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+      required:
+      - authenticated
+      - csrf_token
+      - expires_at
+      additionalProperties: false
+    StaffSessionItem:
+      type: object
+      properties:
+        session_id: *id006
+        created_at: {type: string, format: date-time}
+        last_seen_at: {type: string, format: date-time}
+        idle_expires_at: {type: string, format: date-time}
+        absolute_expires_at: {type: string, format: date-time}
+        step_up_expires_at:
+          anyOf:
+          - {type: string, format: date-time}
+          - type: 'null'
+        revoked_at:
+          anyOf:
+          - {type: string, format: date-time}
+          - type: 'null'
+        current:
+          type: boolean
+        mfa_verified:
+          type: boolean
+        device:
+          type: [string, 'null']
+      required:
+      - session_id
+      - created_at
+      - last_seen_at
+      - idle_expires_at
+      - absolute_expires_at
+      - current
+      - mfa_verified
+      additionalProperties: false
+    StaffSessionPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/StaffSessionItem'
+      required:
+      - items
+      additionalProperties: false
+    Problem:
+      type: object
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        code:
+          type: string
+        instance:
+          type: string
+        request_id:
+          type: string
+        retryable:
+          type: boolean
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+            required: []
+            additionalProperties: false
+      required:
+      - type
+      - title
+      - status
+      - code
+      - request_id
+      - retryable
+      additionalProperties: false
+    Operation:
+      type: object
+      properties:
+        operation_id: *id006
+        status:
+          type: string
+          enum:
+          - QUEUED
+          - RUNNING
+          - WAITING_APPROVAL
+          - APPLIED
+          - PARTIAL
+          - FAILED
+          - CANCELLED
+        resource_id: *id006
+        request_id:
+          type: string
+        updated_at: &id009
+          type: string
+          format: date-time
+      required:
+      - operation_id
+      - status
+      - request_id
+      additionalProperties: false
+    Page:
+      type: object
+      properties:
+        next_cursor:
+          type:
+          - string
+          - 'null'
+        has_more:
+          type: boolean
+      required:
+      - has_more
+      additionalProperties: false
+    Principal:
+      type: object
+      properties:
+        staff_id: *id006
+        display_name:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+        permissions:
+          type: array
+          items:
+            type: string
+        mfa_verified:
+          type: boolean
+        session_expires_at: *id009
+      required:
+      - staff_id
+      - roles
+      - permissions
+      - mfa_verified
+      additionalProperties: false
+    ModerationTicket:
+      type: object
+      properties:
+        id: *id006
+        product_id: *id006
+        seller_id: *id006
+        submitted_revision: &id010
+          type: integer
+          minimum: 1
+        snapshot_hash:
+          type: string
+        kind:
+          type: string
+          enum:
+          - CREATE
+          - UPDATE
+          - MEDIA_UPDATE
+          - CATEGORY_CHANGE
+          - RECHECK
+          - REPORT
+          - APPEAL
+        status:
+          type: string
+          enum:
+          - NEW
+          - IN_REVIEW
+          - WAITING_SELLER
+          - ESCALATED
+          - DECISION_PENDING
+          - DECIDED
+          - STALE
+          - CANCELLED
+        priority:
+          type: integer
+          minimum: 0
+          maximum: 5
+        assigned_to: *id006
+        lease_expires_at: *id009
+        version: *id010
+        created_at: *id009
+        deadline_at: *id009
+      required:
+      - id
+      - product_id
+      - submitted_revision
+      - snapshot_hash
+      - kind
+      - status
+      - version
+      - created_at
+      additionalProperties: false
+    TicketPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModerationTicket'
+        page:
+          $ref: '#/components/schemas/Page'
+      required:
+      - items
+      - page
+      additionalProperties: false
+    ProductSnapshot:
+      type: object
+      properties:
+        product_id: *id006
+        seller_id: *id006
+        revision: *id010
+        snapshot_hash:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        category_id: *id006
+        images:
+          type: array
+          items:
+            type: object
+            properties:
+              media_id: *id006
+              url:
+                type: string
+                format: uri
+              status:
+                type: string
+            required: []
+            additionalProperties: false
+        skus:
+          type: array
+          items:
+            type: object
+            properties:
+              sku_id: *id006
+              name:
+                type: string
+              price_minor:
+                type: integer
+                minimum: 0
+              currency:
+                type: string
+              attributes:
+                type: object
+                additionalProperties: true
+              images:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    media_id: *id006
+                    url:
+                      type: string
+                      format: uri
+                    status:
+                      type: string
+                  required: []
+                  additionalProperties: false
+            required: []
+            additionalProperties: false
+        attributes:
+          type: object
+          additionalProperties: true
+        policy_version: *id010
+      required:
+      - product_id
+      - revision
+      - snapshot_hash
+      - skus
+      - attributes
+      - policy_version
+      additionalProperties: false
+    TicketDetail:
+      type: object
+      properties:
+        ticket:
+          $ref: '#/components/schemas/ModerationTicket'
+        snapshot:
+          $ref: '#/components/schemas/ProductSnapshot'
+        published_revision: *id010
+        field_diff:
+          type: array
+          items:
+            type: object
+            properties:
+              path:
+                type: string
+              before: {}
+              after: {}
+            required: []
+            additionalProperties: false
+        checklist:
+          type: array
+          items:
+            type: object
+            properties:
+              code:
+                type: string
+              passed:
+                type: boolean
+              message:
+                type: string
+            required: []
+            additionalProperties: false
+        history:
+          type: array
+          items:
+            type: object
+            properties:
+              action:
+                type: string
+              actor_id: *id006
+              occurred_at: *id009
+            required: []
+            additionalProperties: false
+      required:
+      - ticket
+      - snapshot
+      - checklist
+      additionalProperties: false
+    ClaimResult:
+      type: object
+      properties:
+        ticket:
+          $ref: '#/components/schemas/ModerationTicket'
+        claim_token:
+          type: string
+        lease_expires_at: *id009
+        fencing_version: *id010
+      required:
+      - ticket
+      - claim_token
+      - lease_expires_at
+      - fencing_version
+      additionalProperties: false
+    FieldReport:
+      type: object
+      properties:
+        field_path:
+          type: string
+        sku_id: *id006
+        media_id: *id006
+        reason_code:
+          type: string
+        comment:
+          type: string
+      required:
+      - field_path
+      - reason_code
+      - comment
+      additionalProperties: false
+    DecisionInput:
+      type: object
+      properties:
+        action:
+          type: string
+          enum:
+          - APPROVE
+          - CHANGES_REQUESTED
+          - REJECT
+          - HARD_BLOCK
+          - ESCALATE
+        claim_token:
+          type: string
+        product_revision: *id010
+        snapshot_hash:
+          type: string
+        reason_codes:
+          type: array
+          items:
+            type: string
+        passed_rules:
+          type: array
+          maxItems: 30
+          description: Rule codes the moderator recorded as passed for an approval.
+          items:
+            type: string
+            pattern: ^[A-Z][A-Z0-9_]{0,63}$
+        field_reports:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldReport'
+        comment:
+          type: string
+          maxLength: 3000
+        policy_version: *id010
+      allOf:
+      - if:
+          properties:
+            action:
+              const: CHANGES_REQUESTED
+          required:
+          - action
+        then:
+          properties:
+            field_reports:
+              minItems: 1
+      - if:
+          properties:
+            action:
+              enum:
+              - REJECT
+              - HARD_BLOCK
+          required:
+          - action
+        then:
+          properties:
+            field_reports:
+              minItems: 1
+            comment:
+              minLength: 1
+      - if:
+          properties:
+            action:
+              const: APPROVE
+          required:
+          - action
+        then:
+          properties:
+            passed_rules:
+              minItems: 1
+      - if:
+          properties:
+            action:
+              enum:
+              - CHANGES_REQUESTED
+              - REJECT
+              - HARD_BLOCK
+              - ESCALATE
+          required:
+          - action
+        then:
+          properties:
+            passed_rules:
+              maxItems: 0
+      required:
+      - action
+      - claim_token
+      - product_revision
+      - snapshot_hash
+      - policy_version
+      additionalProperties: false
+    DecisionResult:
+      type: object
+      properties:
+        decision_id: *id006
+        operation_id: *id006
+        ticket_id: *id006
+        status:
+          type: string
+          enum:
+          - DECISION_PENDING
+          - DECIDED
+          - RECONCILIATION_REQUIRED
+      required:
+      - decision_id
+      - operation_id
+      - ticket_id
+      - status
+      additionalProperties: false
+    Category:
+      type: object
+      properties:
+        id: *id006
+        parent_id: *id006
+        code:
+          type: string
+        slug:
+          type: string
+        name:
+          type: string
+        labels:
+          type: object
+          maxProperties: 20
+          propertyNames:
+            pattern: '^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$'
+          additionalProperties:
+            type: string
+            minLength: 1
+            maxLength: 255
+        description:
+          type: string
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - REVIEW_PENDING
+          - ACTIVE
+          - HIDDEN
+          - ARCHIVED
+        sort_order:
+          type: integer
+        version: *id010
+        path:
+          type: string
+        seo_title:
+          type: string
+        image_media_id: *id006
+        updated_at: *id009
+      required:
+      - id
+      - code
+      - slug
+      - name
+      - labels
+      - status
+      - version
+      additionalProperties: false
+    CategoryInput:
+      type: object
+      properties:
+        parent_id: *id006
+        code:
+          type: string
+          maxLength: 80
+        slug:
+          type: string
+          maxLength: 160
+        name:
+          type: string
+          maxLength: 255
+        labels:
+          type: object
+          maxProperties: 20
+          propertyNames:
+            pattern: '^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$'
+          additionalProperties:
+            type: string
+            minLength: 1
+            maxLength: 255
+        description:
+          type: string
+          maxLength: 5000
+        sort_order:
+          type: integer
+        seo_title:
+          type: string
+          maxLength: 255
+        image_media_id: *id006
+      required:
+      - code
+      - slug
+      - name
+      additionalProperties: false
+    CategoryTree:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+        taxonomy_version: *id010
+      required:
+      - items
+      - taxonomy_version
+      additionalProperties: false
+    ImpactPreview:
+      type: object
+      properties:
+        change_id: *id006
+        affected_products:
+          type: integer
+          minimum: 0
+        affected_sellers:
+          type: integer
+          minimum: 0
+        affected_categories:
+          type: integer
+          minimum: 0
+        invalid_products:
+          type: integer
+          minimum: 0
+        requires_reapproval:
+          type: integer
+          minimum: 0
+        redirects:
+          type: array
+          items:
+            type: object
+            properties:
+              old_path:
+                type: string
+              new_path:
+                type: string
+            required: []
+            additionalProperties: false
+        warnings:
+          type: array
+          items:
+            type: string
+        hash:
+          type: string
+      required:
+      - change_id
+      - affected_products
+      - affected_sellers
+      - affected_categories
+      - invalid_products
+      - requires_reapproval
+      - warnings
+      - hash
+      additionalProperties: false
+    ImpactPreviewJob:
+      type: object
+      properties:
+        job_id: *id006
+        status:
+          type: string
+          enum: [QUEUED, RUNNING, COMPLETED, FAILED]
+        stage:
+          type: string
+          enum: [CATEGORIES, PRODUCTS, FINALIZE]
+        processed_categories:
+          type: integer
+          minimum: 0
+        total_categories:
+          type: integer
+          minimum: 0
+        processed_products:
+          type: integer
+          minimum: 0
+        total_products:
+          type: integer
+          minimum: 0
+        error_code:
+          type: [string, 'null']
+        result:
+          oneOf:
+          - $ref: '#/components/schemas/ImpactPreview'
+          - type: 'null'
+      required:
+      - job_id
+      - status
+      - stage
+      - processed_categories
+      - total_categories
+      - processed_products
+      - total_products
+      - result
+      additionalProperties: false
+    MoveCategoryInput:
+      type: object
+      properties:
+        new_parent_id: *id006
+        position:
+          type: integer
+          minimum: 0
+        impact_hash:
+          type: string
+      required:
+      - new_parent_id
+      - impact_hash
+      additionalProperties: false
+    AttributeDefinition:
+      type: object
+      properties:
+        id: *id006
+        code:
+          type: string
+        name:
+          type: string
+        data_type:
+          type: string
+          enum:
+          - string
+          - integer
+          - decimal
+          - boolean
+          - enum
+          - multi_enum
+          - date
+          - reference
+        unit:
+          type: string
+        required:
+          type: boolean
+        filterable:
+          type: boolean
+        searchable:
+          type: boolean
+        comparable:
+          type: boolean
+        variant_dimension:
+          type: boolean
+        pii:
+          type: boolean
+        constraints:
+          type: object
+          additionalProperties: true
+        version: *id010
+      required:
+      - id
+      - code
+      - name
+      - data_type
+      - version
+      additionalProperties: false
+    AttributeInput:
+      type: object
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        data_type:
+          type: string
+          enum:
+          - string
+          - integer
+          - decimal
+          - boolean
+          - enum
+          - multi_enum
+          - date
+          - reference
+        unit:
+          type: string
+        constraints:
+          type: object
+          additionalProperties: true
+        required:
+          type: boolean
+        filterable:
+          type: boolean
+        searchable:
+          type: boolean
+        comparable:
+          type: boolean
+        variant_dimension:
+          type: boolean
+        pii:
+          type: boolean
+      required:
+      - code
+      - name
+      - data_type
+      additionalProperties: false
+    CategoryRuleInput:
+      type: object
+      properties:
+        attribute_id: *id006
+        required:
+          type: boolean
+        filterable:
+          type: boolean
+        variant_dimension:
+          type: boolean
+        condition:
+          type: object
+          additionalProperties: true
+      required:
+      - attribute_id
+      - required
+      additionalProperties: false
+    Brand:
+      type: object
+      properties:
+        id: *id006
+        name:
+          type: string
+        aliases:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - VERIFIED
+          - RESTRICTED
+          - MERGED
+        evidence_ref:
+          type: [string, 'null']
+        merged_into_id:
+          type: [string, 'null']
+          format: uuid
+        version: *id010
+      required:
+      - id
+      - name
+      - status
+      - version
+      additionalProperties: false
+    Reason:
+      type: object
+      properties:
+        id: *id006
+        code:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        severity:
+          type: string
+          enum:
+          - INFO
+          - FIX_REQUIRED
+          - REJECT
+          - HARD_BLOCK
+        active:
+          type: boolean
+        policy_version: *id010
+      required:
+      - id
+      - code
+      - title
+      - severity
+      - active
+      additionalProperties: false
+    ReasonInput:
+      type: object
+      properties:
+        code:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        severity:
+          type: string
+          enum:
+          - INFO
+          - FIX_REQUIRED
+          - REJECT
+          - HARD_BLOCK
+        active:
+          type: boolean
+      required:
+      - code
+      - title
+      - severity
+      additionalProperties: false
+    SellerCase:
+      type: object
+      properties:
+        id: *id006
+        seller_id: *id006
+        status:
+          type: string
+          enum:
+          - UNDER_REVIEW
+          - ACTIVE
+          - RESTRICTED
+          - SUSPENDED
+          - TERMINATED
+        reason_code:
+          type: string
+        version: *id010
+        updated_at: *id009
+      required:
+      - id
+      - seller_id
+      - status
+      - version
+      additionalProperties: false
+    SellerRestrictionInput:
+      type: object
+      properties:
+        action:
+          type: string
+          enum:
+          - RESTRICT
+          - SUSPEND
+          - REINSTATE
+        reason_code:
+          type: string
+        comment:
+          type: string
+          maxLength: 3000
+        effective_until: *id009
+      required:
+      - action
+      - reason_code
+      additionalProperties: false
+    Complaint:
+      type: object
+      properties:
+        id: *id006
+        entity_type:
+          type: string
+          enum:
+          - PRODUCT
+          - SELLER
+          - MEDIA
+        entity_id: *id006
+        category:
+          type: string
+        status:
+          type: string
+          enum:
+          - NEW
+          - TRIAGED
+          - IN_REVIEW
+          - CLOSED
+          - ESCALATED
+        priority:
+          type: integer
+        assigned_to:
+          type: string
+          format: uuid
+          description: Assigned staff principal; omitted when the complaint is unassigned.
+        deadline_at:
+          type: string
+          format: date-time
+          description: Configured operational case SLA deadline; omitted for cases created before deadline tracking.
+        created_at: *id009
+      required:
+      - id
+      - entity_type
+      - entity_id
+      - status
+      additionalProperties: false
+    ComplaintAction:
+      type: object
+      properties:
+        action:
+          type: string
+          enum:
+          - ASSIGN
+          - REQUEST_INFO
+          - WARN
+          - TEMP_HOLD
+          - UNPUBLISH
+          - CLOSE
+          - ESCALATE
+        reason_code:
+          type: string
+        comment:
+          type: string
+          maxLength: 3000
+        assignee_staff_id:
+          type: string
+          format: uuid
+          description: Optional active staff member with complaint.read; omitted to assign the caller.
+      required:
+      - action
+      - reason_code
+      additionalProperties: false
+    CaseTimelineEntry:
+      type: object
+      properties:
+        event_id: *id006
+        action:
+          type: string
+        actor_id:
+          type: string
+          format: uuid
+        occurred_at: *id009
+        reason_code:
+          type: string
+        operation_id:
+          type: string
+          format: uuid
+        assigned_to:
+          type: string
+          format: uuid
+        outcome:
+          type: string
+      required:
+      - event_id
+      - action
+      - occurred_at
+      additionalProperties: false
+    ComplaintDetail:
+      allOf:
+      - $ref: '#/components/schemas/Complaint'
+      - type: object
+        properties:
+          timeline:
+            type: array
+            items:
+              $ref: '#/components/schemas/CaseTimelineEntry'
+        required:
+        - timeline
+    ComplaintEvidence:
+      type: object
+      properties:
+        complaint_id: *id006
+        evidence_refs:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            pattern: ^[A-Fa-f0-9]{64}$
+        scan_status:
+          type: string
+          const: NOT_CONFIGURED
+          description: Evidence must not be treated as scanned or safe.
+      required:
+      - complaint_id
+      - evidence_refs
+      - scan_status
+      additionalProperties: false
+    Appeal:
+      type: object
+      properties:
+        id: *id006
+        original_decision_id: *id006
+        reviewer_staff_id: *id006
+        status:
+          type: string
+          enum:
+          - SUBMITTED
+          - TRIAGED
+          - IN_REVIEW
+          - UPHELD
+          - OVERTURNED
+          - PARTIALLY_UPHELD
+          - CLOSED
+        created_at: *id009
+      required:
+      - id
+      - original_decision_id
+      - status
+      additionalProperties: false
+    AppealDetail:
+      allOf:
+      - $ref: '#/components/schemas/Appeal'
+      - type: object
+        properties:
+          original_decision:
+            $ref: '#/components/schemas/OriginalDecision'
+          timeline:
+            type: array
+            items:
+              $ref: '#/components/schemas/CaseTimelineEntry'
+        required:
+        - original_decision
+        - timeline
+    OriginalDecision:
+      type: object
+      properties:
+        decision_id: *id006
+        ticket_id: *id006
+        actor_id: *id006
+        action:
+          type: string
+        product_revision:
+          type: integer
+          minimum: 1
+        snapshot_hash:
+          type: string
+        policy_version:
+          type: integer
+          minimum: 1
+        reason_codes:
+          type: array
+          items:
+            type: string
+        passed_rules:
+          type: array
+          items:
+            type: string
+        decided_at: *id009
+      required:
+      - decision_id
+      - ticket_id
+      - actor_id
+      - action
+      - decided_at
+      additionalProperties: false
+    AppealEvidence:
+      type: object
+      properties:
+        appeal_id: *id006
+        evidence_refs:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            pattern: ^[A-Fa-f0-9]{64}$
+        scan_status:
+          type: string
+          const: NOT_CONFIGURED
+          description: Evidence must not be treated as scanned or safe.
+      required:
+      - appeal_id
+      - evidence_refs
+      - scan_status
+      additionalProperties: false
+    AppealAction:
+      type: object
+      properties:
+        outcome:
+          type: string
+          enum:
+          - UPHELD
+          - OVERTURNED
+          - PARTIALLY_UPHELD
+        reason_code:
+          type: string
+        comment:
+          type: string
+          maxLength: 3000
+      required:
+      - outcome
+      - reason_code
+      - comment
+      additionalProperties: false
+    AuditEvent:
+      type: object
+      properties:
+        id: *id006
+        action:
+          type: string
+        actor_id: *id006
+        entity_type:
+          type: string
+        entity_id: *id006
+        created_at: *id009
+        request_id:
+          type: string
+        redacted_details:
+          type: object
+          additionalProperties: true
+      required:
+      - id
+      - action
+      - entity_type
+      - entity_id
+      - created_at
+      additionalProperties: false
+    PermissionChange:
+      type: object
+      properties:
+        staff_id: *id006
+        permission:
+          type: string
+        scope:
+          type: string
+        expires_at: *id009
+        reason_code:
+          type: string
+      required:
+      - staff_id
+      - permission
+      - reason_code
+      additionalProperties: false
+    PermissionGrantRevocation:
+      type: object
+      properties:
+        reason_code:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: ^[A-Z][A-Z0-9_]*$
+      required:
+      - reason_code
+      additionalProperties: false
+    BulkInput:
+      type: object
+      properties:
+        target_ids:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: *id006
+        action:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: ^[A-Z][A-Z0-9_]*$
+        reason_code:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: ^[A-Z][A-Z0-9_]*$
+        expected_versions:
+          type: object
+          propertyNames:
+            format: uuid
+          additionalProperties: *id010
+          description: When supplied, must contain exactly one version for every target ID.
+      required:
+      - target_ids
+      - action
+      - reason_code
+      additionalProperties: false
+    DashboardMetrics:
+      type: object
+      properties:
+        as_of: *id009
+        provenance:
+          type: object
+          additionalProperties:
+            type: string
+        workload_by_moderator:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModeratorWorkload'
+        pending:
+          type: integer
+          minimum: 0
+        in_review:
+          type: integer
+          minimum: 0
+        overdue:
+          type: integer
+          minimum: 0
+        complaints_pending:
+          type: integer
+          minimum: 0
+        complaints_in_review:
+          type: integer
+          minimum: 0
+        complaints_overdue:
+          type: integer
+          minimum: 0
+        average_resolution_seconds:
+          anyOf:
+          - type: number
+            minimum: 0
+          - type: 'null'
+          description: All-time mean from decision operation creation until an applied or rejected downstream receipt; escalations are excluded.
+        resolved_decision_count:
+          type: integer
+          minimum: 0
+        oldest_pending_seconds:
+          type: integer
+          minimum: 0
+        oldest_complaint_pending_seconds:
+          type: integer
+          minimum: 0
+        outbox_pending:
+          type: integer
+          minimum: 0
+        outbox_dead:
+          type: integer
+          minimum: 0
+      required:
+      - as_of
+      - provenance
+      - workload_by_moderator
+      - pending
+      - in_review
+      - overdue
+      - complaints_pending
+      - complaints_in_review
+      - complaints_overdue
+      - resolved_decision_count
+      - oldest_complaint_pending_seconds
+      additionalProperties: false
+    ModeratorWorkload:
+      type: object
+      properties:
+        staff_id: *id006
+        in_review:
+          type: integer
+          minimum: 0
+      required:
+      - staff_id
+      - in_review
+      additionalProperties: false
+    CategoryPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+        page:
+          $ref: '#/components/schemas/Page'
+      required:
+      - items
+      - page
+      additionalProperties: false
+    AttributePage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttributeDefinition'
+        page:
+          $ref: '#/components/schemas/Page'
+      required:
+      - items
+      - page
+      additionalProperties: false
+    BrandPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Brand'
+        page:
+          $ref: '#/components/schemas/Page'
+      required:
+      - items
+      - page
+      additionalProperties: false
+    ReasonPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Reason'
+        page:
+          $ref: '#/components/schemas/Page'
+      required:
+      - items
+      - page
+      additionalProperties: false
+    SellerPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SellerCase'
+        page:
+          $ref: '#/components/schemas/Page'
+      required:
+      - items
+      - page
+      additionalProperties: false
+    ComplaintPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Complaint'
+        page:
+          $ref: '#/components/schemas/Page'
+      required:
+      - items
+      - page
+      additionalProperties: false
+    AppealPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Appeal'
+        page:
+          $ref: '#/components/schemas/Page'
+      required:
+      - items
+      - page
+      additionalProperties: false
+    AuditPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditEvent'
+        page:
+          $ref: '#/components/schemas/Page'
+      required:
+      - items
+      - page
+      additionalProperties: false
+    OperationPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Operation'
+        page:
+          $ref: '#/components/schemas/Page'
+      required:
+      - items
+      - page
+      additionalProperties: false
+    OperationReviewPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OperationReview'
+        page:
+          $ref: '#/components/schemas/Page'
+      required:
+      - items
+      - page
+      additionalProperties: false
+    OperationReview:
+      type: object
+      properties:
+        operation_id: *id006
+        request_id:
+          type: string
+        action:
+          type: string
+        status:
+          type: string
+          enum: [QUEUED, RUNNING, WAITING_APPROVAL, APPLIED, PARTIAL, FAILED, CANCELLED]
+        entity_type:
+          type: string
+        resource_id: *id006
+        requested_by_staff_id: *id006
+        approved_by_staff_id: *id006
+        cancelled_by_staff_id: *id006
+        reason_code:
+          type: string
+        created_at: *id009
+        updated_at: *id009
+        summary:
+          type: object
+          description: Action-specific allowlisted fields only; comments, free-form descriptions, raw payloads and secrets are omitted.
+          additionalProperties:
+            oneOf:
+            - type: string
+            - type: integer
+            - type: boolean
+            - type: array
+              items:
+                type: string
+        approval_supported:
+          type: boolean
+      required:
+      - operation_id
+      - request_id
+      - action
+      - status
+      - entity_type
+      - resource_id
+      - requested_by_staff_id
+      - reason_code
+      - created_at
+      - updated_at
+      - summary
+      - approval_supported
+      additionalProperties: false
+    LeaseInput:
+      type: object
+      properties:
+        claim_token:
+          type: string
+        fencing_version: *id010
+      required:
+      - claim_token
+      - fencing_version
+      additionalProperties: false
+    ReasonAction:
+      type: object
+      properties:
+        reason_code:
+          type: string
+        comment:
+          type: string
+          maxLength: 3000
+      required:
+      - reason_code
+      additionalProperties: false
+    HoldInput:
+      type: object
+      properties:
+        reason_code:
+          type: string
+        expires_at: *id009
+        comment:
+          type: string
+          maxLength: 3000
+      required:
+      - reason_code
+      - expires_at
+      additionalProperties: false
+    PublishInput:
+      type: object
+      properties:
+        impact_hash:
+          type: string
+        approved_by: *id006
+        reason_code:
+          type: string
+      required:
+      - impact_hash
+      - reason_code
+      additionalProperties: false
+    BrandInput:
+      type: object
+      properties:
+        name:
+          type: string
+        aliases:
+          type: array
+          items:
+            type: string
+        evidence_ref:
+          type: string
+      required:
+      - name
+      additionalProperties: false
+    BrandMerge:
+      type: object
+      properties:
+        target_brand_id: *id006
+        impact_hash:
+          type: string
+        reason_code:
+          type: string
+      required:
+      - target_brand_id
+      - impact_hash
+      - reason_code
+      additionalProperties: false
+    CategoryRuleSet:
+      type: object
+      properties:
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategoryRuleInput'
+        schema_version: *id010
+        impact_hash:
+          type: string
+          pattern: ^[0-9a-f]{64}$
+      required:
+      - rules
+      - schema_version
+      - impact_hash
+      additionalProperties: false
+    CategoryRulePage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategoryRuleInput'
+        schema_version:
+          type: integer
+          minimum: 0
+      required:
+      - items
+      - schema_version
+      additionalProperties: false
+    AttributeValues:
+      type: object
+      properties:
+        values:
+          type: object
+          additionalProperties: true
+      required:
+      - values
+      additionalProperties: false
+    SchemaValidation:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field_path:
+                type: string
+              code:
+                type: string
+              message:
+                type: string
+            required: []
+            additionalProperties: false
+      required:
+      - valid
+      - errors
+      additionalProperties: false
+    ProductOverview:
+      type: object
+      properties:
+        id: *id006
+        seller_id: *id006
+        published_revision: *id010
+        current_revision: *id010
+        visible:
+          type: boolean
+        visibility_reasons:
+          type: array
+          items:
+            type: string
+      required:
+      - id
+      - seller_id
+      - visible
+      additionalProperties: false
+    ProductPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductOverview'
+        page:
+          $ref: '#/components/schemas/Page'
+      required:
+      - items
+      - page
+      additionalProperties: false
+    OutboxEvent:
+      type: object
+      properties:
+        id: *id006
+        event_type:
+          type: string
+        status:
+          type: string
+        attempts:
+          type: integer
+          minimum: 0
+        last_error:
+          type: string
+        created_at: *id009
+      required:
+      - id
+      - event_type
+      - status
+      additionalProperties: false
+    OutboxPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OutboxEvent'
+        page:
+          $ref: '#/components/schemas/Page'
+      required:
+      - items
+      - page
+      additionalProperties: false
+    AuditExportInput:
+      type: object
+      properties:
+        start_at: *id009
+        end_at: *id009
+        reason_code:
+          type: string
+      required:
+      - start_at
+      - end_at
+      - reason_code
+      additionalProperties: false
+    StaffProfile:
+      type: object
+      properties:
+        staff_id: *id006
+        oidc_issuer:
+          type: string
+        display_name:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+        permissions:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+        version: *id010
+        grants:
+          type: array
+          items:
+            $ref: '#/components/schemas/StaffGrant'
+      required:
+      - staff_id
+      - roles
+      - permissions
+      - status
+      - version
+      - grants
+      additionalProperties: false
+    StaffGrant:
+      type: object
+      properties:
+        grant_id: *id006
+        permission:
+          type: string
+        role:
+          type: string
+        scope:
+          type: string
+        expires_at: *id009
+        granted_by: *id006
+      required:
+      - grant_id
+      - scope
+      additionalProperties: false
+    StaffPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/StaffProfile'
+        page:
+          $ref: '#/components/schemas/Page'
+      required:
+      - items
+      - page
+      additionalProperties: false
+    Policy:
+      type: object
+      properties:
+        id: *id006
+        code:
+          type: string
+        version: *id010
+        status:
+          type: string
+        effective_at: *id009
+        content_hash:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+      required:
+      - id
+      - code
+      - version
+      - status
+      - content_hash
+      additionalProperties: false
+    PolicyPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Policy'
+        page:
+          $ref: '#/components/schemas/Page'
+      required:
+      - items
+      - page
+      additionalProperties: false
+    PolicyInput:
+      type: object
+      properties:
+        code:
+          type: string
+        rules:
+          type: object
+          additionalProperties: true
+        reason_code:
+          type: string
+      required:
+      - code
+      - rules
+      - reason_code
+      additionalProperties: false
+    ImpactPreviewInput:
+      type: object
+      additionalProperties: false
+      properties:
+        change_type:
+          type: string
+          enum:
+          - MOVE
+          - ARCHIVE
+          - SCHEMA_UPDATE
+        new_parent_id:
+          type: string
+          format: uuid
+        proposed_rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategoryRuleInput'
+      required:
+      - change_type

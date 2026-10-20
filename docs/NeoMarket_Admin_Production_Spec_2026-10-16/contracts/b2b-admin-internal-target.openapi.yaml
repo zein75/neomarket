@@ -1,0 +1,896 @@
+openapi: 3.1.0
+info:
+  title: NeoMarket B2B internal target integration for Admin
+  version: 1.0.0-draft
+  description: PROPOSED interface. Existing routes must be inventoried, not assumed to match. No direct database sharing;
+    signed service-to-service requests. Idempotent and revision-bound.
+paths:
+  /internal/v1/taxonomy/snapshot:
+    get:
+      operationId: get__internal_v1_taxonomy_snapshot
+      security:
+      - serviceJWT: []
+      x-allowed-service: service:admin
+      parameters: []
+      responses:
+        '200':
+          description: Service result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxonomySnapshot'
+        '401':
+          description: Invalid service token
+        '409':
+          description: Idempotency/version conflict
+  /internal/v1/taxonomy/categories/{category_id}/impact-preview:
+    post:
+      operationId: post__internal_v1_taxonomy_categories_category_id_impact_preview
+      security:
+      - serviceJWT: []
+      x-allowed-service: service:admin
+      parameters:
+      - name: category_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaxonomyImpactPreviewRequest'
+      responses:
+        '200':
+          description: Durable, version-bound impact preview; valid for 15 minutes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxonomyImpactPreview'
+        '202':
+          description: Large impact preview accepted as a durable resumable job
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxonomyImpactJob'
+        '401':
+          description: Invalid service token
+        '409':
+          description: Idempotency conflict, cycle, or expired preview
+        '412':
+          description: Category version changed
+        '503':
+          description: Impact calculation unavailable or schema migration policy is unconfigured
+  /internal/v1/taxonomy/impact-preview-jobs/{job_id}:
+    get:
+      operationId: get__internal_v1_taxonomy_impact_preview_jobs_job_id
+      security:
+      - serviceJWT: []
+      x-allowed-service: service:admin
+      parameters:
+      - name: job_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Current progress or completed impact preview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxonomyImpactJob'
+        '401': {description: Invalid service token}
+        '404': {description: Impact preview job not found}
+        '503': {description: B2B unavailable}
+  /internal/v1/taxonomy/brands/{brand_id}/merge-preview:
+    post:
+      operationId: post__internal_v1_taxonomy_brands_brand_id_merge_preview
+      security:
+      - serviceJWT: []
+      x-allowed-service: service:admin
+      parameters:
+      - name: brand_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: {type: string, format: uuid}
+      - name: If-Match
+        in: header
+        required: true
+        schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                target_brand_id: {type: string, format: uuid}
+              required: [target_brand_id]
+      responses:
+        '200':
+          description: Version-bound brand merge preview, valid for 15 minutes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrandMergePreview'
+        '401': {description: Invalid service token}
+        '409': {description: Idempotency conflict or invalid merge target}
+        '412': {description: Brand version changed}
+  /internal/v1/taxonomy/commands:
+    post:
+      operationId: post__internal_v1_taxonomy_commands
+      security:
+      - serviceJWT: []
+      x-allowed-service: service:admin
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Command applied, rejected, or replayed with its durable receipt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandReceipt'
+        '401':
+          description: Invalid service token
+        '409':
+          description: Idempotency key was reused with a different command payload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceCommand'
+  /internal/v1/taxonomy/commands/{command_id}:
+    get:
+      operationId: get__internal_v1_taxonomy_commands_command_id
+      security:
+      - serviceJWT: []
+      x-allowed-service: service:admin
+      parameters:
+      - name: command_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Service result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandReceipt'
+        '401':
+          description: Invalid service token
+        '409':
+          description: Idempotency/version conflict
+  /internal/v1/moderation/decisions:
+    post:
+      operationId: post__internal_v1_moderation_decisions
+      security:
+      - serviceJWT: []
+      x-allowed-service: service:admin
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+      responses:
+        '202':
+          description: Service result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandReceipt'
+        '401':
+          description: Invalid service token
+        '409':
+          description: Idempotency/version conflict
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModerationDecision'
+  /internal/v1/products:
+    get:
+      operationId: get__internal_v1_products
+      security:
+      - serviceJWT: []
+      x-allowed-service: service:admin
+      parameters:
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+      - name: search
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 200
+      responses:
+        '200':
+          description: Admin product registry page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminProductPage'
+        '401':
+          description: Invalid service token
+        '422':
+          description: Invalid pagination cursor or query
+  /internal/v1/products/{product_id}/publication:
+    get:
+      operationId: get__internal_v1_products_product_id_publication
+      security:
+      - serviceJWT: []
+      x-allowed-service: service:admin
+      parameters:
+      - name: product_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Service result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicationStatus'
+        '401':
+          description: Invalid service token
+        '409':
+          description: Idempotency/version conflict
+  /internal/v1/sellers/{seller_id}/restrictions:
+    post:
+      operationId: post__internal_v1_sellers_seller_id_restrictions
+      security:
+      - serviceJWT: []
+      x-allowed-service: service:admin
+      parameters:
+      - name: seller_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+      responses:
+        '202':
+          description: Service result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandReceipt'
+        '401':
+          description: Invalid service token
+        '409':
+          description: Idempotency/version conflict
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceCommand'
+  /internal/v1/products/{product_id}/safety-hold:
+    post:
+      operationId: post__internal_v1_products_product_id_safety_hold
+      security:
+      - serviceJWT: []
+      x-allowed-service: service:admin
+      parameters:
+      - name: product_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: If-Match
+        in: header
+        required: true
+        schema:
+          type: string
+      responses:
+        '202':
+          description: Service result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandReceipt'
+        '401':
+          description: Invalid service token
+        '409':
+          description: Idempotency/version conflict
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceCommand'
+  /internal/v1/products/{product_id}/revisions/{revision}:
+    get:
+      operationId: get__internal_v1_products_product_id_revisions_revision_
+      security:
+      - serviceJWT: []
+      x-allowed-service: service:admin
+      parameters:
+      - name: product_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: revision
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      responses:
+        '200':
+          description: Service result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductRevisionSnapshot'
+        '401':
+          description: Invalid service token
+        '409':
+          description: Idempotency/version conflict
+components:
+  schemas:
+    ServiceCommand:
+      type: object
+      additionalProperties: false
+      properties:
+        command_id:
+          type: string
+          format: uuid
+        command_type:
+          type: string
+          enum:
+          - CATEGORY_CREATE
+          - CATEGORY_UPDATE
+          - CATEGORY_MOVE
+          - CATEGORY_ARCHIVE
+          - CATEGORY_PUBLISH
+          - ATTRIBUTE_CREATE
+          - ATTRIBUTE_UPDATE
+          - ATTRIBUTE_RULES_PUBLISH
+          - BRAND_CREATE
+          - BRAND_UPDATE
+          - BRAND_VERIFY
+          - BRAND_MERGE
+          - SELLER_RESTRICTION
+          - PRODUCT_SAFETY_HOLD
+        aggregate_id:
+          type: string
+          format: uuid
+        expected_version:
+          type: integer
+          minimum: 1
+        impact_hash:
+          type: string
+        payload:
+          type: object
+          additionalProperties: true
+        requested_by_staff_id:
+          type: string
+          format: uuid
+        approved_by_staff_id:
+          type: string
+          format: uuid
+        reason_code:
+          type: string
+        occurred_at:
+          type: string
+          format: date-time
+      required:
+      - command_id
+      - command_type
+      - expected_version
+      - payload
+      - requested_by_staff_id
+      - approved_by_staff_id
+      - reason_code
+      - occurred_at
+    CommandReceipt:
+      type: object
+      additionalProperties: false
+      properties:
+        command_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - QUEUED
+          - APPLIED
+          - CONFLICT
+          - REJECTED
+        aggregate_version:
+          type: integer
+          minimum: 0
+        message:
+          type: string
+        result:
+          type: object
+          additionalProperties: true
+      required:
+      - command_id
+      - status
+    ModerationDecision:
+      type: object
+      additionalProperties: false
+      properties:
+        decision_id:
+          type: string
+          format: uuid
+        product_id:
+          type: string
+          format: uuid
+        seller_id:
+          type: string
+          format: uuid
+        submitted_revision:
+          type: integer
+          minimum: 1
+        snapshot_hash:
+          type: string
+        policy_version:
+          type: integer
+          minimum: 1
+        action:
+          type: string
+          enum:
+          - APPROVE
+          - CHANGES_REQUESTED
+          - REJECT
+          - HARD_BLOCK
+        reason_codes:
+          type: array
+          items:
+            type: string
+        field_reports:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        correlation_id:
+          type: string
+          format: uuid
+      required:
+      - decision_id
+      - product_id
+      - submitted_revision
+      - snapshot_hash
+      - policy_version
+      - action
+      - correlation_id
+    ProductRevisionSnapshot:
+      type: object
+      additionalProperties: false
+      properties:
+        product_id:
+          type: string
+          format: uuid
+        seller_id:
+          type: string
+          format: uuid
+        revision:
+          type: integer
+          minimum: 1
+        snapshot_hash:
+          type: string
+        content:
+          type: object
+          additionalProperties: true
+        media_refs:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+      required:
+      - product_id
+      - seller_id
+      - revision
+      - snapshot_hash
+      - content
+      - media_refs
+    AdminProductSummary:
+      type: object
+      additionalProperties: false
+      properties:
+        product_id:
+          type: string
+          format: uuid
+        seller_id:
+          type: string
+          format: uuid
+        current_revision:
+          type: integer
+          minimum: 1
+        published_revision:
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+        visible:
+          type: boolean
+        visibility_reasons:
+          type: array
+          items:
+            type: string
+      required:
+      - product_id
+      - seller_id
+      - current_revision
+      - visible
+      - visibility_reasons
+    AdminProductPage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminProductSummary'
+        page:
+          type: object
+          additionalProperties: false
+          properties:
+            has_more:
+              type: boolean
+            next_cursor:
+              type:
+              - string
+              - 'null'
+          required:
+          - has_more
+          - next_cursor
+      required:
+      - items
+      - page
+    PublicationStatus:
+      type: object
+      additionalProperties: false
+      properties:
+        product_id:
+          type: string
+          format: uuid
+        current_revision:
+          type: integer
+          minimum: 1
+        published_revision:
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+        visible:
+          type: boolean
+        visibility_reasons:
+          type: array
+          items:
+            type: string
+        updated_at:
+          type: string
+          format: date-time
+      required:
+      - product_id
+      - current_revision
+      - visible
+      - visibility_reasons
+    TaxonomySnapshot:
+      type: object
+      additionalProperties: false
+      properties:
+        version:
+          type: integer
+          minimum: 1
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminTaxonomyCategory'
+        attributes:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminTaxonomyAttribute'
+        brands:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminBrand'
+        as_of:
+          type: string
+          format: date-time
+      required:
+      - version
+      - categories
+      - attributes
+      - brands
+      - as_of
+    AdminBrand:
+      type: object
+      additionalProperties: false
+      properties:
+        id: {type: string, format: uuid}
+        name: {type: string, maxLength: 255}
+        aliases:
+          type: array
+          items: {type: string, maxLength: 255}
+        status: {type: string, enum: [DRAFT, VERIFIED, RESTRICTED, MERGED]}
+        evidence_ref: {type: [string, 'null'], maxLength: 2048}
+        merged_into_id: {type: [string, 'null'], format: uuid}
+        version: {type: integer, minimum: 1}
+      required: [id, name, aliases, status, version]
+    AdminTaxonomyAttribute:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+        data_type:
+          type: string
+          enum: [string, integer, decimal, boolean, enum, multi_enum, date, reference]
+        unit:
+          type: [string, 'null']
+        required:
+          type: boolean
+        filterable:
+          type: boolean
+        searchable:
+          type: boolean
+        comparable:
+          type: boolean
+        variant_dimension:
+          type: boolean
+        pii:
+          type: boolean
+        constraints:
+          type: object
+          additionalProperties: true
+        version:
+          type: integer
+          minimum: 1
+      required: [id, code, name, data_type, required, filterable, searchable, comparable, variant_dimension, pii, constraints, version]
+    AdminTaxonomyCategory:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        parent_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        code:
+          type: string
+        slug:
+          type: string
+        name:
+          type: string
+        labels:
+          type: object
+          maxProperties: 20
+          propertyNames:
+            pattern: '^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$'
+          additionalProperties:
+            type: string
+            minLength: 1
+            maxLength: 255
+        description:
+          type:
+          - string
+          - 'null'
+        status:
+          type: string
+          enum: [DRAFT, REVIEW_PENDING, ACTIVE, HIDDEN, ARCHIVED]
+        sort_order:
+          type:
+          - integer
+          - 'null'
+        version:
+          type: integer
+          minimum: 1
+        path:
+          type:
+          - string
+          - 'null'
+        seo_title:
+          type:
+          - string
+          - 'null'
+        image_media_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        schema_version:
+          type: integer
+          minimum: 0
+        attribute_rules:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        updated_at:
+          type: string
+          format: date-time
+      required:
+      - id
+      - code
+      - slug
+      - name
+      - labels
+      - status
+      - version
+      - schema_version
+      - attribute_rules
+      - updated_at
+    BrandMergePreview:
+      type: object
+      additionalProperties: false
+      properties:
+        change_id: {type: string, format: uuid}
+        source_brand_id: {type: string, format: uuid}
+        target_brand_id: {type: string, format: uuid}
+        affected_products: {type: integer, minimum: 0}
+        hash: {type: string, pattern: '^[0-9a-f]{64}$'}
+        expires_at: {type: string, format: date-time}
+      required: [change_id, source_brand_id, target_brand_id, affected_products, hash, expires_at]
+    TaxonomyImpactPreviewRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        change_type:
+          type: string
+          enum: [MOVE, ARCHIVE, SCHEMA_UPDATE]
+        new_parent_id:
+          type: string
+          format: uuid
+        proposed_rules:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              attribute_id: {type: string, format: uuid}
+              required: {type: boolean}
+              filterable: {type: [boolean, 'null']}
+              variant_dimension: {type: [boolean, 'null']}
+              condition: {type: [object, 'null'], additionalProperties: true}
+            required: [attribute_id, required]
+      required: [change_type]
+    TaxonomyImpactPreview:
+      type: object
+      additionalProperties: false
+      properties:
+        change_id: {type: string, format: uuid}
+        affected_products: {type: integer, minimum: 0}
+        affected_sellers: {type: integer, minimum: 0}
+        affected_categories: {type: integer, minimum: 0}
+        invalid_products: {type: integer, minimum: 0}
+        requires_reapproval: {type: integer, minimum: 0}
+        redirects:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              old_path: {type: string}
+              new_path: {type: string}
+            required: [old_path, new_path]
+        warnings:
+          type: array
+          items: {type: string}
+        hash:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+      required: [change_id, affected_products, affected_sellers, affected_categories, invalid_products, requires_reapproval, redirects, warnings, hash]
+    TaxonomyImpactJob:
+      type: object
+      additionalProperties: false
+      properties:
+        job_id: {type: string, format: uuid}
+        status: {type: string, enum: [QUEUED, RUNNING, COMPLETED, FAILED]}
+        stage: {type: string, enum: [CATEGORIES, PRODUCTS, FINALIZE]}
+        processed_categories: {type: integer, minimum: 0}
+        total_categories: {type: integer, minimum: 0}
+        processed_products: {type: integer, minimum: 0}
+        total_products: {type: integer, minimum: 0}
+        error_code: {type: [string, 'null']}
+        result:
+          oneOf:
+          - $ref: '#/components/schemas/TaxonomyImpactPreview'
+          - type: 'null'
+      required: [job_id, status, stage, processed_categories, total_categories, processed_products, total_products, result]
+    Problem:
+      type: object
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        request_id:
+          type: string
+      required:
+      - code
+      - message
+  securitySchemes:
+    serviceJWT:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Signed service principal with aud neomarket-b2b and scoped commands

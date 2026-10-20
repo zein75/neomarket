@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><title>NeoMarket Console</title><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Space+Grotesk:wght@500;600;700&amp;family=Space+Mono:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "surface-bright": "#fcf9f8", "tertiary-fixed-dim": "#ffb4a5", "on-secondary-fixed-variant": "#3b4d00", "tertiary-fixed": "#ffdad3", "on-tertiary-fixed-variant": "#881f0e", "surface-tint": "#2452d6", "surface-container-high": "#eae7e7", "primary-fixed": "#dce1ff", "on-tertiary-container": "#ffd3ca", "tertiary-container": "#ac3a25", "secondary-fixed-dim": "#aed441", "secondary-fixed": "#c9f15b", "on-error-container": "#93000a", "error": "#ba1a1a", "primary-container": "#2855d9", "on-primary-fixed-variant": "#0039b3", "surface-container": "#f0eded", "on-surface-variant": "#434654", "inverse-on-surface": "#f3f0ef", "on-tertiary": "#ffffff", "on-secondary-fixed": "#161f00", "on-background": "#1c1b1b", "inverse-primary": "#b7c4ff", "error-container": "#ffdad6", "on-surface": "#1c1b1b", "surface": "#fcf9f8", "primary-fixed-dim": "#b7c4ff", "surface-container-lowest": "#ffffff", "inverse-surface": "#313030", "primary": "#003cba", "secondary-container": "#c6ee59", "on-tertiary-fixed": "#3f0400", "surface-variant": "#e5e2e1", "on-secondary": "#ffffff", "surface-container-low": "#f6f3f2", "surface-dim": "#dcd9d9", "tertiary": "#8b2210", "on-primary-fixed": "#001551", "secondary": "#4f6600", "on-secondary-container": "#536b00", "on-primary": "#ffffff", "outline": "#747686", "background": "#fcf9f8", "surface-container-highest": "#e5e2e1", "on-primary-container": "#d5dbff", "outline-variant": "#c4c5d7", "on-error": "#ffffff" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "gutter": "1rem", "gutter-desktop": "1.5rem", "margin": "1rem", "space-xs": "0.25rem", "space-sm": "0.5rem", "space-xl": "2.5rem", "margin-desktop": "2rem", "space-lg": "1.5rem", "space-md": "1rem" }, "fontFamily": { "body-md": ["Manrope"], "tag-metadata": ["Space Mono"], "headline-lg": ["Space Grotesk"], "body-lg": ["Manrope"], "headline-lg-mobile": ["Space Grotesk"], "body-sm": ["Manrope"], "headline-md": ["Space Grotesk"], "headline-sm": ["Space Grotesk"], "display-hero-mobile": ["Space Grotesk"], "display-hero": ["Space Grotesk"], "title-md": ["Manrope"], "code-technical": ["Space Mono"] }, "fontSize": { "body-md": ["14px", { "lineHeight": "22px", "letterSpacing": "0em", "fontWeight": "400" }], "tag-metadata": ["11px", { "lineHeight": "14px", "letterSpacing": "0.06em", "fontWeight": "700" }], "headline-lg": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "body-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "500" }], "headline-lg-mobile": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "body-sm": ["12px", { "lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "500" }], "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "headline-sm": ["20px", { "lineHeight": "28px", "letterSpacing": "0em", "fontWeight": "600" }], "display-hero-mobile": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "display-hero": ["56px", { "lineHeight": "64px", "letterSpacing": "-0.03em", "fontWeight": "700" }], "title-md": ["18px", { "lineHeight": "26px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "code-technical": ["13px", { "lineHeight": "18px", "letterSpacing": "0.04em", "fontWeight": "700" }] } } } };</script></head><body class="bg-background font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-72 bg-surface-container-low border-r-2 border-on-surface z-50 flex flex-col justify-between"><div class="flex flex-col"><div class="h-20 px-space-md border-b-2 border-on-surface flex items-center justify-between bg-surface"><div class="flex items-center gap-space-sm"><img alt="NeoMarket Brutalist Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1VNL1KGh-b90nf4Z6UBNljz9IHaroSN96Pe1-4PGW2pLilD8jYT3Ij-R6R3lSZnTF4qGvheFO7hg191FTg-zJfNBzpp6bydlJ8t_eyZdSeXQHWbFz9Amx8ZaDI5Hg7FHG1LQ1MJJwW6UnWrojDnlASpuGcBLdcyOK9pr2svfEXCgsf-U7cpj0JvmEgaZwqQpEkfOHgRcku3LxlsQ6ST9LdxkyqlUgXgfIKPIJYNdjpJyzWVOhdXVb3y_d8"/><span class="font-headline-md text-headline-sm font-bold uppercase tracking-tight text-on-surface">NEO_CORE</span></div><span class="font-tag-metadata text-[10px] bg-secondary-container text-on-secondary-container px-1 border border-on-surface font-bold">PROD</span></div><div class="p-space-md"><div class="p-space-xs border border-on-surface bg-surface-container-high mb-space-md flex items-center justify-between"><div class="flex flex-col"><span class="font-tag-metadata text-[10px] text-outline uppercase font-bold">ACTIVE UNIT</span><span class="font-code-technical text-code-technical text-on-surface font-bold uppercase truncate max-w-[170px]">APEX INDUSTRIAL HQ</span></div><span class="material-symbols-outlined text-[18px] text-on-surface-variant">unfold_more</span></div><div class="font-tag-metadata text-tag-metadata text-outline uppercase tracking-wider mb-space-xs font-bold">OPERATIONS_ROUTING</div><nav class="flex flex-col gap-1" data-active-classes="bg-primary-container text-on-primary-container font-bold"><a class="flex items-center justify-between px-3 py-2 border border-transparent hover:border-on-surface hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-all" data-path="seller-hub" href="#"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">storefront</span><span class="font-headline-sm text-body-sm uppercase font-semibold">Seller Hub</span></div><span class="font-tag-metadata text-[10px] text-outline">[01]</span></a><a aria-current="page" class="flex items-center justify-between px-3 py-2 border border-transparent hover:border-on-surface transition-all bg-primary-container text-on-primary-container font-bold" data-path="admin-console" href="#"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">terminal</span><span class="font-headline-sm text-body-sm uppercase font-semibold">Admin Console</span></div><span class="font-tag-metadata text-[10px] text-outline">[02]</span></a><a class="flex items-center justify-between px-3 py-2 border border-transparent hover:border-on-surface hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-all" data-path="b2b-procurement" href="#"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">inventory_2</span><span class="font-headline-sm text-body-sm uppercase font-semibold">Procurement</span></div><span class="font-tag-metadata text-[10px] bg-tertiary-container text-on-tertiary-container px-1 font-bold">4 REQ</span></a><a class="flex items-center justify-between px-3 py-2 border border-transparent hover:border-on-surface hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-all" data-path="marketplace-catalog" href="#"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">open_in_new</span><span class="font-headline-sm text-body-sm uppercase font-semibold">Public Market</span></div><span class="font-tag-metadata text-[10px] text-outline">EXT</span></a></nav></div></div><div class="p-space-md border-t-2 border-on-surface bg-surface-container"><div class="flex items-center justify-between mb-space-xs font-tag-metadata text-[10px] font-bold text-outline uppercase"><span>API GATEWAY</span><span class="text-secondary font-bold">99.98% SLA</span></div><div class="w-full bg-surface-container-highest border border-on-surface h-2"><div class="bg-secondary-container h-full w-[99.98%]"></div></div></div></aside><div class="pl-72"><header class="fixed top-0 left-72 right-0 h-20 bg-surface/95 backdrop-blur-sm border-b-2 border-on-surface z-40 px-margin-desktop flex items-center justify-between"><div class="flex items-center gap-space-md"><div class="flex items-center gap-2 font-tag-metadata text-tag-metadata font-bold"><span class="material-symbols-outlined text-outline text-[18px]">database</span><span class="text-on-surface">TENANT: INDUSTRIAL_CORP_38</span></div><div class="hidden md:flex items-center gap-2"><span class="text-outline-variant">/</span><span class="font-code-technical text-code-technical text-on-surface-variant uppercase">LIVE_CLEARING_HOUSE</span></div></div><div class="flex items-center gap-space-md"><div class="relative w-64 hidden sm:block"><input class="w-full pl-8 pr-3 py-1.5 bg-surface-container-lowest border border-on-surface font-code-technical text-code-technical text-on-surface placeholder:text-outline focus:outline-none" placeholder="Filter logs, SKU, IDs..." type="text"/><span class="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-on-surface-variant text-[16px]">search</span></div><div class="flex items-center gap-space-xs"><div class="relative p-2 border border-on-surface bg-surface-container-lowest text-on-surface"><span class="material-symbols-outlined text-[18px]">notifications</span><span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-tertiary"></span></div><div class="relative p-2 border border-on-surface bg-surface-container-lowest text-on-surface"><span class="material-symbols-outlined text-[18px]">cloud_sync</span></div></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center border border-on-surface"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="relative pt-20 bg-background min-h-screen"><div class="flex flex-col w-full">
+<!-- System Status Banner Strip -->
+<div class="w-full bg-surface-container-high px-margin-desktop py-space-xs flex flex-wrap items-center justify-between gap-space-sm shadow-sm">
+<div class="flex items-center gap-space-md flex-wrap">
+<div class="flex items-center gap-space-xs">
+<span class="w-2.5 h-2.5 rounded-full bg-secondary-container"></span>
+<span class="font-tag-metadata text-tag-metadata text-on-surface uppercase tracking-wider">MODERATION CONSOLE v2.4</span>
+</div>
+<span class="text-outline-variant">•</span>
+<div class="font-tag-metadata text-tag-metadata text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px] text-primary">verified_user</span>
+<span>OIDC SSO AUTHENTICATED [SUPERVISOR ROLE]</span>
+</div>
+<span class="text-outline-variant">•</span>
+<div class="font-code-technical text-code-technical text-secondary flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px]">sync_alt</span>
+<span>SLA INVENTORY SYNC: NORMAL (99.98%)</span>
+</div>
+</div>
+<div class="flex items-center gap-space-sm font-tag-metadata text-tag-metadata">
+<span class="bg-surface-container-lowest text-on-surface px-2 py-0.5 rounded shadow-sm">SESSION_ID: #892-MOD-ALPHA</span>
+<span class="bg-primary text-on-primary px-2 py-0.5 rounded shadow-sm">SHIFTLOG: ACTIVE</span>
+</div>
+</div>
+<!-- Operational KPI Ribbon -->
+<div class="p-margin-desktop pb-space-md">
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
+<!-- KPI 1: Queue -->
+<div class="bg-surface-container-low p-space-md rounded-xl shadow-md flex flex-col justify-between relative overflow-hidden group hover:shadow-xl transition-shadow">
+<div class="absolute -right-6 -bottom-6 w-24 h-24 bg-tertiary-fixed-dim/20 rounded-full blur-xl pointer-events-none"></div>
+<div class="flex items-start justify-between">
+<div class="flex flex-col">
+<span class="font-tag-metadata text-tag-metadata text-outline uppercase">QUEUE_STATUS</span>
+<span class="font-headline-sm text-headline-sm text-on-surface mt-1">Очередь на модерацию</span>
+</div>
+<span class="material-symbols-outlined text-tertiary-fixed-dim text-headline-md">inbox</span>
+</div>
+<div class="mt-4 flex items-baseline gap-space-sm">
+<span class="font-display-hero text-headline-lg font-bold text-on-surface">38</span>
+<span class="font-tag-metadata text-tag-metadata bg-surface-container-high text-on-surface-variant px-2 py-1 rounded">тикетов</span>
+</div>
+<div class="mt-2 pt-2 bg-surface-container/60 rounded px-2 py-1 flex items-center justify-between text-body-sm">
+<span class="font-body-sm text-outline">SLA среднее:</span>
+<span class="font-code-technical text-code-technical text-on-surface font-bold">1.8 ч</span>
+</div>
+</div>
+<!-- KPI 2: Remarks -->
+<div class="bg-surface-container-low p-space-md rounded-xl shadow-md flex flex-col justify-between relative overflow-hidden group hover:shadow-xl transition-shadow">
+<div class="absolute -right-6 -bottom-6 w-24 h-24 bg-tertiary-container/10 rounded-full blur-xl pointer-events-none"></div>
+<div class="flex items-start justify-between">
+<div class="flex flex-col">
+<span class="font-tag-metadata text-tag-metadata text-outline uppercase">REMARKS_ISSUED</span>
+<span class="font-headline-sm text-headline-sm text-on-surface mt-1">С замечаниями</span>
+</div>
+<span class="material-symbols-outlined text-tertiary-container text-headline-md">error_outline</span>
+</div>
+<div class="mt-4 flex items-baseline gap-space-sm">
+<span class="font-display-hero text-headline-lg font-bold text-tertiary-container">14</span>
+<span class="font-tag-metadata text-tag-metadata bg-tertiary-fixed text-on-tertiary-fixed-variant px-2 py-1 rounded">на ревизии</span>
+</div>
+<div class="mt-2 pt-2 bg-surface-container/60 rounded px-2 py-1 flex items-center justify-between text-body-sm">
+<span class="font-body-sm text-outline">Возврат продавцам:</span>
+<span class="font-code-technical text-code-technical text-tertiary font-bold">36.8% от тикетов</span>
+</div>
+</div>
+<!-- KPI 3: Blocked -->
+<div class="bg-inverse-surface text-inverse-on-surface p-space-md rounded-xl shadow-md flex flex-col justify-between relative overflow-hidden group hover:shadow-xl transition-shadow">
+<div class="absolute -right-6 -bottom-6 w-24 h-24 bg-error/20 rounded-full blur-xl pointer-events-none"></div>
+<div class="flex items-start justify-between">
+<div class="flex flex-col">
+<span class="font-tag-metadata text-tag-metadata text-outline-variant uppercase">SECURITY_LOCK</span>
+<span class="font-headline-sm text-headline-sm text-inverse-on-surface mt-1">Заблокировано</span>
+</div>
+<span class="material-symbols-outlined text-error-container text-headline-md">block</span>
+</div>
+<div class="mt-4 flex items-baseline gap-space-sm">
+<span class="font-display-hero text-headline-lg font-bold text-inverse-on-surface">3</span>
+<span class="font-tag-metadata text-tag-metadata bg-surface-variant text-on-surface px-2 py-1 rounded">SKU за нарушения</span>
+</div>
+<div class="mt-2 pt-2 bg-surface-variant/20 rounded px-2 py-1 flex items-center justify-between text-body-sm">
+<span class="font-body-sm text-outline-variant">Причина:</span>
+<span class="font-code-technical text-code-technical text-error-container font-bold">ПОДДЕЛЬНЫЕ СЕРТИФИКАТЫ</span>
+</div>
+</div>
+<!-- KPI 4: Approved -->
+<div class="bg-secondary-container text-on-secondary-container p-space-md rounded-xl shadow-md flex flex-col justify-between relative overflow-hidden group hover:shadow-xl transition-shadow">
+<div class="absolute -right-6 -bottom-6 w-24 h-24 bg-secondary-fixed/50 rounded-full blur-xl pointer-events-none"></div>
+<div class="flex items-start justify-between">
+<div class="flex flex-col">
+<span class="font-tag-metadata text-tag-metadata text-on-secondary-fixed-variant uppercase">THROUGHPUT_24H</span>
+<span class="font-headline-sm text-headline-sm text-on-secondary-container mt-1">Одобрено сегодня</span>
+</div>
+<span class="material-symbols-outlined text-secondary text-headline-md">check_circle</span>
+</div>
+<div class="mt-4 flex items-baseline gap-space-sm">
+<span class="font-display-hero text-headline-lg font-bold text-on-secondary-container">142</span>
+<span class="font-tag-metadata text-tag-metadata bg-surface-container-lowest/80 text-on-surface px-2 py-1 rounded">SKU в каталоге</span>
+</div>
+<div class="mt-2 pt-2 bg-surface-container-lowest/40 rounded px-2 py-1 flex items-center justify-between text-body-sm">
+<span class="font-body-sm text-on-secondary-fixed-variant">План смены:</span>
+<span class="font-code-technical text-code-technical text-secondary font-bold">109% (+12 SKU)</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Workspace Split Grid -->
+<div class="px-margin-desktop pb-margin-desktop">
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-space-lg items-start">
+<!-- LEFT PANEL: Moderation Backlog Queue (5 cols) -->
+<div class="xl:col-span-5 flex flex-col gap-space-md">
+<!-- Filter Header Box -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-md">
+<div class="flex items-center justify-between mb-space-sm">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">sort</span>
+<span class="font-headline-sm text-title-md text-on-surface uppercase">Очередь верификации</span>
+</div>
+<span class="font-code-technical text-code-technical bg-surface-container px-2 py-0.5 rounded text-outline">ITEMS: 38</span>
+</div>
+<!-- Category and Mode Filters -->
+<div class="flex flex-wrap gap-1.5 pt-1">
+<button class="px-3 py-1 text-tag-metadata font-tag-metadata rounded bg-primary-container text-on-primary-container font-bold shadow-sm transition-all hover:shadow-md">
+              [ ВСЕ: 38 ]
+            </button>
+<button class="px-3 py-1 text-tag-metadata font-tag-metadata rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-semibold transition-all">
+              [ СРОЧНЫЕ B2B: 7 ]
+            </button>
+<button class="px-3 py-1 text-tag-metadata font-tag-metadata rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-semibold transition-all">
+              [ ПОВТОРНАЯ ПОДАЧА: 14 ]
+            </button>
+<button class="px-3 py-1 text-tag-metadata font-tag-metadata rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-semibold transition-all">
+              [ НОВЫЕ ПРОДАВЦЫ: 12 ]
+            </button>
+</div>
+</div>
+<!-- Backlog Cards List -->
+<div class="flex flex-col gap-space-sm">
+<!-- Card 1 (Active Focused) -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-xl transition-all cursor-pointer relative bg-gradient-to-r from-primary-fixed/30 via-surface-container-lowest to-surface-container-lowest">
+<div class="flex items-start justify-between gap-space-sm mb-2">
+<span class="font-tag-metadata text-tag-metadata bg-tertiary-container text-on-tertiary-container px-2 py-0.5 rounded font-bold flex items-center gap-1 shadow-sm">
+<span class="material-symbols-outlined text-[13px]">timer</span>
+                [HIGH SLA 00:24:12]
+              </span>
+<span class="font-code-technical text-body-sm text-outline">14 мин назад</span>
+</div>
+<div class="flex gap-space-md">
+<img class="w-16 h-16 rounded-lg object-cover shadow-sm shrink-0" data-alt="High precision heavy duty yellow and black digital industrial laser distance meter with digital backlit readout display set against clean light studio background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAUfqjhGAsNA4KWGHLP6q4oMYYTGbNnQHfP48s188yTe5igJedlIXtNXprBgi6TQvLqjptmrKMrAL9-BgJar9l4-K1AH1hSztniI5LTOPYNwXlC_xIaj5dWnpXetGJ2D76LD_5aXPuFU8i713mP0hNYHr4h-RKle2BMmFnR9nwpTjR1Xqfyl6VVTn8bUnYq7mE5myDdpcp8bIDIl06CfPsFzd0oqOyvmTihDPhcTK09A8NMUCD60Uj3"/>
+<div class="min-w-0 flex-1">
+<h4 class="font-headline-sm text-body-lg text-on-surface font-bold truncate">Промышленный лазерный дальномер NeoScan Pro</h4>
+<div class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1 mt-0.5 truncate">
+<span class="material-symbols-outlined text-[14px] text-outline">business</span>
+<span class="truncate">ООО «ТехноЛазер Системс» • ИНН 7701928410</span>
+</div>
+<div class="flex flex-wrap items-center gap-2 mt-2 font-tag-metadata text-tag-metadata">
+<span class="bg-surface-container-high px-2 py-0.5 rounded text-on-surface">ИЗМЕРИТЕЛЬНЫЙ ИНСТРУМЕНТ</span>
+<span class="bg-primary-fixed text-on-primary-fixed-variant px-2 py-0.5 rounded font-bold">REV 2.0</span>
+</div>
+</div>
+</div>
+<div class="mt-space-sm pt-2 bg-surface-container-low/60 rounded px-2.5 py-1.5 flex items-center justify-between text-body-sm">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-secondary-fixed-dim"></span>
+<span class="font-tag-metadata text-tag-metadata text-on-surface">ВЗЯТО: МОДЕРАТОР #14 (ВЫ)</span>
+</div>
+<span class="font-tag-metadata text-tag-metadata text-primary font-bold uppercase tracking-wider flex items-center gap-0.5">
+                АКТИВНЫЙ ОБЗОР <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+</span>
+</div>
+</div>
+<!-- Card 2 (Pending Claim) -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-md hover:shadow-xl transition-all cursor-pointer">
+<div class="flex items-start justify-between gap-space-sm mb-2">
+<span class="font-tag-metadata text-tag-metadata bg-surface-container text-outline px-2 py-0.5 rounded font-bold">
+                [URGENT B2B]
+              </span>
+<span class="font-code-technical text-body-sm text-outline">38 мин назад</span>
+</div>
+<div class="flex gap-space-md">
+<img class="w-16 h-16 rounded-lg object-cover shadow-sm shrink-0" data-alt="Industrial steel flange valves and pneumatic connectors for oil and gas piping, stacked on industrial workshop pallet with metallic sheen" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCHOQZhNHoV6WRoMEfu9RP8KU5MaNtLYA9hMGUch_R0xW18npIgv2ofYqhrHXmOwV_sYZwn3XmlsHMZTPnkK8eAs_BA-BFJ441qdWBybAZSw5tVb-Fms3YY7b5-Arjze3Tudv6Xw7gFdIsjEl2NUOol1ODt1cRqb23HSCGMJ8zT2uGyCNJm1qZNrMeV62cfx9HscoZjfNbURvGjER17daUMqN6-elNMlm_O4VKbdy7hI_embLCejUW3"/>
+<div class="min-w-0 flex-1">
+<h4 class="font-headline-sm text-body-lg text-on-surface font-bold truncate">Пневматический шаровой кран DN-50 PN-16</h4>
+<div class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1 mt-0.5 truncate">
+<span class="material-symbols-outlined text-[14px] text-outline">business</span>
+<span class="truncate">ПАО «АрматураСтройКомплект»</span>
+</div>
+<div class="flex flex-wrap items-center gap-2 mt-2 font-tag-metadata text-tag-metadata">
+<span class="bg-surface-container-high px-2 py-0.5 rounded text-on-surface">ТРУБОПРОВОДЫ &amp; ФИТИНГИ</span>
+<span class="bg-secondary-fixed text-on-secondary-fixed px-2 py-0.5 rounded font-bold">ОПТ: 50+ ШТ</span>
+</div>
+</div>
+</div>
+<div class="mt-space-sm pt-2 bg-surface-container-low/60 rounded px-2.5 py-1.5 flex items-center justify-between text-body-sm">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-outline"></span>
+<span class="font-tag-metadata text-tag-metadata text-outline">СТАТУС: СВОБОДЕН В ОЧЕРЕДИ</span>
+</div>
+<button class="font-tag-metadata text-tag-metadata bg-surface-container-highest hover:bg-surface-variant text-on-surface px-2 py-0.5 rounded font-semibold transition-colors">
+                [ВЗЯТЬ В РАБОТУ]
+              </button>
+</div>
+</div>
+<!-- Card 3 (Repeat Revision) -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-md hover:shadow-xl transition-all cursor-pointer">
+<div class="flex items-start justify-between gap-space-sm mb-2">
+<span class="font-tag-metadata text-tag-metadata bg-surface-variant text-on-surface-variant px-2 py-0.5 rounded font-bold">
+                [NORMAL SLA]
+              </span>
+<span class="font-code-technical text-body-sm text-outline">1.2 ч назад</span>
+</div>
+<div class="flex gap-space-md">
+<img class="w-16 h-16 rounded-lg object-cover shadow-sm shrink-0" data-alt="Ruggedized enterprise barcode mobile scanner terminal held on charging cradle dock in modern fulfillment logistic warehouse" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBSFaAMBQL-qjPEdxWh56_Cu2jSipWYAmki2663WYeSxyLEj-V3iSp3KbOYeg-mzyjUJ61epCIXq2D6mq1qwXRHBwWuHz1UEMAapRq5ZhyHOAUovMV23csZWkLOb00GeaOwQbn5JksG8EmNrX9DaokZ8g0oGy2R3qVrxBvApkla7ILmVIWfhHoXabGRdq03pNvXWXhk0SB2X-VotUr8Ri1FnCHjaqzNjQK7kd0YaeAL6Hp0vVs3YyW4"/>
+<div class="min-w-0 flex-1">
+<h4 class="font-headline-sm text-body-lg text-on-surface font-bold truncate">Терминал сбора данных CipherLab 9700 Ultra</h4>
+<div class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1 mt-0.5 truncate">
+<span class="material-symbols-outlined text-[14px] text-outline">business</span>
+<span class="truncate">ИП Кузнецов В. М. (SmartWarehouse)</span>
+</div>
+<div class="flex flex-wrap items-center gap-2 mt-2 font-tag-metadata text-tag-metadata">
+<span class="bg-surface-container-high px-2 py-0.5 rounded text-on-surface">СКЛАДСКАЯ ЭЛЕКТРОНИКА</span>
+<span class="bg-surface-container text-tertiary px-2 py-0.5 rounded font-bold">ПОСЛЕ ЗАМЕЧАНИЙ</span>
+</div>
+</div>
+</div>
+<div class="mt-space-sm pt-2 bg-surface-container-low/60 rounded px-2.5 py-1.5 flex items-center justify-between text-body-sm">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-outline"></span>
+<span class="font-tag-metadata text-tag-metadata text-outline">ВЗЯТО: МОДЕРАТОР #07</span>
+</div>
+<span class="font-tag-metadata text-tag-metadata text-outline">IN_REVIEW</span>
+</div>
+</div>
+<!-- Card 4 (New Seller) -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-md hover:shadow-xl transition-all cursor-pointer">
+<div class="flex items-start justify-between gap-space-sm mb-2">
+<span class="font-tag-metadata text-tag-metadata bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded font-bold">
+                [NEW SELLER FAST-TRACK]
+              </span>
+<span class="font-code-technical text-body-sm text-outline">2.1 ч назад</span>
+</div>
+<div class="flex gap-space-md">
+<img class="w-16 h-16 rounded-lg object-cover shadow-sm shrink-0" data-alt="Professional grade digital multimeter diagnostic electrical engineering tool with test probes and calibration certificates on clean drafting table" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBecnqFLvlnFjvQPKKJYvDAioPowdw4tZtdWcW4yIXV18HrOZgWOuA3I_2iNDu0aNB_j7ZP57zFR1v02Q7rl89NNEziavdYgKBZ8vdK42kSWXbsoNRP9NRtp2dPWXMsq_643m6udo6DO35dsEWALhz18WnLPoojQDh-31Qt8rJqOtyH0AZqIeVi55kHfxp__6Or98uE8cK4xrStj2TCWQzQP30jwSGTZEQjocpdEAdkKwwfvlHjLlo7"/>
+<div class="min-w-0 flex-1">
+<h4 class="font-headline-sm text-body-lg text-on-surface font-bold truncate">Прецизионный мультиметр Fluke Industrial TrueRMS</h4>
+<div class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1 mt-0.5 truncate">
+<span class="material-symbols-outlined text-[14px] text-outline">business</span>
+<span class="truncate">ООО «ЭлектроСнаб Холдинг»</span>
+</div>
+<div class="flex flex-wrap items-center gap-2 mt-2 font-tag-metadata text-tag-metadata">
+<span class="bg-surface-container-high px-2 py-0.5 rounded text-on-surface">КИПиА</span>
+<span class="bg-surface-container text-outline px-2 py-0.5 rounded font-bold">ПЕРВАЯ ПОСТАВКА</span>
+</div>
+</div>
+</div>
+<div class="mt-space-sm pt-2 bg-surface-container-low/60 rounded px-2.5 py-1.5 flex items-center justify-between text-body-sm">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-outline"></span>
+<span class="font-tag-metadata text-tag-metadata text-outline">СТАТУС: СВОБОДЕН В ОЧЕРЕДИ</span>
+</div>
+<button class="font-tag-metadata text-tag-metadata bg-surface-container-highest hover:bg-surface-variant text-on-surface px-2 py-0.5 rounded font-semibold transition-colors">
+                [ВЗЯТЬ В РАБОТУ]
+              </button>
+</div>
+</div>
+</div>
+<!-- Backlog Pagination Footer -->
+<div class="bg-surface-container-lowest p-space-sm rounded-xl shadow-md flex items-center justify-between text-body-sm font-tag-metadata">
+<span class="text-outline">ПОКАЗАНО 4 ИЗ 38 ТИКЕТОВ</span>
+<div class="flex gap-1">
+<button class="px-2 py-1 bg-surface-container rounded hover:bg-surface-container-high">PREV</button>
+<button class="px-2 py-1 bg-primary text-on-primary rounded font-bold">1</button>
+<button class="px-2 py-1 bg-surface-container rounded hover:bg-surface-container-high">2</button>
+<button class="px-2 py-1 bg-surface-container rounded hover:bg-surface-container-high">3</button>
+<button class="px-2 py-1 bg-surface-container rounded hover:bg-surface-container-high">NEXT</button>
+</div>
+</div>
+</div>
+<!-- RIGHT PANEL: Active Inspection Dossier (7 cols) -->
+<div class="xl:col-span-7 flex flex-col gap-space-md">
+<!-- Dossier Header Ribbon -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-xl">
+<div class="flex flex-wrap items-center justify-between gap-space-sm pb-space-sm">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[24px]">fact_check</span>
+<div>
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold">ДОСЬЕ SKU #NM-948201-B</span>
+<span class="font-tag-metadata text-[10px] bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded font-bold uppercase">В работе</span>
+</div>
+<span class="font-tag-metadata text-tag-metadata text-outline">CREATED: 2025-02-23T11:42:08Z • TENANT: INDUSTRIAL_CORP_38</span>
+</div>
+</div>
+<!-- Version Diff Badge -->
+<div class="bg-surface-container px-space-sm py-1 rounded-lg flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary-container text-[18px]">difference</span>
+<div class="flex flex-col text-right">
+<span class="font-tag-metadata text-tag-metadata font-bold text-on-surface">Версия 2.0 (Diff)</span>
+<span class="font-body-sm text-[11px] text-tertiary">Продавец исправил характеристики питания</span>
+</div>
+</div>
+</div>
+<!-- High-Res Zoom Gallery Strip -->
+<div class="mt-space-sm pt-space-sm">
+<div class="flex items-center justify-between mb-2">
+<span class="font-tag-metadata text-tag-metadata text-outline uppercase font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-primary">zoom_in</span> ГАЛЕРЕЯ МЕДИА-КОНТЕНТА (3 ФОТО + 1 ЧЕРТЕЖ)
+              </span>
+<span class="font-tag-metadata text-tag-metadata bg-surface-container-high px-2 py-0.5 rounded text-on-surface">HIGH-RES 4096x4096px • WEBP</span>
+</div>
+<div class="grid grid-cols-4 gap-space-sm">
+<!-- Big Preview / Zoom target -->
+<div class="col-span-2 relative group overflow-hidden rounded-lg shadow-sm bg-surface-container">
+<img class="w-full h-44 object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Close up detailed frontal shot of industrial laser distance meter showing laser optic lens, IP68 rubber seal bumper, and bright LED high-contrast screen with measurements" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB43dpaYPSHv-TJycfF8iZ2znDfzuFdz6mpUt8i9RXYbFjqjHkU2TwUR7rgOrcuA5opDnemyzPg5BGOfZfflKvJmtd72uEyEVB77HPw1gt8ZQa1tdDFy9Ir0wspwCjgi9qlBDGI6ZJpAvVHCN4Cm8RhHBdj7wywZgsSMVJ5Yy4yNjjceUt2MyKTXjU4GEO5oC1ygGz_iw7roma2TTWZqA8szOhUdDrndOGkHllH17SZw9B1_YQWzx6S"/>
+<div class="absolute bottom-2 left-2 bg-inverse-surface/85 backdrop-blur-sm text-inverse-on-surface font-tag-metadata text-[10px] px-2 py-0.5 rounded flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px] text-secondary-fixed">check_circle</span>
+                  ФАСАД И ОПТИКА (OK)
+                </div>
+</div>
+<!-- Sub photo 1 -->
+<div class="relative group overflow-hidden rounded-lg shadow-sm bg-surface-container">
+<img class="w-full h-44 object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Rear angle of rugged laser rangefinder device showing battery compartment seal, belt clip mechanism, and laser safety hazard regulatory warning sticker" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB60FHrw2WbdCczoIOd-Aca5qzGtgOUJL0JGAU5sx8jXztpHbFQWXCNNUJTDlG6q68KTnNXrQsv9GBAih48qycyaRMiNngsxBuY2adfQa8aE6JCGJW6LNusYvgV3gyL4XpB59f4zi76LJcJQ6AOwnbpnn-DlpD8_j_4TWbfWYE6lsOSS4qASZYjMR450JfYvayopcA0avqZ4G1i0pw9qKQXSm7pluvoIDf0YRfHR9mHitOs5E1Fph6H"/>
+<div class="absolute bottom-2 left-2 bg-inverse-surface/85 backdrop-blur-sm text-inverse-on-surface font-tag-metadata text-[10px] px-1.5 py-0.5 rounded truncate max-w-[90%]">
+                  ШИЛЬДИК
+                </div>
+</div>
+<!-- Sub photo 2 (Blueprint/CAD) -->
+<div class="relative group overflow-hidden rounded-lg shadow-sm bg-surface-container">
+<img class="w-full h-44 object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Technical CAD drawing blueprint showing dimensional schematic measurements, mounting thread, and laser beam trajectory angles for precision tool" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDtC16tdX0ONE4sKLo1o1dyagQr2ukLRb9f_qTJQFuKIrIyE5018oMAtdpHyjWAvVfL6LrUr7srEe29eHtwd2v3tht1yNOImkHxc-DzRYLGgE1mVAYDMGDczRo-8Efg1s6itMVm4FHJ33imzUwpdmoLPWaDytjym0jBMYg-5IWWtFQq0lW-KFPhf51Ha1A4UqQuzGI3UlroWlFtAQ4uEVvs70fjH5lkQA-QDCUIFlX_71zmnCKA3g2Q"/>
+<div class="absolute bottom-2 left-2 bg-inverse-surface/85 backdrop-blur-sm text-inverse-on-surface font-tag-metadata text-[10px] px-1.5 py-0.5 rounded truncate max-w-[90%]">
+                  ЧЕРТЕЖ
+                </div>
+</div>
+</div>
+</div>
+</div>
+<!-- Field Verification Checklist & Inline Remark Tools -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-xl flex flex-col gap-space-md">
+<div class="flex items-center justify-between pb-space-xs">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[22px]">checklist_rtl</span>
+<h3 class="font-headline-sm text-title-md text-on-surface font-bold uppercase">Чек-лист верификации атрибутов</h3>
+</div>
+<span class="font-tag-metadata text-tag-metadata text-on-surface-variant">5 ИЗ 6 ПРОВЕРЕНО</span>
+</div>
+<!-- Field Item 1: Title -->
+<div class="p-space-sm bg-surface-container-low rounded-lg flex flex-col gap-1 transition-colors hover:bg-surface-container">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-secondary text-[18px]">check_box</span>
+<span class="font-tag-metadata text-tag-metadata font-bold text-on-surface uppercase">01. НАЗВАНИЕ ТОВАРА</span>
+</div>
+<span class="font-tag-metadata text-[10px] bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded font-bold">СООТВЕТСТВУЕТ ГОСТ</span>
+</div>
+<div class="pl-6 flex flex-col gap-0.5">
+<p class="font-body-md text-body-md text-on-surface font-semibold">Промышленный лазерный дальномер NeoScan Pro (до 150м, IP68, Bluetooth B2B)</p>
+<span class="font-body-sm text-[12px] text-outline">Правило нейминга: [Тип] + [Бренд] + [Модель] + [Ключевые параметры]. Запрещенные слова не обнаружены.</span>
+</div>
+</div>
+<!-- Field Item 2: Category Match -->
+<div class="p-space-sm bg-surface-container-low rounded-lg flex flex-col gap-1 transition-colors hover:bg-surface-container">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-secondary text-[18px]">check_box</span>
+<span class="font-tag-metadata text-tag-metadata font-bold text-on-surface uppercase">02. СООТВЕТСТВИЕ КАТЕГОРИИ</span>
+</div>
+<span class="font-tag-metadata text-[10px] bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded font-bold">КАТЕГОРИЯ ПРАВИЛЬНАЯ</span>
+</div>
+<div class="pl-6 flex items-center justify-between flex-wrap gap-2">
+<span class="font-code-technical text-code-technical text-on-surface bg-surface-container-high px-2 py-0.5 rounded">
+                Промышленное оборудование &gt; КИПиА &gt; Лазерные дальномеры и нивелиры
+              </span>
+<span class="font-tag-metadata text-tag-metadata text-outline">TREE_ID: #4092-B</span>
+</div>
+</div>
+<!-- Field Item 3: SKU / EAN-13 / GTIN -->
+<div class="p-space-sm bg-surface-container-low rounded-lg flex flex-col gap-1 transition-colors hover:bg-surface-container">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-secondary text-[18px]">check_box</span>
+<span class="font-tag-metadata text-tag-metadata font-bold text-on-surface uppercase">03. АРТИКУЛ &amp; EAN-13 ВАЛИДАЦИЯ</span>
+</div>
+<span class="font-tag-metadata text-[10px] bg-surface-container-high text-on-surface px-2 py-0.5 rounded font-bold">GS1 РЕЕСТР: ПОДТВЕРЖДЕНО</span>
+</div>
+<div class="pl-6 grid grid-cols-1 md:grid-cols-2 gap-2 text-body-sm">
+<div>
+<span class="font-tag-metadata text-tag-metadata text-outline">SKU ПРОДАВЦА:</span>
+<span class="font-code-technical text-code-technical text-on-surface font-bold ml-1">TL-NEOPRO-150-RU</span>
+</div>
+<div>
+<span class="font-tag-metadata text-tag-metadata text-outline">ШТРИХКОД EAN-13:</span>
+<span class="font-code-technical text-code-technical text-on-surface font-bold ml-1">4607182930192</span>
+</div>
+</div>
+</div>
+<!-- Field Item 4: Pricing Model B2B / B2C -->
+<div class="p-space-sm bg-surface-container-low rounded-lg flex flex-col gap-1 transition-colors hover:bg-surface-container">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-secondary text-[18px]">check_box</span>
+<span class="font-tag-metadata text-tag-metadata font-bold text-on-surface uppercase">04. B2B / B2C ЦЕНООБРАЗОВАНИЕ И КВАНТЫ</span>
+</div>
+<span class="font-tag-metadata text-[10px] bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded font-bold">РЕКОМЕНДОВАННАЯ РРЦ СОБЛЮДЕНА</span>
+</div>
+<div class="pl-6 grid grid-cols-1 sm:grid-cols-3 gap-2 text-body-sm">
+<div class="bg-surface-container-lowest p-2 rounded shadow-sm">
+<span class="font-tag-metadata text-[10px] text-outline block">РОЗНИЦА (B2C)</span>
+<span class="font-headline-sm text-title-md font-bold text-on-surface">24 990 ₽</span>
+<span class="font-tag-metadata text-[10px] text-secondary block font-bold">С НДС 20%</span>
+</div>
+<div class="bg-surface-container-lowest p-2 rounded shadow-sm">
+<span class="font-tag-metadata text-[10px] text-outline block">ОПТ 10+ ШТ</span>
+<span class="font-headline-sm text-title-md font-bold text-primary">20 400 ₽</span>
+<span class="font-tag-metadata text-[10px] text-primary block font-bold">-18.3% СКИДКА</span>
+</div>
+<div class="bg-surface-container-lowest p-2 rounded shadow-sm">
+<span class="font-tag-metadata text-[10px] text-outline block">КРУПНЫЙ B2B (100+ ШТ)</span>
+<span class="font-headline-sm text-title-md font-bold text-on-surface">17 800 ₽</span>
+<span class="font-tag-metadata text-[10px] text-outline block">КВАНТ ОТГРУЗКИ: ПАЛЛЕТА</span>
+</div>
+</div>
+</div>
+<!-- Field Item 5: EAC Certificate (ALERT / REMARK ATTACHED) -->
+<div class="p-space-sm bg-tertiary-fixed/30 rounded-lg flex flex-col gap-2 relative overflow-hidden">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-tertiary text-[18px]">warning</span>
+<span class="font-tag-metadata text-tag-metadata font-bold text-tertiary uppercase">05. СЕРТИФИКАТ СООТВЕТСТВИЯ ЕАС / ДЕКЛАРАЦИЯ ТР ТС</span>
+</div>
+<span class="font-tag-metadata text-[10px] bg-tertiary text-on-tertiary px-2 py-0.5 rounded font-bold">ТРЕБУЕТСЯ ИСПРАВЛЕНИЕ</span>
+</div>
+<div class="pl-6 flex flex-col gap-2">
+<div class="flex items-center justify-between text-body-sm flex-wrap gap-2">
+<span class="font-code-technical text-code-technical font-bold text-on-surface">ЕАЭС RU С-RU.АЯ46.В.01948/21</span>
+<button class="font-tag-metadata text-tag-metadata text-primary hover:underline flex items-center gap-1 font-bold">
+<span class="material-symbols-outlined text-[14px]">file_open</span> ОТКРЫТЬ PDF РЕЕСТРА РОСАККРЕДИТАЦИИ
+                </button>
+</div>
+<!-- Inline Remark Box -->
+<div class="bg-surface-container-lowest p-space-sm rounded shadow-md">
+<div class="flex items-center justify-between mb-1">
+<span class="font-tag-metadata text-[10px] text-tertiary uppercase font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">mode_comment</span> АКТИВНОЕ ЗАМЕЧАНИЕ МОДЕРАТОРА:
+                  </span>
+<span class="font-tag-metadata text-[10px] text-outline">АВТОР: МОДЕРАТОР #14</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface font-semibold">
+                  «Замечание к сертификату: срок действия прикрепленной декларации истек в ноябре 2024 года. Загрузите действующий сертификат соответствия ТР ТС 020/2011 на текущий производственный период.»
+                </p>
+<div class="mt-2 flex gap-2">
+<button class="px-2 py-0.5 bg-surface-container text-body-sm text-on-surface rounded hover:bg-surface-container-high transition-colors font-tag-metadata text-[10px]">ИЗМЕНИТЬ ТЕКСТ</button>
+<button class="px-2 py-0.5 bg-surface-container text-body-sm text-outline hover:text-tertiary rounded transition-colors font-tag-metadata text-[10px]">УДАЛИТЬ ЗАМЕЧАНИЕ</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Field Item 6: Description & Technical Specs -->
+<div class="p-space-sm bg-surface-container-low rounded-lg flex flex-col gap-1 transition-colors hover:bg-surface-container">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-secondary text-[18px]">check_box</span>
+<span class="font-tag-metadata text-tag-metadata font-bold text-on-surface uppercase">06. ОПИСАНИЕ И СОСТАВ ХАРАКТЕРИСТИК</span>
+</div>
+<span class="font-tag-metadata text-[10px] bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded font-bold">ИСПРАВЛЕНО В REV 2.0</span>
+</div>
+<div class="pl-6 flex flex-col gap-1 text-body-sm">
+<div class="p-2 bg-surface-container-lowest rounded text-body-sm text-on-surface-variant leading-relaxed">
+<strong class="text-on-surface">Новые параметры питания:</strong> «Литий-ионный аккумулятор 3.7В 2000 мА·ч (до 8 000 измерений на одном заряде), разъем USB Type-C для быстрой зарядки на объекте, рабочий диапазон температур от -20°C до +50°C.»
+              </div>
+<div class="flex items-center gap-2 mt-1">
+<button class="text-tag-metadata font-tag-metadata text-primary flex items-center gap-1 hover:underline">
+<span class="material-symbols-outlined text-[14px]">add_comment</span> + Добавить точечное замечание к описанию
+                </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Action Decision Bar Ribbon -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-xl flex flex-col gap-space-md">
+<div class="flex flex-col gap-1">
+<span class="font-tag-metadata text-tag-metadata text-outline uppercase font-bold">РЕЗЮМЕ ОПЕРАТОРА ПО КАРТОЧКЕ</span>
+<span class="font-headline-sm text-title-md text-on-surface font-bold">Принятие решения по товару #NM-948201-B</span>
+</div>
+<!-- 4 Primary Brutalist Action Buttons -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-sm">
+<!-- Approve -->
+<button class="px-space-md py-space-sm rounded-lg bg-secondary-container hover:bg-secondary-fixed text-on-secondary-container font-headline-md text-body-md font-bold uppercase tracking-tight shadow-md hover:shadow-xl transition-all flex items-center justify-center gap-2 active:scale-95">
+<span class="material-symbols-outlined text-[18px]">check_circle</span>
+              ОДОБРИТЬ ТОВАР
+            </button>
+<!-- Request Changes -->
+<button class="px-space-md py-space-sm rounded-lg bg-tertiary-fixed text-on-tertiary-fixed-variant font-headline-md text-body-md font-bold uppercase tracking-tight shadow-md hover:shadow-xl transition-all flex items-center justify-center gap-2 active:scale-95">
+<span class="material-symbols-outlined text-[18px]">rate_review</span>
+              ЗАПРОСИТЬ ПРАВКИ
+            </button>
+<!-- Reject -->
+<button class="px-space-md py-space-sm rounded-lg bg-tertiary-container hover:bg-tertiary text-on-tertiary font-headline-md text-body-md font-bold uppercase tracking-tight shadow-md hover:shadow-xl transition-all flex items-center justify-center gap-2 active:scale-95">
+<span class="material-symbols-outlined text-[18px]">cancel</span>
+              ОТКЛОНИТЬ
+            </button>
+<!-- Block SKU -->
+<button class="px-space-md py-space-sm rounded-lg bg-error hover:bg-on-error-container text-on-error font-headline-md text-body-md font-bold uppercase tracking-tight shadow-md hover:shadow-xl transition-all flex items-center justify-center gap-2 active:scale-95">
+<span class="material-symbols-outlined text-[18px]">gavel</span>
+              БЛОКИРОВАТЬ SKU
+            </button>
+</div>
+<!-- Immutable Audit Trail Notice -->
+<div class="p-space-xs bg-surface-container rounded flex items-center gap-space-sm text-outline font-tag-metadata text-tag-metadata">
+<span class="material-symbols-outlined text-outline text-[16px] shrink-0">lock</span>
+<span class="truncate">ВНИМАНИЕ: Все действия и комментарии фиксируются в неизменяемом WORM-журнале аудита действий модератора с фиксацией SHA-256 хеша сессии.</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div></main></div></body></html>
