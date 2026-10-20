@@ -1,5 +1,6 @@
 ﻿# NeoMarket staging blockers
 
+0. **Gateway host routing (P0):** live HTTPS probes currently show Storefront and Admin health responses swapped. `STAGING-GW-001` is fixed in commits `16edf0a`/`8cf801c`, but the root refresh that installs `nginx.conf` and the gateway-only recreate are still pending on the host.
 1. **Browser trust and authenticated QA (P0):** Caddy uses its internal CA. The current browser environment does not trust that CA, so authenticated OIDC/MFA, Seller and Admin Playwright manifests cannot be run without violating the no-TLS-bypass rule.
 2. **Backup/restore (P1):** no approved external backup target or isolated restore drill is configured.
 3. **Full functional/security evidence (P1):** media quarantine, order flows, retry/DLQ, concurrency, RBAC and visual acceptance remain unverified on the real staging runtime.

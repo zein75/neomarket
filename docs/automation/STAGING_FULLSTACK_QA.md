@@ -12,6 +12,16 @@ The earlier audit below is historical. The current staging runtime is deployed a
 - Backup/restore, authenticated OIDC/MFA, full Seller/Admin/B2C journeys, visual regression and three independent manifests remain NOT RUN.
 # NeoMarket Fullstack Staging QA - 2026-10-20
 
+## Current runtime addendum — after deployment `c073e744`
+
+The protected deployment request was executed from the private control host after GitHub-hosted SSH correctly timed out on the RFC1918 staging address. Deployment evidence is the restricted wrapper output `SMOKE PASS` and `DEPLOY_SUCCESS sha=c073e7446d6d639f73644a1b68d2110ed234b325`.
+
+The current status probe shows all required services healthy, including `b2b-taxonomy-worker` and `b2c-recovery-worker`, and all application image tags match that SHA. Real HTTPS probes also confirmed Keycloak realm discovery and fail-closed Seller authentication (`401 AUTHENTICATION_REQUIRED`).
+
+One runtime defect remains open: Storefront and Admin host routes are swapped because the root-owned gateway bind mount still contains an older `nginx.conf`. `STAGING-GW-001` is tracked in `STAGING_ENDPOINTS.md`; commits `16edf0a` and `8cf801c` contain the refresh and gateway-recreate fix. The root refresh and a repeat of the host probes are required before S4 can pass.
+
+Browser authentication, trusted Caddy CA, backup/restore, media quarantine, visual regression and three independent authenticated Playwright manifests remain unverified. Release remains **BLOCKED**.
+
 ## Final status
 
 **BLOCKED - S0 audit and restricted bootstrap completed; application deployment is blocked by missing protected staging secrets and provider/TLS configuration.**
