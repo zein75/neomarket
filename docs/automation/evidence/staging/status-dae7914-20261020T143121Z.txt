@@ -1,0 +1,335 @@
+﻿=== compose status ===
+NAME                                      IMAGE                                                                           COMMAND                  SERVICE               CREATED              STATUS                        PORTS
+neomarket-staging-admin-1                 ghcr.io/zein75/market/admin:dae79147dac0b4d86e4397981e86f7bec10d3faa            "uv run --no-sync uv…"   admin                 About a minute ago   Up About a minute (healthy)   8003/tcp
+neomarket-staging-admin-frontend-1        ghcr.io/zein75/market/admin-frontend:dae79147dac0b4d86e4397981e86f7bec10d3faa   "docker-entrypoint.s…"   admin-frontend        57 seconds ago       Up 54 seconds (healthy)       3000/tcp
+neomarket-staging-admin-postgres-1        postgres:16-alpine                                                              "docker-entrypoint.s…"   admin-postgres        5 hours ago          Up 5 hours (healthy)          5432/tcp
+neomarket-staging-admin-worker-1          ghcr.io/zein75/market/admin:dae79147dac0b4d86e4397981e86f7bec10d3faa            "uv run --no-sync py…"   admin-worker          About a minute ago   Up About a minute (healthy)   8003/tcp
+neomarket-staging-b2b-1                   ghcr.io/zein75/market/b2b:dae79147dac0b4d86e4397981e86f7bec10d3faa              "uv run --no-sync uv…"   b2b                   About a minute ago   Up About a minute (healthy)   8002/tcp
+neomarket-staging-b2b-run-a324af6d784b    ghcr.io/zein75/market/b2b:f533cc3c37c4a1123aa50cf1b994bd3028d0e722              "uv run --no-sync py…"   b2b                   23 minutes ago       Created                       
+neomarket-staging-b2b-taxonomy-worker-1   ghcr.io/zein75/market/b2b:dae79147dac0b4d86e4397981e86f7bec10d3faa              "uv run --no-sync py…"   b2b-taxonomy-worker   About a minute ago   Up About a minute (healthy)   8002/tcp
+neomarket-staging-b2c-1                   ghcr.io/zein75/market/b2c:dae79147dac0b4d86e4397981e86f7bec10d3faa              "uv run --no-sync uv…"   b2c                   About a minute ago   Up About a minute (healthy)   8001/tcp
+neomarket-staging-b2c-recovery-worker-1   ghcr.io/zein75/market/b2c:dae79147dac0b4d86e4397981e86f7bec10d3faa              "uv run --no-sync py…"   b2c-recovery-worker   About a minute ago   Up About a minute (healthy)   8001/tcp
+neomarket-staging-clamd-1                 clamav/clamav:1.5.4                                                             "/init"                  clamd                 About an hour ago    Up About an hour (healthy)    3310/tcp, 7357/tcp
+neomarket-staging-gateway-1               nginx:1.27-alpine                                                               "/docker-entrypoint.…"   gateway               49 seconds ago       Up 48 seconds (healthy)       127.0.0.1:18080->80/tcp
+neomarket-staging-keycloak-1              quay.io/keycloak/keycloak:26.3.2                                                "/opt/keycloak/bin/k…"   keycloak              4 hours ago          Up 4 hours (healthy)          8080/tcp, 8443/tcp, 9000/tcp
+neomarket-staging-keycloak-postgres-1     postgres:16-alpine                                                              "docker-entrypoint.s…"   keycloak-postgres     4 hours ago          Up 4 hours (healthy)          5432/tcp
+neomarket-staging-mailpit-1               axllent/mailpit:v1.21.8                                                         "/mailpit"               mailpit               4 hours ago          Up 4 hours (healthy)          1025/tcp, 1110/tcp, 8025/tcp
+neomarket-staging-postgres-1              postgres:16-alpine                                                              "docker-entrypoint.s…"   postgres              5 hours ago          Up About an hour (healthy)    5432/tcp
+neomarket-staging-redis-1                 redis:7-alpine                                                                  "docker-entrypoint.s…"   redis                 5 hours ago          Up About an hour (healthy)    6379/tcp
+neomarket-staging-seller-frontend-1       ghcr.io/zein75/market/seller:dae79147dac0b4d86e4397981e86f7bec10d3faa           "docker-entrypoint.s…"   seller-frontend       57 seconds ago       Up 54 seconds (healthy)       3000/tcp
+neomarket-staging-storefront-1            ghcr.io/zein75/market/storefront:dae79147dac0b4d86e4397981e86f7bec10d3faa       "docker-entrypoint.s…"   storefront            57 seconds ago       Up 54 seconds (healthy)       3000/tcp
+=== health states ===
+/neomarket-staging-admin-1 state=running health=healthy exit=0
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+
+/neomarket-staging-admin-worker-1 state=running health=healthy exit=0
+  health exit=0 output=
+  health exit=0 output=
+
+/neomarket-staging-b2b-1 state=running health=healthy exit=0
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+
+/neomarket-staging-b2c-1 state=running health=healthy exit=0
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+
+/neomarket-staging-b2b-taxonomy-worker-1 state=running health=healthy exit=0
+  health exit=0 output=
+  health exit=0 output=
+
+/neomarket-staging-b2c-recovery-worker-1 state=running health=healthy exit=0
+  health exit=0 output=
+  health exit=0 output=
+
+/neomarket-staging-clamd-1 state=running health=healthy exit=0
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+
+/neomarket-staging-mailpit-1 state=running health=healthy exit=0
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+
+/neomarket-staging-keycloak-1 state=running health=healthy exit=0
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+
+/neomarket-staging-storefront-1 state=running health=healthy exit=0
+  health exit=0 output=health 200 {"status":"ok"}
+
+  health exit=0 output=health 200 {"status":"ok"}
+
+  health exit=0 output=health 200 {"status":"ok"}
+
+  health exit=0 output=health 200 {"status":"ok"}
+
+
+/neomarket-staging-seller-frontend-1 state=running health=healthy exit=0
+  health exit=0 output=health 200 {"status":"ok","service":"seller"}
+
+  health exit=0 output=health 200 {"status":"ok","service":"seller"}
+
+  health exit=0 output=health 200 {"status":"ok","service":"seller"}
+
+  health exit=0 output=health 200 {"status":"ok","service":"seller"}
+
+
+/neomarket-staging-admin-frontend-1 state=running health=healthy exit=0
+  health exit=0 output=health 200 {"status":"ok","service":"admin"}
+
+  health exit=0 output=health 200 {"status":"ok","service":"admin"}
+
+  health exit=0 output=health 200 {"status":"ok","service":"admin"}
+
+  health exit=0 output=health 200 {"status":"ok","service":"admin"}
+
+
+/neomarket-staging-gateway-1 state=running health=healthy exit=0
+  health exit=0 output=
+  health exit=0 output=
+  health exit=0 output=
+
+=== recent admin-worker logs ===
+=== recent admin/b2b logs ===
+b2b-1  | INFO:     Started server process [11]
+b2b-1  | INFO:     Waiting for application startup.
+b2b-1  | INFO:     Application startup complete.
+b2b-1  | INFO:     Uvicorn running on http://0.0.0.0:8002 (Press CTRL+C to quit)
+b2b-1  | {"actor_id":null,"deploy_sha":"dae79147dac0b4d86e4397981e86f7bec10d3faa","duration_ms":5.871,"event":"http_request","method":"GET","request_id":"0aefc788-3c42-40d9-8df5-4fe29d5b9f42","route":"/ready","service":"b2b","status":200,"trace_id":"0aefc788-3c42-40d9-8df5-4fe29d5b9f42"}
+b2b-1  | INFO:     127.0.0.1:41406 - "GET /ready HTTP/1.1" 200 OK
+b2b-1  | {"actor_id":null,"deploy_sha":"dae79147dac0b4d86e4397981e86f7bec10d3faa","duration_ms":2.865,"event":"http_request","method":"GET","request_id":"45cc3ef6-4a77-48c2-b9aa-655dde940bc0","route":"/ready","service":"b2b","status":200,"trace_id":"45cc3ef6-4a77-48c2-b9aa-655dde940bc0"}
+b2b-1  | INFO:     127.0.0.1:40024 - "GET /ready HTTP/1.1" 200 OK
+b2b-1  | {"actor_id":null,"deploy_sha":"dae79147dac0b4d86e4397981e86f7bec10d3faa","duration_ms":0.33,"event":"http_request","method":"GET","request_id":"219aaf84-8c5c-43e0-8186-f21e4d4b1b73","route":"/health","service":"b2b","status":200,"trace_id":"219aaf84-8c5c-43e0-8186-f21e4d4b1b73"}
+b2b-1  | INFO:     172.20.0.16:45852 - "GET /health HTTP/1.0" 200 OK
+b2b-1  | {"actor_id":null,"deploy_sha":"dae79147dac0b4d86e4397981e86f7bec10d3faa","duration_ms":2.679,"event":"http_request","method":"GET","request_id":"5c02be5f-d721-4fbf-96a1-468ccd7f1b68","route":"/ready","service":"b2b","status":200,"trace_id":"5c02be5f-d721-4fbf-96a1-468ccd7f1b68"}
+b2b-1  | INFO:     127.0.0.1:41610 - "GET /ready HTTP/1.1" 200 OK
+b2b-1  | {"actor_id":null,"deploy_sha":"dae79147dac0b4d86e4397981e86f7bec10d3faa","duration_ms":0.222,"event":"http_request","method":"GET","request_id":"7336b6f9-01fc-4c30-92b8-8d008a268655","route":"/health","service":"b2b","status":200,"trace_id":"7336b6f9-01fc-4c30-92b8-8d008a268655"}
+b2b-1  | INFO:     172.20.0.16:40696 - "GET /health HTTP/1.0" 200 OK
+b2b-1  | {"actor_id":null,"deploy_sha":"dae79147dac0b4d86e4397981e86f7bec10d3faa","duration_ms":0.226,"event":"http_request","method":"GET","request_id":"b4427c4c-0699-4de3-9d76-7556765166ab","route":"/health","service":"b2b","status":200,"trace_id":"b4427c4c-0699-4de3-9d76-7556765166ab"}
+b2b-1  | INFO:     172.20.0.16:50540 - "GET /health HTTP/1.0" 200 OK
+b2b-1  | {"actor_id":null,"deploy_sha":"dae79147dac0b4d86e4397981e86f7bec10d3faa","duration_ms":2.688,"event":"http_request","method":"GET","request_id":"11c42223-fae9-44fc-aa4e-2c80a54cd88e","route":"/ready","service":"b2b","status":200,"trace_id":"11c42223-fae9-44fc-aa4e-2c80a54cd88e"}
+b2b-1  | INFO:     127.0.0.1:36534 - "GET /ready HTTP/1.1" 200 OK
+b2b-1  | {"actor_id":null,"deploy_sha":"dae79147dac0b4d86e4397981e86f7bec10d3faa","duration_ms":0.216,"event":"http_request","method":"GET","request_id":"b826a290-33e8-45c5-abc7-575d1f6c1904","route":"/health","service":"b2b","status":200,"trace_id":"b826a290-33e8-45c5-abc7-575d1f6c1904"}
+b2b-1  | INFO:     172.20.0.16:46452 - "GET /health HTTP/1.0" 200 OK
+b2b-1  | {"actor_id":null,"deploy_sha":"dae79147dac0b4d86e4397981e86f7bec10d3faa","duration_ms":3.579,"event":"http_request","method":"GET","request_id":"bfa7f266-2d95-4711-8036-8400b7758a74","route":"/ready","service":"b2b","status":200,"trace_id":"bfa7f266-2d95-4711-8036-8400b7758a74"}
+b2b-1  | INFO:     127.0.0.1:51050 - "GET /ready HTTP/1.1" 200 OK
+admin-1  | INFO:     Started server process [11]
+admin-1  | INFO:     Waiting for application startup.
+admin-1  | INFO:     Application startup complete.
+admin-1  | INFO:     Uvicorn running on http://0.0.0.0:8003 (Press CTRL+C to quit)
+admin-1  | {"actor_id":null,"deploy_sha":"dae79147dac0b4d86e4397981e86f7bec10d3faa","duration_ms":54.654,"event":"http_request","method":"GET","request_id":"5914f46a-57c6-4756-98d9-f1d1f7151233","route":"/ready","service":"admin","status":200,"trace_id":"5914f46a-57c6-4756-98d9-f1d1f7151233"}
+admin-1  | INFO:     127.0.0.1:49348 - "GET /ready HTTP/1.1" 200 OK
+admin-1  | {"actor_id":null,"deploy_sha":"dae79147dac0b4d86e4397981e86f7bec10d3faa","duration_ms":1.731,"event":"http_request","method":"GET","request_id":"1f3a6b8b-a412-4c2d-98af-628acb97070e","route":"/ready","service":"admin","status":200,"trace_id":"1f3a6b8b-a412-4c2d-98af-628acb97070e"}
+admin-1  | INFO:     127.0.0.1:56370 - "GET /ready HTTP/1.1" 200 OK
+admin-1  | {"actor_id":null,"deploy_sha":"dae79147dac0b4d86e4397981e86f7bec10d3faa","duration_ms":1.47,"event":"http_request","method":"GET","request_id":"0e73ec4e-88d9-4165-9d7e-debb00d374da","route":"/ready","service":"admin","status":200,"trace_id":"0e73ec4e-88d9-4165-9d7e-debb00d374da"}
+admin-1  | INFO:     127.0.0.1:54066 - "GET /ready HTTP/1.1" 200 OK
+admin-1  | {"actor_id":null,"deploy_sha":"dae79147dac0b4d86e4397981e86f7bec10d3faa","duration_ms":1.375,"event":"http_request","method":"GET","request_id":"edcaa23e-66e9-4034-a0b1-c38c54fe47fd","route":"/ready","service":"admin","status":200,"trace_id":"edcaa23e-66e9-4034-a0b1-c38c54fe47fd"}
+admin-1  | INFO:     127.0.0.1:46866 - "GET /ready HTTP/1.1" 200 OK
+admin-1  | {"actor_id":null,"deploy_sha":"dae79147dac0b4d86e4397981e86f7bec10d3faa","duration_ms":2.607,"event":"http_request","method":"GET","request_id":"0ee18e4b-9414-4781-911f-00790de00c00","route":"/ready","service":"admin","status":200,"trace_id":"0ee18e4b-9414-4781-911f-00790de00c00"}
+admin-1  | INFO:     127.0.0.1:40084 - "GET /ready HTTP/1.1" 200 OK
+=== recent frontend logs ===
+seller-frontend-1  |    ▲ Next.js 15.5.27
+seller-frontend-1  |    - Local:        http://localhost:3000
+seller-frontend-1  |    - Network:      http://0.0.0.0:3000
+seller-frontend-1  | 
+seller-frontend-1  |  ✓ Starting...
+seller-frontend-1  |  ✓ Ready in 119ms
+storefront-1       |    ▲ Next.js 15.5.27
+storefront-1       |    - Local:        http://localhost:3000
+storefront-1       |    - Network:      http://0.0.0.0:3000
+storefront-1       | 
+storefront-1       |  ✓ Starting...
+storefront-1       |  ✓ Ready in 110ms
+admin-frontend-1   |    ▲ Next.js 15.5.27
+admin-frontend-1   |    - Local:        http://localhost:3000
+admin-frontend-1   |    - Network:      http://0.0.0.0:3000
+admin-frontend-1   | 
+admin-frontend-1   |  ✓ Starting...
+admin-frontend-1   |  ✓ Ready in 125ms
+=== recent infrastructure logs ===
+gateway-1  | /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+gateway-1  | /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+gateway-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+gateway-1  | 10-listen-on-ipv6-by-default.sh: info: can not modify /etc/nginx/conf.d/default.conf (read-only file system?)
+gateway-1  | /docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+gateway-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+gateway-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+gateway-1  | /docker-entrypoint.sh: Configuration complete; ready for start up
+gateway-1  | 127.0.0.1 - - [20/Oct/2026:14:30:47 +0000] "GET /health HTTP/1.1" 200 15 "-" "Wget"
+gateway-1  | 127.0.0.1 - - [20/Oct/2026:14:30:47 +0000] "GET /health HTTP/1.1" 200 15 "-" "Wget"
+gateway-1  | 172.21.0.1 - - [20/Oct/2026:14:30:48 +0000] "GET /api/auth/login HTTP/1.1" 307 5 "-" "curl/8.21.0"
+gateway-1  | 172.21.0.1 - - [20/Oct/2026:14:30:48 +0000] "GET /health HTTP/1.1" 200 15 "-" "curl/8.18.0"
+gateway-1  | 172.21.0.1 - - [20/Oct/2026:14:30:48 +0000] "GET /health HTTP/1.1" 200 15 "-" "curl/8.18.0"
+gateway-1  | 172.21.0.1 - - [20/Oct/2026:14:30:48 +0000] "GET /internal/v1/inventory/orders/00000000-0000-0000-0000-000000000000 HTTP/1.1" 404 146 "-" "curl/8.18.0"
+gateway-1  | 172.21.0.1 - - [20/Oct/2026:14:30:48 +0000] "GET /internal/v1/inventory/orders/00000000-0000-0000-0000-000000000000 HTTP/1.1" 404 146 "-" "curl/8.18.0"
+gateway-1  | 172.21.0.1 - - [20/Oct/2026:14:31:02 +0000] "GET /api/auth/login HTTP/1.1" 307 5 "-" "curl/8.21.0"
+gateway-1  | 172.21.0.1 - - [20/Oct/2026:14:31:02 +0000] "GET /realms/neomarket-staging/.well-known/openid-configuration HTTP/1.1" 200 6698 "-" "curl/8.21.0"
+gateway-1  | 172.21.0.1 - - [20/Oct/2026:14:31:02 +0000] "GET /api/health HTTP/1.1" 200 44 "-" "curl/8.21.0"
+gateway-1  | 127.0.0.1 - - [20/Oct/2026:14:31:02 +0000] "GET /health HTTP/1.1" 200 15 "-" "Wget"
+gateway-1  | 127.0.0.1 - - [20/Oct/2026:14:31:02 +0000] "GET /health HTTP/1.1" 200 15 "-" "Wget"
+gateway-1  | 127.0.0.1 - - [20/Oct/2026:14:31:17 +0000] "GET /health HTTP/1.1" 200 15 "-" "Wget"
+gateway-1  | 127.0.0.1 - - [20/Oct/2026:14:31:17 +0000] "GET /health HTTP/1.1" 200 15 "-" "Wget"
+clamd-1    | Starting Freshclamd
+clamd-1    | Starting ClamAV
+clamd-1    | 
+Socket for clamd not found yet, retrying (0/1800) ...ClamAV update process started at Tue Oct 20 13:09:45 2026
+clamd-1    | daily database available for update (local version: 28157, remote version: 28159)
+clamd-1    | WARNING: downloadPatchAndApply: Can't download daily-28158.cdiff from https://database.clamav.net/daily-28158.cdiff
+clamd-1    | WARNING: Incremental update failed, trying to download daily.cvd
+clamd-1    | WARNING: Can't download daily.cvd from https://database.clamav.net/daily.cvd
+clamd-1    | WARNING: FreshClam received error code 403 from the ClamAV Content Delivery Network (CDN).
+clamd-1    | This could mean several things:
+clamd-1    |  1. You are running an out-of-date version of ClamAV / FreshClam.
+clamd-1    |     Ensure you are the most updated version by visiting https://www.clamav.net/downloads
+clamd-1    |  2. Your network is explicitly denied by the FreshClam CDN.
+clamd-1    |     In order to rectify this please check that you are:
+clamd-1    |    a. Running an up-to-date version of FreshClam
+clamd-1    |    b. Running FreshClam no more than once an hour
+clamd-1    |    c. Connecting from an IP in a blocked region
+clamd-1    |       Please see https://www.cisco.com/c/m/en_us/crisissupport.html
+clamd-1    |    d. If you have checked (a), (b) and (c), please open a ticket at
+clamd-1    |       https://github.com/Cisco-Talos/clamav/issues
+clamd-1    |       and we will investigate why your network is blocked.
+clamd-1    |       Please provide the following cf-ray id with your ticket: a4d8424749ebc76f-HEL
+clamd-1    | 
+clamd-1    | WARNING: You are on cool-down until after: 2026-10-21 13:09:46
+clamd-1    | ERROR: Database update process failed: Forbidden; Blocked by CDN
+clamd-1    | ERROR: Update failed.
+clamd-1    | WARNING: FreshClam was forbidden from downloading a database.
+clamd-1    | WARNING: This is fatal. Retrying later won't help. Exiting now.
+clamd-1    | 
+Socket for clamd not found yet, retrying (1/1800) ...
+Socket for clamd not found yet, retrying (2/1800) ...
+Socket for clamd not found yet, retrying (3/1800) ...
+Socket for clamd not found yet, retrying (4/1800) ...
+Socket for clamd not found yet, retrying (5/1800) ...
+Socket for clamd not found yet, retrying (6/1800) ...
+Socket for clamd not found yet, retrying (7/1800) ...
+Socket for clamd not found yet, retrying (8/1800) ...
+Socket for clamd not found yet, retrying (9/1800) ...
+Socket for clamd not found yet, retrying (10/1800) ...
+Socket for clamd not found yet, retrying (11/1800) ...
+Socket for clamd not found yet, retrying (12/1800) ...
+Socket for clamd not found yet, retrying (13/1800) ...
+Socket for clamd not found yet, retrying (14/1800) ...
+Socket for clamd not found yet, retrying (15/1800) ...
+Socket for clamd not found yet, retrying (16/1800) ...
+Socket for clamd not found yet, retrying (17/1800) ...
+Socket for clamd not found yet, retrying (18/1800) ...
+Socket for clamd not found yet, retrying (19/1800) ...
+Socket for clamd not found yet, retrying (20/1800) ...
+Socket for clamd not found yet, retrying (21/1800) ...
+Socket for clamd not found yet, retrying (22/1800) ...
+Socket for clamd not found yet, retrying (23/1800) ...
+Socket for clamd not found yet, retrying (24/1800) ...
+Socket for clamd not found yet, retrying (25/1800) ...
+Socket for clamd not found yet, retrying (26/1800) ...
+Socket for clamd not found yet, retrying (27/1800) ...
+Socket for clamd not found yet, retrying (28/1800) ...
+Socket for clamd not found yet, retrying (29/1800) ...
+Socket for clamd not found yet, retrying (30/1800) ...Tue Oct 20 13:10:16 2026 -> Limits: Global time limit set to 120000 milliseconds.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> Limits: Global size limit set to 419430400 bytes.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> Limits: File size limit set to 104857600 bytes.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> Limits: Recursion level limit set to 17.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> Limits: Files limit set to 10000.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> Limits: MaxEmbeddedPE limit set to 41943040 bytes.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> Limits: MaxHTMLNormalize limit set to 41943040 bytes.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> Limits: MaxHTMLNoTags limit set to 8388608 bytes.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> Limits: MaxScriptNormalize limit set to 20971520 bytes.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> Limits: MaxZipTypeRcg limit set to 1048576 bytes.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> Limits: MaxPartitions limit set to 50.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> Limits: MaxIconsPE limit set to 100.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> Limits: MaxRecHWP3 limit set to 16.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> Limits: PCREMatchLimit limit set to 100000.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> Limits: PCRERecMatchLimit limit set to 2000.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> Limits: PCREMaxFileSize limit set to 104857600.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> Archive support enabled.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> Image (graphics) scanning support enabled.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> Detection using image fuzzy hash enabled.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> AlertExceedsMax heuristic detection disabled.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> Heuristic alerts enabled.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> Portable Executable support enabled.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> ELF support enabled.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> Mail files support enabled.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> OLE2 support enabled.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> PDF support enabled.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> SWF support enabled.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> HTML support enabled.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> XMLDOCS support enabled.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> HWP3 support enabled.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> OneNote support enabled.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> Self checking every 600 seconds.
+clamd-1    | Tue Oct 20 13:10:16 2026 -> Set stacksize to 1048576
+clamd-1    | socket found, clamd started.
+clamd-1    | Tue Oct 20 13:11:19 2026 -> /tmp/eicar.txt: Eicar-Test-Signature FOUND
+clamd-1    | Tue Oct 20 13:20:17 2026 -> SelfCheck: Database status OK.
+clamd-1    | Tue Oct 20 13:30:18 2026 -> SelfCheck: Database status OK.
+clamd-1    | Tue Oct 20 13:40:19 2026 -> SelfCheck: Database status OK.
+clamd-1    | Tue Oct 20 13:50:20 2026 -> SelfCheck: Database status OK.
+clamd-1    | Tue Oct 20 14:00:20 2026 -> SelfCheck: Database status OK.
+clamd-1    | Tue Oct 20 14:10:21 2026 -> SelfCheck: Database status OK.
+clamd-1    | Tue Oct 20 14:20:22 2026 -> SelfCheck: Database status OK.
+clamd-1    | Tue Oct 20 14:30:22 2026 -> SelfCheck: Database status OK.
+mailpit-1  | time="2026/10/20 10:56:18" level=info msg="[smtpd] enabling any authentication (insecure)"
+keycloak-1  | Changes detected in configuration. Updating the server image.
+keycloak-1  | Updating the configuration and installing your custom providers, if any. Please wait.
+keycloak-1  | 2026-10-20 10:12:35,000 INFO  [io.quarkus.deployment.QuarkusAugmentor] (main) Quarkus augmentation completed in 7799ms
+mailpit-1   | time="2026/10/20 10:56:18" level=info msg="[smtpd] starting on 0.0.0.0:1025 (no encryption)"
+mailpit-1   | time="2026/10/20 10:56:18" level=info msg="[http] starting on 0.0.0.0:8025"
+mailpit-1   | time="2026/10/20 10:56:18" level=info msg="[http] accessible via http://0.0.0.0:8025/"
+keycloak-1  | Server configuration updated and persisted. Run the following command to review the configuration:
+keycloak-1  | 
+keycloak-1  | 	kc.sh show-config
+keycloak-1  | 
+keycloak-1  | Next time you run the server, just run:
+keycloak-1  | 
+keycloak-1  | 	kc.sh start --http-enabled=true --hostname-strict=false --proxy-headers=xforwarded --import-realm --optimized
+keycloak-1  | 
+keycloak-1  | WARNING: Hostname v1 options [hostname-strict-https] are still in use, please review your configuration
+keycloak-1  | 2026-10-20 10:12:36,239 INFO  [org.keycloak.url.HostnameV2ProviderFactory] (main) If hostname is specified, hostname-strict is effectively ignored
+keycloak-1  | 2026-10-20 10:12:41,836 INFO  [org.keycloak.quarkus.runtime.storage.database.liquibase.QuarkusJpaUpdaterProvider] (main) Initializing database schema. Using changelog META-INF/jpa-changelog-master.xml
+keycloak-1  | 2026-10-20 10:12:53,144 INFO  [org.keycloak.spi.infinispan.impl.embedded.JGroupsConfigurator] (main) JGroups JDBC_PING discovery enabled.
+keycloak-1  | 2026-10-20 10:12:53,793 INFO  [org.keycloak.spi.infinispan.impl.embedded.JGroupsConfigurator] (main) JGroups Encryption enabled (mTLS).
+keycloak-1  | 2026-10-20 10:12:54,176 INFO  [org.keycloak.jgroups.certificates.CertificateReloadManager] (main) Starting JGroups certificate reload manager
+keycloak-1  | 2026-10-20 10:12:54,488 INFO  [org.infinispan.CONTAINER] (main) ISPN000556: Starting user marshaller 'org.infinispan.commons.marshall.ImmutableProtoStreamMarshaller'
+keycloak-1  | 2026-10-20 10:12:55,741 INFO  [org.infinispan.CLUSTER] (main) ISPN000078: Starting JGroups channel `ISPN` with stack `jdbc-ping`
+keycloak-1  | 2026-10-20 10:12:55,746 INFO  [org.jgroups.JChannel] (main) local_addr: e4e9925f-dd79-4d15-a572-f2e2270285c2, name: ebebdefbc259-7222
+keycloak-1  | 2026-10-20 10:12:55,779 INFO  [org.jgroups.protocols.FD_SOCK2] (main) server listening on *:57800
+keycloak-1  | 2026-10-20 10:12:55,793 INFO  [org.jgroups.protocols.pbcast.GMS] (main) ebebdefbc259-7222: no members discovered after 2 ms: creating cluster as coordinator
+keycloak-1  | 2026-10-20 10:12:55,829 INFO  [org.infinispan.CLUSTER] (main) ISPN000094: Received new cluster view for channel ISPN: [ebebdefbc259-7222|0] (1) [ebebdefbc259-7222]
+keycloak-1  | 2026-10-20 10:12:55,832 INFO  [org.keycloak.jgroups.certificates.CertificateReloadManager] (main) Reloading JGroups Certificate
+keycloak-1  | 2026-10-20 10:12:55,946 INFO  [org.infinispan.CLUSTER] (main) ISPN000079: Channel `ISPN` local address is `ebebdefbc259-7222`, physical addresses are `[172.22.0.3:7800]`
+keycloak-1  | 2026-10-20 10:12:56,323 INFO  [org.keycloak.connections.infinispan.DefaultInfinispanConnectionProviderFactory] (main) Node name: ebebdefbc259-7222, Site name: null
+keycloak-1  | 2026-10-20 10:12:56,507 INFO  [org.keycloak.exportimport.dir.DirImportProvider] (main) Importing from directory /opt/keycloak/bin/../data/import
+keycloak-1  | 2026-10-20 10:12:56,623 INFO  [org.keycloak.services] (main) KC-SERVICES0050: Initializing master realm
+keycloak-1  | 2026-10-20 10:12:57,616 INFO  [org.keycloak.exportimport.singlefile.SingleFileImportProvider] (main) Full importing from file /opt/keycloak/bin/../data/import/neomarket-staging.json
+keycloak-1  | 2026-10-20 10:12:57,950 WARN  [org.keycloak.models.utils.RepresentationToModel] (main) Referenced client scope 'profile' doesn't exist. Ignoring
+keycloak-1  | 2026-10-20 10:12:57,953 WARN  [org.keycloak.models.utils.RepresentationToModel] (main) Referenced client scope 'email' doesn't exist. Ignoring
+keycloak-1  | 2026-10-20 10:12:57,956 WARN  [org.keycloak.models.utils.RepresentationToModel] (main) Referenced client scope 'roles' doesn't exist. Ignoring
+keycloak-1  | 2026-10-20 10:12:57,958 WARN  [org.keycloak.models.utils.RepresentationToModel] (main) Referenced client scope 'web-origins' doesn't exist. Ignoring
+keycloak-1  | 2026-10-20 10:12:58,449 INFO  [org.keycloak.exportimport.util.ImportUtils] (main) Realm 'neomarket-staging' imported
+keycloak-1  | 2026-10-20 10:12:58,449 INFO  [org.keycloak.services] (main) KC-SERVICES0030: Full model import requested. Strategy: IGNORE_EXISTING
+keycloak-1  | 2026-10-20 10:12:58,449 INFO  [org.keycloak.services] (main) KC-SERVICES0032: Import finished successfully
+keycloak-1  | 2026-10-20 10:12:58,513 INFO  [org.keycloak.services] (main) KC-SERVICES0077: Created temporary admin user with username kc-admin
+keycloak-1  | 2026-10-20 10:12:59,253 INFO  [io.quarkus] (main) Keycloak 26.3.2 on JVM (powered by Quarkus 3.20.2) started in 24.041s. Listening on: http://0.0.0.0:8080. Management interface listening on http://0.0.0.0:9000.
+keycloak-1  | 2026-10-20 10:12:59,253 INFO  [io.quarkus] (main) Profile prod activated. 
+keycloak-1  | 2026-10-20 10:12:59,253 INFO  [io.quarkus] (main) Installed features: [agroal, cdi, hibernate-orm, jdbc-postgresql, keycloak, narayana-jta, opentelemetry, reactive-routes, rest, rest-jackson, smallrye-context-propagation, smallrye-health, vertx]

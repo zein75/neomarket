@@ -2,7 +2,7 @@
 
 ## Release status
 
-**BLOCKED.** SSH access and the restricted staging runtime are present, and read-only endpoint probes pass for the public boundaries. The current `d30c5d8` runtime is healthy and its real HTTPS health/discovery probes pass; the fresh authenticated Seller route sweep was run on the code-equivalent `20cd369` runtime and verified all 11 protected routes. Full release gates remain open because Keycloak MFA/OIDC, authenticated Admin/visual QA, backup/restore, provider/DLQ recovery evidence, and three independent Playwright manifests are still missing.
+**BLOCKED.** SSH access and the restricted staging runtime are present, and read-only endpoint probes pass for the public boundaries. The current `dae7914` runtime is healthy and the real Admin OIDC login endpoint now issues a 307 redirect to Keycloak with PKCE/state/nonce. Full release gates remain open because Keycloak MFA claims are not configured, authenticated Admin/visual QA, backup/restore, provider/DLQ recovery evidence, and three independent Playwright manifests are still missing.
 
 The protected staging runtime was deliberately deployed to the pinned SHA below. No production deployment was performed.
 
@@ -12,8 +12,15 @@ The protected staging runtime was deliberately deployed to the pinned SHA below.
 - Current production specifications: `docs/NeoMarket_Admin_Production_Spec_2026-10-16/` and `docs/NeoMarket_Seller_Production_Blueprint_2026-10-16/`.
 - Staging manifests: `deploy/staging/`.
 - Local branch: `staging`; local HEAD contains later documentation-only commits. Those commits are not deployed.
-- The local worktree is dirty; the current deployed staging release is `d30c5d843f741213db7d11278bb528c586655b90` (see `status-d30c5d8-20261020.txt`).
+- The local worktree is dirty; the current deployed staging release is `dae79147dac0b4d86e4397981e86f7bec10d3faa` (see `evidence/staging/status-dae7914-20261020T143121Z.txt`).
 - Requested `$neomarket-exhaustive-qa` skill was not present in the configured skill roots or repository skill directory.
+
+## Latest OIDC staging verification
+
+- CI and the restricted deployment completed for immutable SHA `dae79147dac0b4d86e4397981e86f7bec10d3faa`; all required services and workers report healthy.
+- Server-side discovery and token metadata fetches use the private `keycloak:8080` service. The public issuer remains `https://keycloak.neomarket.test/realms/neomarket-staging` for browser redirects and issuer validation.
+- `GET https://admin.neomarket.test/api/auth/login` returned `307 Temporary Redirect` with the expected authorization endpoint, `response_type=code`, PKCE `S256`, state, nonce, `prompt=login`, and `max_age=0`. Evidence: [`admin-oidc-private-keycloak-dae79147dac0b4d86e4397981e86f7bec10d3faa-20261020T143102Z.json`](evidence/staging/admin-oidc-private-keycloak-dae79147dac0b4d86e4397981e86f7bec10d3faa-20261020T143102Z.json).
+- This is OIDC discovery/redirect evidence only. No staff credentials or MFA claims were used; authenticated Admin browser acceptance remains BLOCKED and fail-closed.
 
 ## Stage 1 ? server audit
 

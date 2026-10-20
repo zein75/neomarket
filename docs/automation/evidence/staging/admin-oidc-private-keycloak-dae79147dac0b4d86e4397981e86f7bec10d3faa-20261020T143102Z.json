@@ -1,0 +1,40 @@
+{
+    "captured_at":  "20261020T143102Z",
+    "environment":  "staging",
+    "deployed_sha":  "dae79147dac0b4d86e4397981e86f7bec10d3faa",
+    "endpoint":  "https://admin.neomarket.test/api/auth/login",
+    "login_status_line":  "HTTP/1.1 307 Temporary Redirect",
+    "login_result":  "PASS: OIDC redirect issued",
+    "redirect_origin":  "https://keycloak.neomarket.test",
+    "redirect_path":  "/realms/neomarket-staging/protocol/openid-connect/auth",
+    "redirect_query_keys":  [
+                                "client_id",
+                                "redirect_uri",
+                                "response_type",
+                                "scope",
+                                "code_challenge",
+                                "code_challenge_method",
+                                "state",
+                                "nonce",
+                                "prompt",
+                                "max_age"
+                            ],
+    "cookies":  "present; values omitted",
+    "admin_health":  {
+                         "status":  "ok",
+                         "service":  "admin"
+                     },
+    "public_keycloak_discovery":  {
+                                      "issuer":  "https://keycloak.neomarket.test/realms/neomarket-staging",
+                                      "jwks_uri":  "https://keycloak.neomarket.test/realms/neomarket-staging/protocol/openid-connect/certs",
+                                      "authorization_endpoint":  "https://keycloak.neomarket.test/realms/neomarket-staging/protocol/openid-connect/auth",
+                                      "token_endpoint":  "https://keycloak.neomarket.test/realms/neomarket-staging/protocol/openid-connect/token"
+                                  },
+    "mfa":  "not exercised; realm ACR mapping remains not configured",
+    "authenticated_browser":  "BLOCKED: no approved MFA test claims/credentials",
+    "notes":  [
+                  "Private server-side discovery resolved via keycloak:8080.",
+                  "Public issuer and browser redirect remain HTTPS keycloak.neomarket.test.",
+                  "No secrets, cookies, state, nonce, or PKCE values persisted."
+              ]
+}
