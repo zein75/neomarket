@@ -6,4 +6,6 @@ No staging databases or object storage were available to the SSH account during 
 
 ## Runtime update — 2026-10-20
 
-The application runtime is deployed, but no external backup target or isolated restore drill has been configured. This release gate remains NOT RUN.
+The application runtime is deployed. A fresh isolated local restore drill has now completed for B2C, B2B and Admin: row counts and order-independent checksums matched, and the Admin audit chain remained valid after restore. This proves local logical dump/restore integrity only; no external backup target, WAL/PITR target or approved RPO/RTO is configured, so the staging backup gate remains PARTIAL/NOT READY.
+
+Evidence: `qa-reports/restore-drill/b2b-followup-20261020.json`.

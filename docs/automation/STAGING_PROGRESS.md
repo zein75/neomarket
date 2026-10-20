@@ -112,6 +112,7 @@ An additional real-browser smoke covered 24 public Storefront, Seller and Admin 
 - Freshclam reaches the upstream CDN but receives HTTP 403 and enters CDN cooldown. Signature freshness and full media quarantine/upload evidence remain PARTIAL; this is not marked PASS.
 - Controlled PostgreSQL outage drill on the same runtime returned B2B readiness `503` while the database was stopped, then recovered to `200 {"status":"ok"}` after the container became healthy. No volume was deleted. Evidence: `docs/automation/evidence/staging/db-outage-drill-ee07903-20261020.json`. This is partial dependency-recovery evidence; alerting, retry/DLQ and provider drills remain open.
 - Controlled Redis outage drill produced the same fail-closed `503` readiness response and recovered to `200` after Redis became healthy; no volume was deleted. Evidence: `docs/automation/evidence/staging/redis-outage-drill-ee07903-20261020.json`. Alert verification, retry/DLQ and external provider drills remain open.
+- A fresh isolated local PostgreSQL restore drill passed for B2C, B2B and Admin. Source/restored row counts and order-independent checksums matched; Admin audit-chain hashes, links and head remained valid. Evidence: `qa-reports/restore-drill/b2b-followup-20261020.json`. This does not close the required off-host WAL/PITR target, encryption, retention or RPO/RTO gate.
 
 ### Deployment confirmation for ee07903 - 2026-10-20 13:10Z
 

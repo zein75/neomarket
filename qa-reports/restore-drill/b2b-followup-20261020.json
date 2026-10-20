@@ -1,0 +1,108 @@
+{
+  "environment": "development",
+  "targets": {
+    "b2c": "restore_drill_df4c31d9570a_b2c",
+    "b2b": "restore_drill_df4c31d9570a_b2b",
+    "admin": "restore_drill_df4c31d9570a_admin"
+  },
+  "databases": {
+    "b2c": {
+      "dump_seconds": 0.891,
+      "restore_seconds": 1.266,
+      "source_counts": {
+        "users": 986,
+        "orders": 400,
+        "cart_items": 512
+      },
+      "restored_counts": {
+        "users": 986,
+        "orders": 400,
+        "cart_items": 512
+      },
+      "source_checksums": {
+        "users": "60d15bc32b019d7417e020dab9b2832d",
+        "orders": "285372d3ad0df0f3d0d90cf211fd6111",
+        "cart_items": "259da00e3fff27ad41a925e21b50d743"
+      },
+      "restored_checksums": {
+        "users": "60d15bc32b019d7417e020dab9b2832d",
+        "orders": "285372d3ad0df0f3d0d90cf211fd6111",
+        "cart_items": "259da00e3fff27ad41a925e21b50d743"
+      },
+      "integrity": "PASS"
+    },
+    "b2b": {
+      "dump_seconds": 0.859,
+      "restore_seconds": 3.391,
+      "source_counts": {
+        "products": 186,
+        "skus": 1421
+      },
+      "restored_counts": {
+        "products": 186,
+        "skus": 1421
+      },
+      "source_checksums": {
+        "products": "41492e09d0fdbf0711c51629af8fe064",
+        "skus": "3ea4e3806ee00d63eda3112df538239f"
+      },
+      "restored_checksums": {
+        "products": "41492e09d0fdbf0711c51629af8fe064",
+        "skus": "3ea4e3806ee00d63eda3112df538239f"
+      },
+      "integrity": "PASS"
+    },
+    "admin": {
+      "dump_seconds": 0.812,
+      "restore_seconds": 2.078,
+      "source_counts": {
+        "audit_logs": 31,
+        "audit_chain_heads": 1,
+        "moderation_cards": 26,
+        "moderation_outbox_events": 0,
+        "moderation_decision_receipts": 0,
+        "admin_operations": 0
+      },
+      "restored_counts": {
+        "audit_logs": 31,
+        "audit_chain_heads": 1,
+        "moderation_cards": 26,
+        "moderation_outbox_events": 0,
+        "moderation_decision_receipts": 0,
+        "admin_operations": 0
+      },
+      "source_checksums": {
+        "audit_logs": "5045d069bd7eec7d2a7c3a7baf6cf717",
+        "audit_chain_heads": "67e15e7de6f00345c6abfe082ff3554d",
+        "moderation_cards": "616ff962b9422f8b5b466eef85e3e7c2",
+        "moderation_outbox_events": "d41d8cd98f00b204e9800998ecf8427e",
+        "moderation_decision_receipts": "d41d8cd98f00b204e9800998ecf8427e",
+        "admin_operations": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "restored_checksums": {
+        "audit_logs": "5045d069bd7eec7d2a7c3a7baf6cf717",
+        "audit_chain_heads": "67e15e7de6f00345c6abfe082ff3554d",
+        "moderation_cards": "616ff962b9422f8b5b466eef85e3e7c2",
+        "moderation_outbox_events": "d41d8cd98f00b204e9800998ecf8427e",
+        "moderation_decision_receipts": "d41d8cd98f00b204e9800998ecf8427e",
+        "admin_operations": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "integrity": "PASS",
+      "audit_chain": {
+        "source": {
+          "invalid_hashes": 0,
+          "invalid_links": 0,
+          "invalid_head": 0
+        },
+        "restored": {
+          "invalid_hashes": 0,
+          "invalid_links": 0,
+          "invalid_head": 0
+        },
+        "integrity": "PASS"
+      }
+    }
+  },
+  "duration_seconds": 28.594,
+  "status": "PASS"
+}

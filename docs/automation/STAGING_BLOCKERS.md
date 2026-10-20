@@ -1,7 +1,7 @@
 ﻿# NeoMarket staging blockers
 
 0. **Authenticated QA and release manifests (P0):** local Playwright now trusts the Caddy internal CA and can reach all four staging hosts with Chromium host rules. Anonymous Admin boundary coverage passed 72/72 in all three viewports, but authenticated OIDC/MFA, Seller/Admin workflows, visual comparison and the three independent release manifests are still missing.
-1. **Backup/restore (P1):** no approved external backup target or isolated restore drill is configured.
+1. **Backup/restore (P1):** isolated local B2C/B2B/Admin restore drill now passes with matching counts/checksums and a valid Admin audit chain, but no approved external target, WAL/PITR, retention or RPO/RTO is configured.
 2. **Full functional/security evidence (P1):** media quarantine, order flows, retry/DLQ, concurrency, RBAC and visual acceptance remain unverified on the real staging runtime. The ClamAV daemon is now reachable through the isolated egress network and rejects EICAR, but signature refresh is blocked by the upstream CDN's HTTP 403/cooldown.
 3. **Commercial rules (P1):** ADR-001 is present but remains `PROPOSED / LEGAL_AND_PSP_REVIEW_REQUIRED`; merchant-of-record, tax, refund/restock and PSP settlement flows remain intentionally disabled pending the required approvals/provider evidence. Seller-fulfilled delivery is selected in the proposal, but its legal/commercial gate is not accepted.
 4. **Fixture cleanup and refresh (RESOLVED):** after deploy `ee079032`, the protected fixture runner created and destroyed an isolated authenticated Seller fixture with `deleted=true`; evidence contains no credential material.
