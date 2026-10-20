@@ -1,0 +1,101 @@
+{
+  "project": "mobile-chromium",
+  "viewport": {
+    "width": 393,
+    "height": 727
+  },
+  "tags": [
+    "wcag2a",
+    "wcag2aa",
+    "wcag21a",
+    "wcag21aa",
+    "wcag22aa"
+  ],
+  "scans": [
+    {
+      "name": "login",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "name": "registration",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "name": "email-verification",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "name": "unauthorized",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "name": "dashboard",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "name": "products",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "name": "product-create",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "name": "inventory",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "name": "imports",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "name": "orders",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "name": "moderation",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "name": "team",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "name": "team-accept-invite",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "name": "finance",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "name": "payouts",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "name": "product-detail",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "name": "product-skus",
+      "status": 200,
+      "violations": []
+    }
+  ]
+}
