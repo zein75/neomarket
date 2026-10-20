@@ -6,7 +6,7 @@
 3. **Commercial rules (P1):** ADR-001 is present but remains `PROPOSED / LEGAL_AND_PSP_REVIEW_REQUIRED`; merchant-of-record, tax, refund/restock and PSP settlement flows remain intentionally disabled pending the required approvals/provider evidence. Seller-fulfilled delivery is selected in the proposal, but its legal/commercial gate is not accepted.
 4. **Fixture cleanup and refresh (RESOLVED):** after deploy `ee079032`, the protected fixture runner created and destroyed an isolated authenticated Seller fixture with `deleted=true`; evidence contains no credential material.
 
-Resolved runtime issue: `STAGING-GW-001` was cleared after the root-owned gateway refresh and fixed-SHA redeploy on 2026-10-20. Current runtime evidence for `ee079032`: `docs/automation/evidence/staging/status-ee07903-20261020.txt` and `clamav-ee079032-20261020.json`.
+Resolved runtime issue: `STAGING-GW-001` was cleared after the root-owned gateway refresh and fixed-SHA redeploy on 2026-10-20. The current live runtime is `872b0a1`; evidence is `docs/automation/evidence/staging/status-872b0a1-20261020.txt`. The later source HEAD `35ebe3a` was not promoted because its immutable `admin-frontend` image is absent from GHCR.
 
 These are evidence-based blockers; no acceptance scenario is marked PASS solely from documentation.
 

@@ -2,7 +2,8 @@
 
 ## Version
 
-- Runtime release: \`ee079032cfd234ddd3232c4dfc74fc84b1a5bc22\`
+- Runtime release: \`872b0a1bcfcdac48fb347420502ac92596d0151b\` (current live staging)
+- Source HEAD: \`35ebe3a19eec7e524d2a22d7f233c624eb0592ac\`; an attempted protected deploy was rejected because the immutable GHCR \`admin-frontend\` image for that SHA is not published. The live runtime therefore remains on \`872b0a1\`.
 - Server: \`192.168.0.112\`
 - Gateway: \`127.0.0.1:18080\`
 - Environment: isolated staging
@@ -41,6 +42,7 @@ Evidence files:
 - \`evidence/staging/seller-state-matrix-cba15c1-20261020.json\`
 - \`evidence/staging/status-ee07903-20261020.txt\`
 - \`evidence/staging/status-ee07903-after-drills-20261020.txt\`
+- \`evidence/staging/status-872b0a1-20261020.txt\`
 - \`evidence/staging/clamav-ee079032-20261020.json\`
 - \`evidence/staging/smoke-ee07903-20261020.txt\`
 - \`evidence/staging/qa-fixture-create-destroy-ee07903-20261020.json\`
@@ -57,8 +59,9 @@ Evidence files:
 - \`evidence/staging/b2b-isolated-scale-integration-20261020.json\`
 - \`evidence/staging/b2b-isolated-order-carrier-integration-20261020.txt\`
 - \`evidence/staging/b2b-isolated-order-carrier-integration-20261020.json\`
+- \`evidence/staging/b2b-regression-source-35ebe3a-20261020.txt\`
 
-The Compose release `ee079032` keeps the application network internal and adds
+The current Compose release `872b0a1` keeps the application network internal and adds
 a dedicated egress-only network for ClamAV updates. The scanner is healthy and
 a real EICAR sample was detected while a clean sample returned OK. The updater
 reaches the CDN but is currently rejected with HTTP 403/cooldown, so signature
@@ -72,7 +75,8 @@ returns stayed disabled by ADR policy, and finance returned the explicit
 fail-closed evidence; they are not treated as runtime defects. The ephemeral
 fixture was destroyed after the run.
 
-On `ee079032`, a fresh Chromium login with an isolated fixture verified 11
+The latest authenticated Chromium evidence was collected on the code-equivalent
+`ee079032` runtime; it verified 11
 protected Seller routes at HTTP 200 with the requested final URLs and no
 unexpected 5xx responses. The observed `401` and `501` responses were the
 documented fail-closed finance/session checks. The fixture was destroyed with
@@ -104,4 +108,4 @@ Remaining non-commercial evidence gaps:
 
 ## Release status
 
-**B2B runtime is deployed and regression-tested. Authenticated Seller route access is now verified on the current release. The full Seller/B2B release remains BLOCKED** until the non-commercial evidence gaps and the ADR-dependent requirements are resolved. ADR-001 is present but still marked `PROPOSED / LEGAL_AND_PSP_REVIEW_REQUIRED`; no finance or return requirement was promoted from documentation alone.
+**B2B runtime is deployed and regression-tested. The current `872b0a1` runtime is healthy and has a passing smoke check; the latest authenticated Seller route evidence is on the code-equivalent `ee079032` runtime. The full Seller/B2B release remains BLOCKED** until the non-commercial evidence gaps and the ADR-dependent requirements are resolved. ADR-001 is present but still marked `PROPOSED / LEGAL_AND_PSP_REVIEW_REQUIRED`; no finance or return requirement was promoted from documentation alone.

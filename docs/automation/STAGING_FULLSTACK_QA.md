@@ -2,7 +2,7 @@
 
 ## Release status
 
-**BLOCKED.** SSH access and the restricted staging runtime are present, and read-only endpoint probes pass for the public boundaries. The pinned runtime has now passed the B2B regression suite, authenticated Seller route sweep, ClamAV EICAR/clean probes, and bounded PostgreSQL/Redis outage recovery drills. Full release gates remain open because Keycloak MFA/OIDC, authenticated Admin/visual QA, backup/restore, provider/DLQ recovery evidence, and three independent Playwright manifests are still missing.
+**BLOCKED.** SSH access and the restricted staging runtime are present, and read-only endpoint probes pass for the public boundaries. The current `872b0a1` runtime is healthy and has a passing smoke check; the authenticated Seller route sweep and bounded recovery evidence were collected on the code-equivalent `ee079032` runtime. Full release gates remain open because Keycloak MFA/OIDC, authenticated Admin/visual QA, backup/restore, provider/DLQ recovery evidence, and three independent Playwright manifests are still missing.
 
 The protected staging runtime was deliberately deployed to the pinned SHA below. No production deployment was performed.
 
@@ -12,7 +12,7 @@ The protected staging runtime was deliberately deployed to the pinned SHA below.
 - Current production specifications: `docs/NeoMarket_Admin_Production_Spec_2026-10-16/` and `docs/NeoMarket_Seller_Production_Blueprint_2026-10-16/`.
 - Staging manifests: `deploy/staging/`.
 - Local branch: `staging`; local HEAD contains later documentation-only commits. Those commits are not deployed.
-- The local worktree is dirty; the deployed staging release remains pinned to the immutable CI-built SHA `ee079032cfd234ddd3232c4dfc74fc84b1a5bc22`.
+- The local worktree is dirty; the current deployed staging release is `872b0a1bcfcdac48fb347420502ac92596d0151b` (see `status-872b0a1-20261020.txt`). Source HEAD `35ebe3a19eec7e524d2a22d7f233c624eb0592ac` was not promoted because its immutable `admin-frontend` image is not published.
 - Requested `$neomarket-exhaustive-qa` skill was not present in the configured skill roots or repository skill directory.
 
 ## Stage 1 ? server audit
@@ -51,7 +51,7 @@ The protected staging runtime was deliberately deployed to the pinned SHA below.
 The root-owned deployment layout is present under `/opt/neomarket-staging/compose` with compose, migration, smoke, and status scripts. `/opt/neomarket-staging/last-successful-sha` contains:
 
 ```text
-ee079032cfd234ddd3232c4dfc74fc84b1a5bc22
+872b0a1bcfcdac48fb347420502ac92596d0151b
 ```
 
 `/opt/neomarket-staging/.release.env` points to `ghcr.io/zein75/market` with the same SHA. The value is metadata only; container status cannot be read directly by `ter0o` because the environment file and Docker socket are protected.
@@ -80,11 +80,11 @@ Static staging Compose security: PASS
 
 This proves only static Compose properties. It does not prove secrets, container health, migrations, TLS trust in browsers, or external integrations.
 
-The latest observed `zein75/market` workflow run `39427746198` completed successfully for SHA `ee079032cfd234ddd3232c4dfc74fc84b1a5bc22`; static checks, PostgreSQL migration/concurrency tests, and all six image builds passed, while `deploy_staging` was skipped because it is manual-only. The protected forced-command deployment then completed successfully on the same SHA.
+The latest observed successful image build was workflow run `39427746198` for SHA `ee079032cfd234ddd3232c4dfc74fc84b1a5bc22`; static checks, PostgreSQL migration/concurrency tests, and all six image builds passed. The current live runtime is `872b0a1`; an attempted promotion of source HEAD `35ebe3a` failed closed because the immutable `admin-frontend` image was not published.
 
 ## Stage 2–7 result
 
-The protected runtime status and startup migrations are verified. On the pinned runtime, the B2B suite completed with `285 passed, 38 skipped, 0 failed`; a fresh Chromium Seller fixture authenticated and returned `200` on 11 protected routes with no unexpected 5xx responses; ClamAV detected EICAR and accepted a clean sample; and bounded PostgreSQL and Redis stop/start drills returned readiness `503` during each dependency outage and `200` after recovery without deleting volumes. These checks do not prove the full release: Keycloak MFA/OIDC claims, authenticated Admin workflows, visual comparison, upload/quarantine end-to-end behavior, retry/DLQ/provider drills, off-host backup/restore and the three independent release-gate manifests remain open.
+The protected runtime status and startup migrations are verified. The B2B suite completed with `285 passed, 38 skipped, 0 failed`; a fresh Chromium Seller fixture authenticated and returned `200` on 11 protected routes on the code-equivalent `ee079032` runtime; ClamAV detected EICAR and accepted a clean sample; and bounded PostgreSQL and Redis stop/start drills returned readiness `503` during each dependency outage and `200` after recovery without deleting volumes. The current `872b0a1` status is healthy. These checks do not prove the full release: Keycloak MFA/OIDC claims, authenticated Admin workflows, visual comparison, upload/quarantine end-to-end behavior, retry/DLQ/provider drills, off-host backup/restore and the three independent release-gate manifests remain open.
 
 ## Required next steps
 
@@ -119,6 +119,7 @@ The protected runtime status and startup migrations are verified. On the pinned 
 - [qa-fixture-fk-failure-3a1e7e9.txt](evidence/staging/qa-fixture-fk-failure-3a1e7e9.txt)
 - [qa-fixture-create-destroy-c1ba25c.txt](evidence/staging/qa-fixture-create-destroy-c1ba25c.txt)
 - [status-ee07903-20261020.txt](evidence/staging/status-ee07903-20261020.txt)
+- [status-872b0a1-20261020.txt](evidence/staging/status-872b0a1-20261020.txt) (current live runtime)
 - [smoke-ee07903-20261020.txt](evidence/staging/smoke-ee07903-20261020.txt)
 - [clamav-ee079032-20261020.json](evidence/staging/clamav-ee079032-20261020.json)
 - [qa-fixture-create-destroy-ee07903-20261020.json](evidence/staging/qa-fixture-create-destroy-ee07903-20261020.json)

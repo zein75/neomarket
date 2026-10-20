@@ -1,0 +1,7 @@
+Command: .venv/Scripts/python.exe -m pytest services/b2b/tests -q
+Source tree: 35ebe3a19eec7e524d2a22d7f233c624eb0592ac
+Result: 285 passed, 38 skipped, 2 warnings in 7.27s
+Warnings: Starlette/httpx deprecation; Pillow decompression-bomb warning is exercised by the security test.
+
+Command: .venv/Scripts/python.exe -m ruff check services/b2b/src services/b2b/tests
+Result: All checks passed.

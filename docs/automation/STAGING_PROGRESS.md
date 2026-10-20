@@ -138,4 +138,11 @@ An additional real-browser smoke covered 24 public Storefront, Seller and Admin 
 - Chromium staging Admin anonymous boundary passed 72/72 across desktop/tablet/mobile; CSRF boundary passed 3/3. Evidence: `admin-anonymous-boundary-cba15c1.json` and `admin-csrf-boundary-cba15c1.json`.
 - Admin unit/integration suite passed 56 with 65 environment-gated skips. Keycloak discovery still advertises only ACR `0`/`1`; authenticated MFA/OIDC and the three independent manifests remain blocked.
 
+### Current live runtime confirmation - 2026-10-20
+
+- The protected staging runtime is currently on immutable image SHA `872b0a1bcfcdac48fb347420502ac92596d0151b`; all required services, workers, gateway and Keycloak report healthy. Evidence: `docs/automation/evidence/staging/status-872b0a1-20261020.txt`.
+- The current smoke check returned `SMOKE PASS`. This confirms runtime health only; it does not create authenticated browser evidence.
+- Source HEAD is `35ebe3a19eec7e524d2a22d7f233c624eb0592ac`. A protected deploy request failed closed because GHCR does not contain the immutable `admin-frontend` image for that SHA, so no partial promotion was applied and runtime `872b0a1` remains active.
+- The latest authenticated Seller browser evidence remains on code-equivalent `ee079032`; no new authenticated route sweep is claimed for `872b0a1`.
+
 
