@@ -3,10 +3,26 @@ set -Eeuo pipefail
 
 [[ "$EUID" -eq 0 ]] || { echo 'Run as root.' >&2; exit 1; }
 
-COMPOSE_SRC=/tmp/ter0o-neomarket-compose.yml
-STATUS_SRC=/tmp/ter0o-neomarket-status.sh
-CADDY_SRC=/tmp/ter0o-neomarket-Caddyfile
-NGINX_SRC=/tmp/ter0o-neomarket-nginx.conf
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+SOURCE_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+
+# Prefer the checked-out staging manifests when this helper is run directly
+# from deploy/staging/bootstrap. Keep the /tmp contract as a fallback for the
+# already-installed root refresh workflow.
+if [[ -f "$SOURCE_ROOT/docker-compose.staging.yml" && \
+      -f "$SOURCE_ROOT/status.sh" && \
+      -f "$SOURCE_ROOT/Caddyfile" && \
+      -f "$SOURCE_ROOT/nginx.conf" ]]; then
+  COMPOSE_SRC="$SOURCE_ROOT/docker-compose.staging.yml"
+  STATUS_SRC="$SOURCE_ROOT/status.sh"
+  CADDY_SRC="$SOURCE_ROOT/Caddyfile"
+  NGINX_SRC="$SOURCE_ROOT/nginx.conf"
+else
+  COMPOSE_SRC=/tmp/ter0o-neomarket-compose.yml
+  STATUS_SRC=/tmp/ter0o-neomarket-status.sh
+  CADDY_SRC=/tmp/ter0o-neomarket-Caddyfile
+  NGINX_SRC=/tmp/ter0o-neomarket-nginx.conf
+fi
 COMPOSE_DST=/opt/neomarket-staging/compose/docker-compose.staging.yml
 STATUS_DST=/opt/neomarket-staging/compose/status.sh
 NGINX_DST=/opt/neomarket-staging/compose/nginx.conf
