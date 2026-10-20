@@ -1,0 +1,46 @@
+﻿{
+    "timestamp":  "20261020T120647Z",
+    "server":  "192.168.0.112",
+    "observed":  [
+                     "Netid State  Recv-Q Send-Q                      Local Address:Port  Peer Address:PortProcess",
+                     "udp   UNCONN 0      0                                 0.0.0.0:5353       0.0.0.0:*          ",
+                     "udp   UNCONN 0      0                              127.0.0.54:53         0.0.0.0:*          ",
+                     "udp   UNCONN 0      0                           127.0.0.53%lo:53         0.0.0.0:*          ",
+                     "udp   UNCONN 0      0                               127.0.0.1:323        0.0.0.0:*          ",
+                     "udp   UNCONN 0      0                                    [::]:5353          [::]:*          ",
+                     "udp   UNCONN 0      0                                   [::1]:323           [::]:*          ",
+                     "udp   UNCONN 0      0                                       *:443              *:*          ",
+                     "udp   UNCONN 0      0      [fe80::aaa1:59ff:fe1d:d048]%enp4s0:546           [::]:*          ",
+                     "tcp   LISTEN 0      4096                           127.0.0.54:53         0.0.0.0:*          ",
+                     "tcp   LISTEN 0      4096                              0.0.0.0:22         0.0.0.0:*          ",
+                     "tcp   LISTEN 0      4096                            127.0.0.1:8080       0.0.0.0:*          ",
+                     "tcp   LISTEN 0      4096                            127.0.0.1:631        0.0.0.0:*          ",
+                     "tcp   LISTEN 0      4096                        127.0.0.53%lo:53         0.0.0.0:*          ",
+                     "tcp   LISTEN 0      4096                            127.0.0.1:18080      0.0.0.0:*          ",
+                     "tcp   LISTEN 0      4096                            127.0.0.1:2019       0.0.0.0:*          ",
+                     "tcp   LISTEN 0      4096                                    *:80               *:*          ",
+                     "tcp   LISTEN 0      4096                                 [::]:22            [::]:*          ",
+                     "tcp   LISTEN 0      4096                                    *:443              *:*          ",
+                     "tcp   LISTEN 0      4096                                [::1]:631           [::]:*          "
+                 ],
+    "public_expected":  [
+                            "80",
+                            "443"
+                        ],
+    "internal_expected_loopback":  [
+                                       "8080",
+                                       "18080",
+                                       "2019"
+                                   ],
+    "unexposed_services":  [
+                               "5432",
+                               "6379",
+                               "8001",
+                               "8002",
+                               "8003",
+                               "3000",
+                               "1025",
+                               "8025",
+                               "3310"
+                           ]
+}
