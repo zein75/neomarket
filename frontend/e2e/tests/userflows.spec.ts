@@ -1225,7 +1225,9 @@ test.describe('seller protected flows', () => {
     for (const origin of [storefront, seller, admin]) {
       const response = await request.get(`${origin}/`);
       expect(response.ok()).toBeTruthy();
-      expect(response.headers()['content-security-policy']).toContain("default-src 'self'");
+      const csp = response.headers()['content-security-policy'];
+      expect(csp).toContain("default-src 'self'");
+      expect(csp).toContain("connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com");
       expect(response.headers()['content-security-policy-report-only']).toBeUndefined();
     }
   });

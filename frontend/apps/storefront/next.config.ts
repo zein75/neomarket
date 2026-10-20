@@ -15,7 +15,7 @@ const nextConfig: NextConfig = {
       "img-src 'self' data: https://images.unsplash.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'production' ? '' : " 'unsafe-eval'"}`,
-      "connect-src 'self'",
+      "connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com",
       "font-src 'self' data: https://fonts.gstatic.com",
     ].join('; ');
     return [{ source: '/(.*)', headers: [
