@@ -1,0 +1,184 @@
+{
+  "config": {
+    "configFile": "C:\\neomarket\\frontend\\e2e\\playwright.config.ts",
+    "rootDir": "C:/neomarket/frontend/e2e/tests",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/neomarket/frontend/docs/automation/seller_runs/2026-10-18/ui-04-05-responsive-candidate/after-drawer",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop-chromium",
+        "name": "desktop-chromium",
+        "testDir": "C:/neomarket/frontend/e2e/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "C:/neomarket/frontend/docs/automation/seller_runs/2026-10-18/ui-04-05-responsive-candidate/after-drawer",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "tablet-chromium",
+        "name": "tablet-chromium",
+        "testDir": "C:/neomarket/frontend/e2e/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "C:/neomarket/frontend/docs/automation/seller_runs/2026-10-18/ui-04-05-responsive-candidate/after-drawer",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "mobile-chromium",
+        "name": "mobile-chromium",
+        "testDir": "C:/neomarket/frontend/e2e/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "runAgents": "none",
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.58.2",
+    "workers": 8,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "seller-responsive-layout.spec.ts",
+      "file": "seller-responsive-layout.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "Seller screens fit approved 390px mobile and 768px tablet viewports",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop-chromium",
+              "projectName": "desktop-chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 11100,
+                  "error": {
+                    "message": "Error: /products/new overflows at 390px: {\"width\":390,\"documentWidth\":428,\"horizontalOverflow\":true,\"mainRight\":390,\"mainWidth\":390,\"navClientWidth\":0,\"navScrollWidth\":0,\"mobileMenuVisible\":true,\"dashboardContentReady\":false,\"activeNavigationVisible\":true}\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32mfalse\u001b[39m\nReceived: \u001b[31mtrue\u001b[39m",
+                    "stack": "Error: /products/new overflows at 390px: {\"width\":390,\"documentWidth\":428,\"horizontalOverflow\":true,\"mainRight\":390,\"mainWidth\":390,\"navClientWidth\":0,\"navScrollWidth\":0,\"mobileMenuVisible\":true,\"dashboardContentReady\":false,\"activeNavigationVisible\":true}\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32mfalse\u001b[39m\nReceived: \u001b[31mtrue\u001b[39m\n    at C:\\neomarket\\frontend\\e2e\\tests\\seller-responsive-layout.spec.ts:87:112",
+                    "location": {
+                      "file": "C:\\neomarket\\frontend\\e2e\\tests\\seller-responsive-layout.spec.ts",
+                      "column": 112,
+                      "line": 87
+                    },
+                    "snippet": "  85 |       });\n  86 |       observations.push({ viewport: viewport.name, screen: name, status: response?.status(), ...layout });\n> 87 |       expect(layout.horizontalOverflow, `${path} overflows at ${viewport.width}px: ${JSON.stringify(layout)}`).toBe(false);\n     |                                                                                                                ^\n  88 |       expect(layout.mainRight ?? 0, `${path} main content escapes viewport at ${viewport.width}px`).toBeLessThanOrEqual(viewport.width + 1);\n  89 |       if (name === 'dashboard') {\n  90 |         expect(layout.dashboardContentReady, 'dashboard screenshot must use a completed API state').toBe(true);"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "C:\\neomarket\\frontend\\e2e\\tests\\seller-responsive-layout.spec.ts",
+                        "column": 112,
+                        "line": 87
+                      },
+                      "message": "Error: /products/new overflows at 390px: {\"width\":390,\"documentWidth\":428,\"horizontalOverflow\":true,\"mainRight\":390,\"mainWidth\":390,\"navClientWidth\":0,\"navScrollWidth\":0,\"mobileMenuVisible\":true,\"dashboardContentReady\":false,\"activeNavigationVisible\":true}\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32mfalse\u001b[39m\nReceived: \u001b[31mtrue\u001b[39m\n\n  85 |       });\n  86 |       observations.push({ viewport: viewport.name, screen: name, status: response?.status(), ...layout });\n> 87 |       expect(layout.horizontalOverflow, `${path} overflows at ${viewport.width}px: ${JSON.stringify(layout)}`).toBe(false);\n     |                                                                                                                ^\n  88 |       expect(layout.mainRight ?? 0, `${path} main content escapes viewport at ${viewport.width}px`).toBeLessThanOrEqual(viewport.width + 1);\n  89 |       if (name === 'dashboard') {\n  90 |         expect(layout.dashboardContentReady, 'dashboard screenshot must use a completed API state').toBe(true);\n    at C:\\neomarket\\frontend\\e2e\\tests\\seller-responsive-layout.spec.ts:87:112"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-18T15:54:29.170Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "C:\\neomarket\\frontend\\docs\\automation\\seller_runs\\2026-10-18\\ui-04-05-responsive-candidate\\after-drawer\\seller-responsive-layout-S-95d09--and-768px-tablet-viewports-desktop-chromium\\test-failed-1.png"
+                    },
+                    {
+                      "name": "video",
+                      "contentType": "video/webm",
+                      "path": "C:\\neomarket\\frontend\\docs\\automation\\seller_runs\\2026-10-18\\ui-04-05-responsive-candidate\\after-drawer\\seller-responsive-layout-S-95d09--and-768px-tablet-viewports-desktop-chromium\\video.webm"
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\neomarket\\frontend\\docs\\automation\\seller_runs\\2026-10-18\\ui-04-05-responsive-candidate\\after-drawer\\seller-responsive-layout-S-95d09--and-768px-tablet-viewports-desktop-chromium\\error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "C:\\neomarket\\frontend\\docs\\automation\\seller_runs\\2026-10-18\\ui-04-05-responsive-candidate\\after-drawer\\seller-responsive-layout-S-95d09--and-768px-tablet-viewports-desktop-chromium\\trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "C:\\neomarket\\frontend\\e2e\\tests\\seller-responsive-layout.spec.ts",
+                    "column": 112,
+                    "line": 87
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "19b604d15160e4e8bdb3-0aa5c02d8f823d92c6e7",
+          "file": "seller-responsive-layout.spec.ts",
+          "line": 24,
+          "column": 5
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-18T15:54:27.564Z",
+    "duration": 13854.242,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}

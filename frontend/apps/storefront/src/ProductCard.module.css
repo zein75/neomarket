@@ -1,0 +1,21 @@
+.imageEmpty {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  padding: 14px;
+  background: #eae7e7;
+  color: #747686;
+  text-align: center;
+}
+
+.imageEmptyIcon {
+  font-size: 28px;
+}
+
+.imageEmptyLabel {
+  font: 700 9px/1.4 'Space Mono', monospace;
+  text-transform: uppercase;
+}

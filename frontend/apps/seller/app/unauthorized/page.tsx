@@ -1,0 +1,3 @@
+export default function UnauthorizedPage() {
+  return <main className="private-shell seller-shell"><div className="private-bar"><span>NEOMARKET / SELLER</span><span>ACCESS DENIED</span></div><section className="private-panel seller-failsafe"><p className="eyebrow">SELLER / ACCESS</p><h1>Нет доступа</h1><p>Эта операция требует активной seller-сессии и owner-scoped полномочий. Войдите заново или обратитесь к владельцу организации.</p><div className="failsafe-actions"><a className="seller-submit" href="/login">Войти</a><a className="seller-product-link" href="/">На витрину</a></div></section></main>;
+}

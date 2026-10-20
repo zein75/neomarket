@@ -1,0 +1,2 @@
+export const metadata = { title: 'Технические работы', robots: { index: false, follow: false } };
+export default function MaintenancePage() { return <main className="state-screen"><p className="eyebrow">503 / MAINTENANCE</p><h1>Витрина на технических работах</h1><p>Публичные данные временно недоступны. Попробуйте обновить страницу позже.</p><a className="button button-primary" href="/">Обновить</a></main>; }

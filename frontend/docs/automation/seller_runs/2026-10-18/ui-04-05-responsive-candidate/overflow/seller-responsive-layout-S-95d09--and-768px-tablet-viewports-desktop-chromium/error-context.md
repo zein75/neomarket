@@ -1,0 +1,75 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - link "К содержимому" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - main [ref=e3]:
+    - complementary [ref=e4]:
+      - link "NEOMARKET SELLER HUB" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - text: NEOMARKET
+        - generic [ref=e6]: SELLER HUB
+      - button "Разделы" [active] [ref=e7] [cursor=pointer]
+    - generic [ref=e8]:
+      - generic [ref=e9]:
+        - generic [ref=e10]: SELLER / NEW PRODUCT
+        - generic [ref=e11]: SERVER DATA ONLY
+      - paragraph [ref=e12]: SELLER HUB / SE-05
+      - generic [ref=e13]:
+        - heading "РќРѕРІС‹Р№ С‡РµСЂРЅРѕРІРёРє" [level=1] [ref=e14]
+        - link "Рљ С‚РѕРІР°СЂР°Рј" [ref=e15] [cursor=pointer]:
+          - /url: /products
+      - paragraph [ref=e16]: "Р§РµСЂРЅРѕРІРёРє СЃРѕС…СЂР°РЅСЏРµС‚ С‚РѕРІР°СЂ Рё РІСЃРµ РІР°СЂРёР°РЅС‚С‹ РѕРґРЅРѕР№ С‚СЂР°РЅР·Р°РєС†РёРµР№. Р\x98Р·РѕР±СЂР°Р¶РµРЅРёСЏ РґРѕР±Р°РІР»СЏСЋС‚СЃСЏ РїРѕСЃР»Рµ РЅР°СЃС‚СЂРѕР№РєРё Р±РµР·РѕРїР°СЃРЅРѕР№ Р·Р°РіСЂСѓР·РєРё РјРµРґРёР°."
+      - generic [ref=e17]:
+        - generic [ref=e18]:
+          - text: РќР°Р·РІР°РЅРёРµ
+          - textbox "РќР°Р·РІР°РЅРёРµ" [ref=e19]
+        - generic [ref=e20]:
+          - text: РћРїРёСЃР°РЅРёРµ
+          - textbox "РћРїРёСЃР°РЅРёРµ" [ref=e21]
+        - generic [ref=e22]:
+          - text: "Р\x98Р·РѕР±СЂР°Р¶РµРЅРёСЏ (JPEG, PNG, WebP; РґРѕ 20 С„Р°Р№Р»РѕРІ РїРѕ 10 РњР‘)"
+          - 'button "РР·РѕР±СЂР°Р¶РµРЅРёСЏ (JPEG, PNG, WebP; РґРѕ 20 С„Р°Р№Р»РѕРІ РїРѕ 10 РњР‘)" [ref=e23]'
+        - generic [ref=e24]:
+          - text: Category
+          - combobox "Category" [ref=e25] [cursor=pointer]:
+            - option "Choose a category" [disabled] [selected]
+            - option "Датчики и измерения"
+            - option "Промышленная автоматизация"
+            - option "Кабели и разъёмы"
+            - option "Робототехника"
+            - option "Контроллеры и связь"
+            - option "Безопасность производства"
+        - generic [ref=e26]:
+          - text: Р’Р°Р»СЋС‚Р° РІР°СЂРёР°РЅС‚РѕРІ
+          - textbox "Р’Р°Р»СЋС‚Р° РІР°СЂРёР°РЅС‚РѕРІ" [ref=e27]: RUB
+        - generic [ref=e28]:
+          - generic [ref=e29]:
+            - heading "Р’Р°СЂРёР°РЅС‚С‹ SKU (1/100)" [level=2] [ref=e30]
+            - button "Р”РѕР±Р°РІРёС‚СЊ РІР°СЂРёР°РЅС‚" [ref=e31]
+          - group "Р’Р°СЂРёР°РЅС‚ 1" [ref=e32]:
+            - generic [ref=e33]: Р’Р°СЂРёР°РЅС‚ 1
+            - generic [ref=e34]:
+              - text: РђСЂС‚РёРєСѓР» РїСЂРѕРґР°РІС†Р°
+              - textbox "РђСЂС‚РёРєСѓР» РїСЂРѕРґР°РІС†Р°" [ref=e35]
+            - generic [ref=e36]:
+              - text: РќР°Р·РІР°РЅРёРµ SKU
+              - textbox "РќР°Р·РІР°РЅРёРµ SKU" [ref=e37]
+            - generic [ref=e38]:
+              - text: Р¦РµРЅР°
+              - spinbutton "Р¦РµРЅР°" [ref=e39]
+            - generic [ref=e40]:
+              - text: РћСЃС‚Р°С‚РѕРє
+              - spinbutton "РћСЃС‚Р°С‚РѕРє" [ref=e41]: "0"
+            - generic [ref=e42]:
+              - text: РџР°СЂР°РјРµС‚СЂС‹ РІР°СЂРёР°РЅС‚Р° (JSON)
+              - textbox "РџР°СЂР°РјРµС‚СЂС‹ РІР°СЂРёР°РЅС‚Р° (JSON)" [ref=e43]: "{}"
+            - button "РЈРґР°Р»РёС‚СЊ РІР°СЂРёР°РЅС‚" [disabled] [ref=e44]
+        - button "РЎРѕС…СЂР°РЅРёС‚СЊ С‡РµСЂРЅРѕРІРёРє" [ref=e45] [cursor=pointer]
+  - button "Open Next.js Dev Tools" [ref=e51] [cursor=pointer]:
+    - img [ref=e52]
+  - alert [ref=e55]
+  - button "Выйти везде" [ref=e56] [cursor=pointer]
+  - button "Выйти" [ref=e57] [cursor=pointer]
+```

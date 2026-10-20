@@ -1,0 +1,8 @@
+{
+  "name": "@neomarket/api-types",
+  "version": "0.1.0",
+  "private": true,
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "typecheck": "tsc --noEmit -p tsconfig.json" },
+  "devDependencies": { "typescript": "5.7.3" }
+}

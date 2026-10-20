@@ -1,0 +1,22 @@
+# Dependency and package-manager state
+node_modules/
+.pnpm-store/
+
+# Next.js build output and incremental compiler state
+**/.next/
+**/.next-*/
+**/out/
+**/tsconfig.tsbuildinfo
+
+# Test, coverage and local runtime output
+**/coverage/
+*.log
+.env
+.env.*
+!.env.example
+
+# Browser and local QA artifacts
+playwright-report/
+test-results/
+test-results-*/
+qa-reports/

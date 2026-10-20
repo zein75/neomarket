@@ -1,0 +1,83 @@
+.checkout-brutalist{background:#fcf9f8;padding:0 8vw 64px;color:#1c1b1b}.checkout-stepper{margin:0 -8vw 24px;padding:18px 8vw;background:#eae7e7;border-bottom:2px solid #1c1b1b;display:flex;align-items:center;justify-content:space-between;gap:18px}.checkout-ref,.checkout-stepper li,.checkout-lock-status{font:700 11px 'Space Mono';letter-spacing:.05em;text-transform:uppercase}.checkout-stepper ol{display:flex;gap:6px;list-style:none;margin:0;padding:0;overflow:auto}.checkout-stepper li{padding:10px 13px;background:#fff;border:1px solid #1c1b1b;white-space:nowrap}.checkout-stepper li.done{background:#003cba;color:#fff}.checkout-stepper li.current{background:#c6ee59}.checkout-lock{display:flex;align-items:center;gap:14px;padding:16px;background:#c9f15b;box-shadow:3px 3px 0 #1c1b1b;margin-bottom:26px}.checkout-lock-icon{display:grid;place-items:center;width:40px;height:40px;background:#1c1b1b;color:#c9f15b;font-size:25px}.checkout-lock div{display:grid;gap:3px}.checkout-lock strong{font:700 18px 'Space Grotesk'}.checkout-lock small{color:#3b4d00}.checkout-lock-status{margin-left:auto;background:#fff;padding:7px 9px}.checkout-brutalist-grid{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:32px;align-items:start}.checkout-brutalist-main{display:grid;gap:18px}.checkout-back{justify-self:start;border:0;background:transparent;text-decoration:underline;font:700 11px 'Space Mono';cursor:pointer}.checkout-section-heading{display:flex;align-items:center;gap:12px;border-bottom:2px solid #1c1b1b;padding-bottom:12px}.checkout-section-heading span{background:#4f6600;color:#fff;padding:5px 9px;font:700 11px 'Space Mono'}.checkout-section-heading h1{font:700 clamp(28px,4vw,48px) 'Space Grotesk';text-transform:uppercase;letter-spacing:-.03em}.checkout-copy{max-width:680px;color:#434654}.checkout-brutalist-form{display:grid;gap:16px}.checkout-brutalist-form label{display:grid;gap:7px;font:700 11px 'Space Mono';text-transform:uppercase}.checkout-brutalist-form select{padding:15px;background:#fff;border:2px solid #1c1b1b;font:500 15px Manrope}.checkout-delivery-card{display:flex;align-items:center;gap:12px;padding:14px;background:#fff;border:2px solid #1c1b1b;box-shadow:3px 3px 0 #1c1b1b}.checkout-delivery-icon{display:grid;place-items:center;width:40px;height:40px;background:#c6ee59;font-size:22px}.checkout-delivery-card div{display:grid;gap:3px;flex:1}.checkout-delivery-card b{font:700 15px 'Space Grotesk'}.checkout-delivery-card small{color:#434654}.checkout-delivery-card button{border:0;background:transparent;color:#003cba;text-decoration:underline;font:700 11px 'Space Mono';cursor:pointer}.checkout-idempotency{display:grid;gap:4px;padding:13px;background:#eae7e7;font:11px 'Space Mono'}.checkout-idempotency b{color:#4f6600}.checkout-warning{padding:13px;background:#ffdad6;border:2px solid #ba1a1a;color:#93000a}.checkout-primary-cta{display:flex;justify-content:center;align-items:center;gap:10px;padding:17px;border:2px solid #1c1b1b;background:#c6ee59;color:#161f00;box-shadow:4px 4px 0 #1c1b1b;font:700 16px 'Space Grotesk';cursor:pointer}.checkout-primary-cta:disabled{opacity:.55;cursor:not-allowed;box-shadow:none}.checkout-brutalist-summary{position:sticky;top:24px;display:grid;gap:16px;padding:16px;background:#fff;border:2px solid #1c1b1b;box-shadow:5px 5px 0 #1c1b1b}.checkout-summary-title{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#eae7e7}.checkout-summary-title h2{font:700 24px 'Space Grotesk';text-transform:uppercase}.checkout-summary-title span{padding:5px 7px;background:#4f6600;color:#fff;font:700 10px 'Space Mono'}.checkout-summary-row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #c4c5d7;font-size:13px}.checkout-summary-total{display:flex;align-items:baseline;justify-content:space-between;padding:17px;background:#003cba;color:#fff;box-shadow:3px 3px 0 #1c1b1b}.checkout-summary-total span{font:700 12px 'Space Mono'}.checkout-summary-total strong{font:700 29px 'Space Grotesk'}.checkout-payment{display:grid;gap:9px;font-size:13px}.checkout-payment legend{font:700 11px 'Space Mono';color:#747686;padding:0}.checkout-payment label{display:flex;gap:8px;align-items:center;padding:11px;background:#f0eded;border:1px solid #1c1b1b}.checkout-secure-note{color:#434654;font:700 10px 'Space Mono'}.checkout-empty-address{display:flex;justify-content:space-between;padding:14px;background:#ffdad6;border:2px solid #ba1a1a}.checkout-empty-address a{color:#003cba;font-weight:700}.checkout-items{display:grid;gap:10px}.checkout-subheading{display:flex;justify-content:space-between;align-items:center;padding:12px;background:#f0eded;border:2px solid #1c1b1b}.checkout-subheading h2{font:700 20px 'Space Grotesk';text-transform:uppercase;margin:0}.checkout-subheading span,.checkout-item-meta,.checkout-item-qty,.checkout-address-tag{font:700 10px 'Space Mono';text-transform:uppercase}.checkout-item-list{display:grid;gap:10px}.checkout-item{display:grid;grid-template-columns:72px 1fr auto;align-items:center;gap:12px;padding:12px;background:#fff;border:2px solid #1c1b1b;box-shadow:3px 3px 0 #1c1b1b}.checkout-item img{width:72px;height:72px;object-fit:cover;background:#eae7e7;border:1px solid #1c1b1b}.checkout-item-main{display:grid;gap:4px}.checkout-item h3{font:700 16px 'Space Grotesk';margin:0}.checkout-item-meta,.checkout-item-qty{color:#434654}.checkout-item>strong{font:700 18px 'Space Grotesk';white-space:nowrap}.checkout-empty-items{padding:16px;background:#ffdad6;border:2px solid #ba1a1a}.checkout-empty-items a{color:#003cba;font-weight:700}.checkout-address-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.checkout-address-card{display:grid;gap:8px;text-align:left;padding:14px;background:#fff;border:2px solid #1c1b1b;box-shadow:3px 3px 0 #1c1b1b;cursor:pointer}.checkout-address-card.selected{outline:3px solid #003cba;background:#dce1ff}.checkout-address-card strong{font:700 16px 'Space Grotesk'}.checkout-address-card span:last-child{color:#003cba;font:700 11px 'Space Mono'}.checkout-delivery-status{padding:5px 7px;background:#c6ee59;border:1px solid #1c1b1b;font:700 10px 'Space Mono'}@media(max-width:1000px){.checkout-stepper{display:block}.checkout-stepper ol{margin-top:12px}.checkout-brutalist-grid{grid-template-columns:1fr}.checkout-brutalist-summary{position:static}.checkout-lock{align-items:flex-start}.checkout-lock-status{margin-left:0}}@media(max-width:600px){.checkout-brutalist{padding-inline:5vw}.checkout-stepper{margin-inline:-5vw;padding-inline:5vw}.checkout-lock{flex-wrap:wrap}.checkout-lock-status{width:100%;text-align:center}.checkout-section-heading{align-items:flex-start;flex-direction:column}.checkout-delivery-card{align-items:flex-start;flex-wrap:wrap}.checkout-delivery-card button{margin-left:52px}.checkout-address-grid{grid-template-columns:1fr}.checkout-item{grid-template-columns:56px 1fr}.checkout-item img{width:56px;height:56px}.checkout-item>strong{grid-column:2}}
+/* Stitch checkout parity */
+.checkout-brutalist{max-width:1440px;margin:0 auto;padding:0 0 64px;background:#fcf9f8}
+.checkout-stepper{margin:0 0 24px;padding:16px 0;background:#eae7e7}
+.checkout-stepper ol{flex-wrap:wrap}
+.checkout-lock{margin:0 0 24px;padding:16px 18px}
+.checkout-brutalist-grid{grid-template-columns:minmax(0,2fr) minmax(320px,1fr);gap:24px}
+.checkout-section-heading h1{font-size:32px;line-height:1.1;margin:0}
+.checkout-subheading{border:0;background:#f0eded;min-height:44px}
+.checkout-subheading-title{display:flex;align-items:center;gap:10px}
+.checkout-subheading-title h2{margin:0}
+.checkout-subheading-title span{background:#003cba;color:#fff;padding:5px 8px}
+.checkout-clear{border:0;background:transparent;color:#434654;font:700 10px 'Space Mono';cursor:pointer}
+.checkout-clear:disabled{opacity:.45;cursor:not-allowed}
+.checkout-item{grid-template-columns:112px 1fr auto;min-height:112px;padding:12px;gap:14px}
+.checkout-item-image{position:relative;width:112px;height:112px;background:#eae7e7;overflow:hidden}
+.checkout-item-image img{width:100%;height:100%;border:0}
+.checkout-item-image>span{position:absolute;left:4px;top:4px;background:#1c1b1b;color:#fff;padding:3px 5px;font:700 9px 'Space Mono'}
+.checkout-item.unavailable{background:#f0eded;opacity:.72;filter:grayscale(.35)}
+.checkout-item-meta{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:4px}
+.checkout-item-meta span{background:#eae7e7;padding:3px 5px}
+.checkout-item-meta span:last-child{background:#c9f15b;color:#161f00}
+.checkout-item h3{font-size:17px;line-height:1.2}
+.checkout-item>strong{font-size:20px}
+.checkout-address-card{min-height:148px;padding:16px}
+.checkout-address-card small{color:#747686;font:10px 'Space Mono';text-transform:uppercase}
+.checkout-add-address{margin-left:auto;color:#003cba;font:700 10px 'Space Mono';text-decoration:none}
+.checkout-carrier{display:flex;align-items:center;gap:12px;padding:12px;background:#fff;border:0;box-shadow:2px 2px 0 #1c1b1b}
+.checkout-carrier>div{display:grid;gap:3px;flex:1}
+.checkout-carrier b{font:700 14px 'Space Grotesk'}
+.checkout-carrier small{color:#434654;font-size:11px}
+.checkout-carrier button{border:0;background:transparent;color:#003cba;font:700 10px 'Space Mono';text-decoration:underline;cursor:pointer}
+.checkout-payment label{align-items:flex-start;line-height:1.3}
+.checkout-payment label span{display:grid;gap:3px;flex:1}
+.checkout-payment label small{color:#747686;font:10px 'Space Mono';text-transform:uppercase}
+.checkout-payment label i{font-style:normal;color:#003cba;font-weight:700}
+.checkout-secure-note{display:block;padding:8px;background:#eae7e7}
+@media(max-width:1000px){.checkout-brutalist{padding-inline:5vw}.checkout-stepper{margin-inline:-5vw;padding-inline:5vw}.checkout-add-address{margin-left:0}.checkout-carrier{align-items:flex-start;flex-wrap:wrap}.checkout-carrier button{margin-left:52px}.checkout-brutalist-grid{grid-template-columns:1fr}}
+.checkout-account-strip{display:flex;align-items:center;gap:12px;margin:0 0 24px;padding:14px 16px;background:#fff;border:2px solid #1c1b1b;box-shadow:3px 3px 0 #1c1b1b}.checkout-account-strip>div{display:grid;gap:3px;flex:1}.checkout-account-strip b{font:700 14px 'Space Grotesk';text-transform:uppercase}.checkout-account-strip small{color:#434654}.checkout-account-strip a{color:#003cba;font:700 10px 'Space Mono';text-decoration:underline;white-space:nowrap}.checkout-step-tag{padding:5px 8px;background:#4f6600;color:#fff;font:700 11px 'Space Mono'}
+.checkout-stepper{padding:10px 32px}
+.checkout-stepper li{padding:6px 10px}
+.checkout-lock{margin-inline:32px}
+.checkout-lock-status{max-width:190px;text-align:center}
+.checkout-brutalist-grid{margin-inline:32px}
+.checkout-section-heading h1{font-size:24px;line-height:1.2}
+.checkout-item{grid-template-columns:128px 1fr auto;min-height:128px}
+.checkout-item-image{width:128px;height:128px}
+.checkout-delivery-icon{font-size:24px}
+.checkout-delivery-blocked{display:flex;align-items:center;gap:14px;padding:16px;background:#ffdad6;border:2px solid #1c1b1b;box-shadow:3px 3px 0 #1c1b1b;color:#3f0400}
+.checkout-delivery-blocked>.material-symbols-outlined{font-size:28px;flex:none}
+.checkout-delivery-blocked div{flex:1}
+.checkout-delivery-blocked b{font:700 16px 'Space Grotesk'}
+.checkout-delivery-blocked p{margin:4px 0 0;font:500 13px/1.45 Manrope}
+.checkout-delivery-status.is-unavailable{background:#ffdad6;color:#93000a}
+.checkout-brutalist-summary .checkout-summary-total span{max-width:150px}
+@media(max-width:1000px){.checkout-lock,.checkout-brutalist-grid{margin-inline:0}.checkout-stepper{padding-inline:5vw}}
+@media(max-width:600px){.checkout-stepper{padding-inline:5vw}.checkout-item{grid-template-columns:56px 1fr}.checkout-item-image{width:56px;height:56px}.checkout-delivery-blocked{align-items:flex-start;flex-wrap:wrap}.checkout-delivery-blocked .checkout-delivery-status{margin-left:42px}}
+.checkout-item{grid-template-columns:128px minmax(0,1fr) auto 30px}
+.checkout-item-main{min-width:0}
+.checkout-item-controls{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:6px}
+.checkout-quantity-control{display:inline-flex;align-items:center;min-height:30px;border:1px solid #1c1b1b;background:#fff;box-shadow:2px 2px 0 #1c1b1b}
+.checkout-quantity-control button{display:grid;place-items:center;width:30px;height:28px;border:0;background:transparent;color:#1c1b1b;font:700 18px/1 'Space Grotesk';cursor:pointer}
+.checkout-quantity-control button:hover:not(:disabled){background:#eae7e7}
+.checkout-quantity-control button:disabled{color:#747686;cursor:not-allowed}
+.checkout-quantity-control output{display:grid;place-items:center;min-width:34px;height:28px;border-right:1px solid #1c1b1b;border-left:1px solid #1c1b1b;font:700 11px 'Space Mono'}
+.checkout-item-remove{display:grid;place-items:center;align-self:center;width:30px;height:34px;padding:0;border:0;background:transparent;color:#747686;cursor:pointer}
+.checkout-item-remove .material-symbols-outlined{font-size:20px}
+.checkout-item-remove:hover:not(:disabled){color:#ba1a1a;background:#ffdad6}
+.checkout-item-remove:disabled{cursor:not-allowed;opacity:.55}
+.checkout-item-remove:focus-visible,.checkout-quantity-control button:focus-visible{outline:3px solid #003cba;outline-offset:2px}
+@media(max-width:600px){.checkout-item{grid-template-columns:56px minmax(0,1fr)}.checkout-item>strong{grid-column:2;grid-row:2;justify-self:end}.checkout-item-remove{grid-column:1;grid-row:2;justify-self:start}.checkout-item-controls{align-items:flex-start}.checkout-item-qty{align-self:center}}
+
+/* Single-page checkout composition follows the Stitch flow while keeping every
+   action tied to authoritative buyer, cart, delivery, and payment state. */
+.checkout-stepper li a{display:block;color:inherit;text-decoration:none}
+.checkout-stepper li a:hover{text-decoration:underline;text-underline-offset:3px}
+.checkout-stepper li a:focus-visible{outline:2px solid #003cba;outline-offset:3px}
+.checkout-brutalist-main>section{scroll-margin-top:122px}
+.checkout-section-heading h1,.checkout-section-heading h2{margin:0;font:700 24px/1.2 'Space Grotesk';text-transform:uppercase;letter-spacing:-.01em}
+.checkout-brutalist-summary{top:122px}
+.checkout-lock{margin:0;padding:14px 16px}
+.checkout-visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+@media(max-width:1000px){.checkout-brutalist-summary{top:auto}}

@@ -1,0 +1,3 @@
+export default function UnauthorizedPage() {
+  return <main className="private-shell admin-shell" id="admin-unauthorized-content" tabIndex={-1}><a className="skip-link" href="#admin-unauthorized-panel">Перейти к содержимому</a><div className="private-bar"><span>NEOMARKET / ADMIN</span><span>ACCESS DENIED</span></div><section className="private-panel admin-failsafe" id="admin-unauthorized-panel" tabIndex={-1}><p className="eyebrow">ADMIN / ACCESS</p><h1>Нет доступа</h1><p>Admin Console требует подтверждённую OIDC-сессию, MFA и серверное сопоставление роли.</p><a className="admin-action" href="/login">Перейти к входу</a></section></main>;
+}

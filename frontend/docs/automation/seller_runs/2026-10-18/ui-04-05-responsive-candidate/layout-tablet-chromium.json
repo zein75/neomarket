@@ -1,0 +1,893 @@
+{
+  "project": "tablet-chromium",
+  "browser": "chromium",
+  "viewports": [
+    {
+      "name": "mobile-390",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "name": "tablet-768",
+      "width": 768,
+      "height": 1024
+    }
+  ],
+  "screens": [
+    {
+      "viewport": "mobile-390",
+      "screen": "dashboard",
+      "status": 200,
+      "width": 390,
+      "documentWidth": 390,
+      "horizontalOverflow": false,
+      "mainRight": 390,
+      "mainWidth": 390,
+      "navClientWidth": 0,
+      "navScrollWidth": 0,
+      "mobileMenuVisible": true,
+      "dashboardContentReady": true,
+      "activeNavigationVisible": true,
+      "overflowCandidates": [
+        {
+          "tag": "A",
+          "id": "",
+          "className": "skip-link",
+          "right": -9890,
+          "left": -9999,
+          "clientWidth": 105,
+          "scrollWidth": 105
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "className": "seller-stock-tabs",
+          "right": 366,
+          "left": 24,
+          "clientWidth": 342,
+          "scrollWidth": 398
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "className": "",
+          "right": 422,
+          "left": 281,
+          "clientWidth": 139,
+          "scrollWidth": 139
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "className": "",
+          "right": 413,
+          "left": 398,
+          "clientWidth": 16,
+          "scrollWidth": 16
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "className": "seller-table-wrap seller-stock-table-wrap",
+          "right": 376,
+          "left": 14,
+          "clientWidth": 358,
+          "scrollWidth": 833
+        },
+        {
+          "tag": "TABLE",
+          "id": "",
+          "className": "seller-table seller-stock-table",
+          "right": 849,
+          "left": 16,
+          "clientWidth": 833,
+          "scrollWidth": 833
+        },
+        {
+          "tag": "CAPTION",
+          "id": "",
+          "className": "sr-only",
+          "right": -9999,
+          "left": -10000,
+          "clientWidth": 1,
+          "scrollWidth": 240
+        },
+        {
+          "tag": "THEAD",
+          "id": "",
+          "className": "",
+          "right": 849,
+          "left": 16,
+          "clientWidth": 833,
+          "scrollWidth": 833
+        },
+        {
+          "tag": "TR",
+          "id": "",
+          "className": "",
+          "right": 849,
+          "left": 16,
+          "clientWidth": 833,
+          "scrollWidth": 833
+        },
+        {
+          "tag": "TH",
+          "id": "",
+          "className": "",
+          "right": 419,
+          "left": 236,
+          "clientWidth": 183,
+          "scrollWidth": 183
+        },
+        {
+          "tag": "TH",
+          "id": "",
+          "className": "",
+          "right": 493,
+          "left": 419,
+          "clientWidth": 74,
+          "scrollWidth": 74
+        },
+        {
+          "tag": "TH",
+          "id": "",
+          "className": "",
+          "right": 578,
+          "left": 493,
+          "clientWidth": 85,
+          "scrollWidth": 85
+        }
+      ]
+    },
+    {
+      "viewport": "mobile-390",
+      "screen": "products",
+      "status": 200,
+      "width": 390,
+      "documentWidth": 390,
+      "horizontalOverflow": false,
+      "mainRight": 390,
+      "mainWidth": 390,
+      "navClientWidth": 0,
+      "navScrollWidth": 0,
+      "mobileMenuVisible": true,
+      "dashboardContentReady": false,
+      "activeNavigationVisible": true,
+      "overflowCandidates": [
+        {
+          "tag": "A",
+          "id": "",
+          "className": "skip-link",
+          "right": -9890,
+          "left": -9999,
+          "clientWidth": 105,
+          "scrollWidth": 105
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "className": "seller-table-wrap",
+          "right": 371,
+          "left": 20,
+          "clientWidth": 347,
+          "scrollWidth": 760
+        },
+        {
+          "tag": "TABLE",
+          "id": "",
+          "className": "seller-table",
+          "right": 782,
+          "left": 22,
+          "clientWidth": 760,
+          "scrollWidth": 760
+        },
+        {
+          "tag": "CAPTION",
+          "id": "",
+          "className": "sr-only",
+          "right": 22,
+          "left": 21,
+          "clientWidth": 1,
+          "scrollWidth": 116
+        },
+        {
+          "tag": "THEAD",
+          "id": "",
+          "className": "",
+          "right": 782,
+          "left": 22,
+          "clientWidth": 760,
+          "scrollWidth": 760
+        },
+        {
+          "tag": "TR",
+          "id": "",
+          "className": "",
+          "right": 782,
+          "left": 22,
+          "clientWidth": 760,
+          "scrollWidth": 760
+        },
+        {
+          "tag": "TH",
+          "id": "",
+          "className": "",
+          "right": 552,
+          "left": 380,
+          "clientWidth": 172,
+          "scrollWidth": 172
+        },
+        {
+          "tag": "TH",
+          "id": "",
+          "className": "",
+          "right": 600,
+          "left": 552,
+          "clientWidth": 48,
+          "scrollWidth": 48
+        },
+        {
+          "tag": "TH",
+          "id": "",
+          "className": "",
+          "right": 683,
+          "left": 600,
+          "clientWidth": 82,
+          "scrollWidth": 82
+        },
+        {
+          "tag": "TH",
+          "id": "",
+          "className": "",
+          "right": 782,
+          "left": 683,
+          "clientWidth": 99,
+          "scrollWidth": 99
+        },
+        {
+          "tag": "TBODY",
+          "id": "",
+          "className": "",
+          "right": 782,
+          "left": 22,
+          "clientWidth": 760,
+          "scrollWidth": 760
+        },
+        {
+          "tag": "TR",
+          "id": "",
+          "className": "",
+          "right": 782,
+          "left": 22,
+          "clientWidth": 760,
+          "scrollWidth": 760
+        }
+      ]
+    },
+    {
+      "viewport": "mobile-390",
+      "screen": "product-create",
+      "status": 200,
+      "width": 390,
+      "documentWidth": 390,
+      "horizontalOverflow": false,
+      "mainRight": 390,
+      "mainWidth": 390,
+      "navClientWidth": 0,
+      "navScrollWidth": 0,
+      "mobileMenuVisible": true,
+      "dashboardContentReady": false,
+      "activeNavigationVisible": true,
+      "overflowCandidates": [
+        {
+          "tag": "A",
+          "id": "",
+          "className": "skip-link",
+          "right": -9890,
+          "left": -9999,
+          "clientWidth": 105,
+          "scrollWidth": 105
+        }
+      ]
+    },
+    {
+      "viewport": "mobile-390",
+      "screen": "inventory",
+      "status": 200,
+      "width": 390,
+      "documentWidth": 390,
+      "horizontalOverflow": false,
+      "mainRight": 390,
+      "mainWidth": 390,
+      "navClientWidth": 0,
+      "navScrollWidth": 0,
+      "mobileMenuVisible": true,
+      "dashboardContentReady": false,
+      "activeNavigationVisible": true,
+      "overflowCandidates": [
+        {
+          "tag": "A",
+          "id": "",
+          "className": "skip-link",
+          "right": -9890,
+          "left": -9999,
+          "clientWidth": 105,
+          "scrollWidth": 105
+        }
+      ]
+    },
+    {
+      "viewport": "mobile-390",
+      "screen": "imports",
+      "status": 200,
+      "width": 390,
+      "documentWidth": 390,
+      "horizontalOverflow": false,
+      "mainRight": 390,
+      "mainWidth": 390,
+      "navClientWidth": 0,
+      "navScrollWidth": 0,
+      "mobileMenuVisible": true,
+      "dashboardContentReady": false,
+      "activeNavigationVisible": true,
+      "overflowCandidates": [
+        {
+          "tag": "A",
+          "id": "",
+          "className": "skip-link",
+          "right": -9890,
+          "left": -9999,
+          "clientWidth": 105,
+          "scrollWidth": 105
+        }
+      ]
+    },
+    {
+      "viewport": "mobile-390",
+      "screen": "orders",
+      "status": 200,
+      "width": 390,
+      "documentWidth": 390,
+      "horizontalOverflow": false,
+      "mainRight": 390,
+      "mainWidth": 390,
+      "navClientWidth": 0,
+      "navScrollWidth": 0,
+      "mobileMenuVisible": true,
+      "dashboardContentReady": false,
+      "activeNavigationVisible": true,
+      "overflowCandidates": [
+        {
+          "tag": "A",
+          "id": "",
+          "className": "skip-link",
+          "right": -9890,
+          "left": -9999,
+          "clientWidth": 105,
+          "scrollWidth": 105
+        }
+      ]
+    },
+    {
+      "viewport": "mobile-390",
+      "screen": "moderation",
+      "status": 200,
+      "width": 390,
+      "documentWidth": 390,
+      "horizontalOverflow": false,
+      "mainRight": 390,
+      "mainWidth": 390,
+      "navClientWidth": 0,
+      "navScrollWidth": 0,
+      "mobileMenuVisible": true,
+      "dashboardContentReady": false,
+      "activeNavigationVisible": true,
+      "overflowCandidates": [
+        {
+          "tag": "A",
+          "id": "",
+          "className": "skip-link",
+          "right": -9890,
+          "left": -9999,
+          "clientWidth": 105,
+          "scrollWidth": 105
+        }
+      ]
+    },
+    {
+      "viewport": "mobile-390",
+      "screen": "team",
+      "status": 200,
+      "width": 390,
+      "documentWidth": 390,
+      "horizontalOverflow": false,
+      "mainRight": 390,
+      "mainWidth": 390,
+      "navClientWidth": 0,
+      "navScrollWidth": 0,
+      "mobileMenuVisible": true,
+      "dashboardContentReady": false,
+      "activeNavigationVisible": true,
+      "overflowCandidates": [
+        {
+          "tag": "A",
+          "id": "",
+          "className": "skip-link",
+          "right": -9890,
+          "left": -9999,
+          "clientWidth": 105,
+          "scrollWidth": 105
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "className": "seller-table-wrap",
+          "right": 360,
+          "left": 30,
+          "clientWidth": 326,
+          "scrollWidth": 467
+        },
+        {
+          "tag": "TABLE",
+          "id": "",
+          "className": "seller-table",
+          "right": 499,
+          "left": 32,
+          "clientWidth": 467,
+          "scrollWidth": 467
+        },
+        {
+          "tag": "THEAD",
+          "id": "",
+          "className": "",
+          "right": 499,
+          "left": 32,
+          "clientWidth": 467,
+          "scrollWidth": 467
+        },
+        {
+          "tag": "TR",
+          "id": "",
+          "className": "",
+          "right": 499,
+          "left": 32,
+          "clientWidth": 467,
+          "scrollWidth": 467
+        },
+        {
+          "tag": "TH",
+          "id": "",
+          "className": "",
+          "right": 394,
+          "left": 311,
+          "clientWidth": 83,
+          "scrollWidth": 83
+        },
+        {
+          "tag": "TH",
+          "id": "",
+          "className": "",
+          "right": 499,
+          "left": 394,
+          "clientWidth": 105,
+          "scrollWidth": 105
+        },
+        {
+          "tag": "TBODY",
+          "id": "",
+          "className": "",
+          "right": 499,
+          "left": 32,
+          "clientWidth": 467,
+          "scrollWidth": 467
+        },
+        {
+          "tag": "TR",
+          "id": "",
+          "className": "",
+          "right": 499,
+          "left": 32,
+          "clientWidth": 467,
+          "scrollWidth": 467
+        },
+        {
+          "tag": "TD",
+          "id": "",
+          "className": "",
+          "right": 394,
+          "left": 311,
+          "clientWidth": 83,
+          "scrollWidth": 83
+        },
+        {
+          "tag": "TD",
+          "id": "",
+          "className": "",
+          "right": 499,
+          "left": 394,
+          "clientWidth": 105,
+          "scrollWidth": 105
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "className": "",
+          "right": 419,
+          "left": 408,
+          "clientWidth": 0,
+          "scrollWidth": 0
+        }
+      ]
+    },
+    {
+      "viewport": "mobile-390",
+      "screen": "finance",
+      "status": 200,
+      "width": 390,
+      "documentWidth": 390,
+      "horizontalOverflow": false,
+      "mainRight": 390,
+      "mainWidth": 390,
+      "navClientWidth": 0,
+      "navScrollWidth": 0,
+      "mobileMenuVisible": true,
+      "dashboardContentReady": false,
+      "activeNavigationVisible": true,
+      "overflowCandidates": [
+        {
+          "tag": "A",
+          "id": "",
+          "className": "skip-link",
+          "right": -9890,
+          "left": -9999,
+          "clientWidth": 105,
+          "scrollWidth": 105
+        }
+      ]
+    },
+    {
+      "viewport": "tablet-768",
+      "screen": "dashboard",
+      "status": 200,
+      "width": 768,
+      "documentWidth": 768,
+      "horizontalOverflow": false,
+      "mainRight": 768,
+      "mainWidth": 768,
+      "navClientWidth": 190,
+      "navScrollWidth": 190,
+      "mobileMenuVisible": false,
+      "dashboardContentReady": true,
+      "activeNavigationVisible": true,
+      "overflowCandidates": [
+        {
+          "tag": "A",
+          "id": "",
+          "className": "skip-link",
+          "right": -9890,
+          "left": -9999,
+          "clientWidth": 105,
+          "scrollWidth": 105
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "className": "seller-stock-tabs",
+          "right": 732,
+          "left": 256,
+          "clientWidth": 476,
+          "scrollWidth": 492
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "className": "seller-table-wrap seller-stock-table-wrap",
+          "right": 746,
+          "left": 242,
+          "clientWidth": 500,
+          "scrollWidth": 833
+        },
+        {
+          "tag": "TABLE",
+          "id": "",
+          "className": "seller-table seller-stock-table",
+          "right": 1077,
+          "left": 244,
+          "clientWidth": 833,
+          "scrollWidth": 833
+        },
+        {
+          "tag": "CAPTION",
+          "id": "",
+          "className": "sr-only",
+          "right": -9999,
+          "left": -10000,
+          "clientWidth": 1,
+          "scrollWidth": 240
+        },
+        {
+          "tag": "THEAD",
+          "id": "",
+          "className": "",
+          "right": 1077,
+          "left": 244,
+          "clientWidth": 833,
+          "scrollWidth": 833
+        },
+        {
+          "tag": "TR",
+          "id": "",
+          "className": "",
+          "right": 1077,
+          "left": 244,
+          "clientWidth": 833,
+          "scrollWidth": 833
+        },
+        {
+          "tag": "TH",
+          "id": "",
+          "className": "",
+          "right": 806,
+          "left": 721,
+          "clientWidth": 85,
+          "scrollWidth": 85
+        },
+        {
+          "tag": "TH",
+          "id": "",
+          "className": "",
+          "right": 881,
+          "left": 806,
+          "clientWidth": 75,
+          "scrollWidth": 75
+        },
+        {
+          "tag": "TH",
+          "id": "",
+          "className": "",
+          "right": 933,
+          "left": 881,
+          "clientWidth": 52,
+          "scrollWidth": 52
+        },
+        {
+          "tag": "TH",
+          "id": "",
+          "className": "",
+          "right": 1004,
+          "left": 933,
+          "clientWidth": 71,
+          "scrollWidth": 71
+        },
+        {
+          "tag": "TH",
+          "id": "",
+          "className": "",
+          "right": 1077,
+          "left": 1004,
+          "clientWidth": 72,
+          "scrollWidth": 72
+        }
+      ]
+    },
+    {
+      "viewport": "tablet-768",
+      "screen": "products",
+      "status": 200,
+      "width": 768,
+      "documentWidth": 768,
+      "horizontalOverflow": false,
+      "mainRight": 768,
+      "mainWidth": 768,
+      "navClientWidth": 208,
+      "navScrollWidth": 208,
+      "mobileMenuVisible": false,
+      "dashboardContentReady": false,
+      "activeNavigationVisible": true,
+      "overflowCandidates": [
+        {
+          "tag": "A",
+          "id": "",
+          "className": "skip-link",
+          "right": -9890,
+          "left": -9999,
+          "clientWidth": 105,
+          "scrollWidth": 105
+        }
+      ]
+    },
+    {
+      "viewport": "tablet-768",
+      "screen": "product-create",
+      "status": 200,
+      "width": 768,
+      "documentWidth": 768,
+      "horizontalOverflow": false,
+      "mainRight": 768,
+      "mainWidth": 768,
+      "navClientWidth": 208,
+      "navScrollWidth": 208,
+      "mobileMenuVisible": false,
+      "dashboardContentReady": false,
+      "activeNavigationVisible": true,
+      "overflowCandidates": [
+        {
+          "tag": "A",
+          "id": "",
+          "className": "skip-link",
+          "right": -9890,
+          "left": -9999,
+          "clientWidth": 105,
+          "scrollWidth": 105
+        }
+      ]
+    },
+    {
+      "viewport": "tablet-768",
+      "screen": "inventory",
+      "status": 200,
+      "width": 768,
+      "documentWidth": 768,
+      "horizontalOverflow": false,
+      "mainRight": 768,
+      "mainWidth": 768,
+      "navClientWidth": 208,
+      "navScrollWidth": 208,
+      "mobileMenuVisible": false,
+      "dashboardContentReady": false,
+      "activeNavigationVisible": true,
+      "overflowCandidates": [
+        {
+          "tag": "A",
+          "id": "",
+          "className": "skip-link",
+          "right": -9890,
+          "left": -9999,
+          "clientWidth": 105,
+          "scrollWidth": 105
+        }
+      ]
+    },
+    {
+      "viewport": "tablet-768",
+      "screen": "imports",
+      "status": 200,
+      "width": 768,
+      "documentWidth": 768,
+      "horizontalOverflow": false,
+      "mainRight": 768,
+      "mainWidth": 768,
+      "navClientWidth": 208,
+      "navScrollWidth": 208,
+      "mobileMenuVisible": false,
+      "dashboardContentReady": false,
+      "activeNavigationVisible": true,
+      "overflowCandidates": [
+        {
+          "tag": "A",
+          "id": "",
+          "className": "skip-link",
+          "right": -9890,
+          "left": -9999,
+          "clientWidth": 105,
+          "scrollWidth": 105
+        }
+      ]
+    },
+    {
+      "viewport": "tablet-768",
+      "screen": "orders",
+      "status": 200,
+      "width": 768,
+      "documentWidth": 768,
+      "horizontalOverflow": false,
+      "mainRight": 768,
+      "mainWidth": 768,
+      "navClientWidth": 208,
+      "navScrollWidth": 208,
+      "mobileMenuVisible": false,
+      "dashboardContentReady": false,
+      "activeNavigationVisible": true,
+      "overflowCandidates": [
+        {
+          "tag": "A",
+          "id": "",
+          "className": "skip-link",
+          "right": -9890,
+          "left": -9999,
+          "clientWidth": 105,
+          "scrollWidth": 105
+        }
+      ]
+    },
+    {
+      "viewport": "tablet-768",
+      "screen": "moderation",
+      "status": 200,
+      "width": 768,
+      "documentWidth": 768,
+      "horizontalOverflow": false,
+      "mainRight": 768,
+      "mainWidth": 768,
+      "navClientWidth": 208,
+      "navScrollWidth": 208,
+      "mobileMenuVisible": false,
+      "dashboardContentReady": false,
+      "activeNavigationVisible": true,
+      "overflowCandidates": [
+        {
+          "tag": "A",
+          "id": "",
+          "className": "skip-link",
+          "right": -9890,
+          "left": -9999,
+          "clientWidth": 105,
+          "scrollWidth": 105
+        }
+      ]
+    },
+    {
+      "viewport": "tablet-768",
+      "screen": "team",
+      "status": 200,
+      "width": 768,
+      "documentWidth": 768,
+      "horizontalOverflow": false,
+      "mainRight": 768,
+      "mainWidth": 768,
+      "navClientWidth": 190,
+      "navScrollWidth": 190,
+      "mobileMenuVisible": false,
+      "dashboardContentReady": false,
+      "activeNavigationVisible": true,
+      "overflowCandidates": [
+        {
+          "tag": "A",
+          "id": "",
+          "className": "skip-link",
+          "right": -9890,
+          "left": -9999,
+          "clientWidth": 105,
+          "scrollWidth": 105
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "className": "seller-table-wrap",
+          "right": 726,
+          "left": 262,
+          "clientWidth": 460,
+          "scrollWidth": 480
+        }
+      ]
+    },
+    {
+      "viewport": "tablet-768",
+      "screen": "finance",
+      "status": 200,
+      "width": 768,
+      "documentWidth": 768,
+      "horizontalOverflow": false,
+      "mainRight": 768,
+      "mainWidth": 768,
+      "navClientWidth": 190,
+      "navScrollWidth": 190,
+      "mobileMenuVisible": false,
+      "dashboardContentReady": false,
+      "activeNavigationVisible": true,
+      "overflowCandidates": [
+        {
+          "tag": "A",
+          "id": "",
+          "className": "skip-link",
+          "right": -9890,
+          "left": -9999,
+          "clientWidth": 105,
+          "scrollWidth": 105
+        }
+      ]
+    }
+  ],
+  "violations": [],
+  "result": "PASS"
+}

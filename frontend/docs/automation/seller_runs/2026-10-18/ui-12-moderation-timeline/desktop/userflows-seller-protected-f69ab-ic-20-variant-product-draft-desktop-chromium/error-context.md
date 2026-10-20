@@ -1,0 +1,199 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - link "К содержимому" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - main [ref=e3]:
+    - complementary [ref=e4]:
+      - link "NEOMARKET SELLER HUB" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - text: NEOMARKET
+        - generic [ref=e6]: SELLER HUB
+      - navigation "Seller navigation" [ref=e7]:
+        - link "Dashboard" [ref=e8] [cursor=pointer]:
+          - /url: /dashboard
+        - link "Products" [ref=e9] [cursor=pointer]:
+          - /url: /products
+        - link "Inventory" [ref=e10] [cursor=pointer]:
+          - /url: /inventory
+        - link "Р—Р°РєР°Р·С‹" [ref=e11] [cursor=pointer]:
+          - /url: /orders
+        - link "Moderation" [ref=e12] [cursor=pointer]:
+          - /url: /moderation
+      - generic [ref=e13]: OWNER-SCOPED API
+    - generic [ref=e14]:
+      - generic [ref=e15]:
+        - generic [ref=e16]: SELLER / PRODUCT DETAIL
+        - generic [ref=e17]: SERVER DATA ONLY
+      - paragraph [ref=e18]: SELLER HUB / SE-06 / 1-1-1792338013045-ba1571-4a9e7a94 / REV 4
+      - generic [ref=e19]:
+        - generic [ref=e20]:
+          - heading "=1+1 1792338013045-ba1571" [level=1] [ref=e21]
+          - paragraph [ref=e22]: Corrected seller description after moderation feedback.
+        - generic [ref=e23]: BLOCKED
+      - region "Product archive" [ref=e24]:
+        - heading "Archive product" [level=2] [ref=e25]
+        - paragraph [ref=e26]: The product leaves the catalog. Existing seller orders keep their saved product and SKU details.
+        - button "Archive product" [ref=e27] [cursor=pointer]
+      - generic [ref=e28]:
+        - heading "Р—Р°РјРµС‡Р°РЅРёСЏ РїРѕ РїРѕР»СЏРј" [level=2] [ref=e29]
+        - list [ref=e30]:
+          - listitem [ref=e31]:
+            - strong [ref=e32]: /description · DESCRIPTION_MISMATCH
+            - generic [ref=e33]: Please clarify the product description.
+      - generic [ref=e34]:
+        - heading "Correct rejected fields" [level=2] [ref=e35]
+        - paragraph [ref=e36]: Corrections save automatically as a draft. Submit them for review when you are ready.
+        - status [ref=e37]: All changes saved.
+        - generic [ref=e38]:
+          - generic [ref=e39]:
+            - text: Product title
+            - textbox "Product title" [ref=e40]: =1+1 1792338013045-ba1571
+          - generic [ref=e41]:
+            - text: Description
+            - textbox "Description" [active] [ref=e42]: Corrected seller description after moderation feedback.
+          - generic [ref=e43]:
+            - text: Product attributes (JSON)
+            - textbox "Product attributes (JSON)" [ref=e44]: "{ \"manufacturer\": \"ExampleCo\" }"
+          - button "Submit corrections for review" [ref=e45] [cursor=pointer]
+      - generic [ref=e46]:
+        - generic [ref=e47]:
+          - heading "SKU Рё РѕСЃС‚Р°С‚РєРё" [level=2] [ref=e48]
+          - link "РћС‚РєСЂС‹С‚СЊ РІСЃРµ SKU" [ref=e49] [cursor=pointer]:
+            - /url: /products/4a9e7a94-e9b9-4127-8a25-e4008386927a/skus
+        - table [ref=e51]:
+          - rowgroup [ref=e52]:
+            - row "SKU Р¦РµРЅР° РќР° СЃРєР»Р°РґРµ Р”РѕСЃС‚СѓРїРЅРѕ Р РµР·РµСЂРІ" [ref=e53]:
+              - columnheader "SKU" [ref=e54]
+              - columnheader "Р¦РµРЅР°" [ref=e55]
+              - columnheader "РќР° СЃРєР»Р°РґРµ" [ref=e56]
+              - columnheader "Р”РѕСЃС‚СѓРїРЅРѕ" [ref=e57]
+              - columnheader "Р РµР·РµСЂРІ" [ref=e58]
+          - rowgroup [ref=e59]:
+            - row "@SUM(1,1) 1792338013045-ba1571-0 12550 4 4 0" [ref=e60]:
+              - rowheader "@SUM(1,1) 1792338013045-ba1571-0" [ref=e61]
+              - cell "12550" [ref=e62]
+              - cell "4" [ref=e63]
+              - cell "4" [ref=e64]
+              - cell "0" [ref=e65]
+            - row "Atomic SKU 1792338013045-ba1571-1 12550 5 5 0" [ref=e66]:
+              - rowheader "Atomic SKU 1792338013045-ba1571-1" [ref=e67]
+              - cell "12550" [ref=e68]
+              - cell "5" [ref=e69]
+              - cell "5" [ref=e70]
+              - cell "0" [ref=e71]
+            - row "Atomic SKU 1792338013045-ba1571-2 12550 6 6 0" [ref=e72]:
+              - rowheader "Atomic SKU 1792338013045-ba1571-2" [ref=e73]
+              - cell "12550" [ref=e74]
+              - cell "6" [ref=e75]
+              - cell "6" [ref=e76]
+              - cell "0" [ref=e77]
+            - row "Atomic SKU 1792338013045-ba1571-3 12550 7 7 0" [ref=e78]:
+              - rowheader "Atomic SKU 1792338013045-ba1571-3" [ref=e79]
+              - cell "12550" [ref=e80]
+              - cell "7" [ref=e81]
+              - cell "7" [ref=e82]
+              - cell "0" [ref=e83]
+            - row "Atomic SKU 1792338013045-ba1571-4 12550 8 8 0" [ref=e84]:
+              - rowheader "Atomic SKU 1792338013045-ba1571-4" [ref=e85]
+              - cell "12550" [ref=e86]
+              - cell "8" [ref=e87]
+              - cell "8" [ref=e88]
+              - cell "0" [ref=e89]
+            - row "Atomic SKU 1792338013045-ba1571-5 12550 9 9 0" [ref=e90]:
+              - rowheader "Atomic SKU 1792338013045-ba1571-5" [ref=e91]
+              - cell "12550" [ref=e92]
+              - cell "9" [ref=e93]
+              - cell "9" [ref=e94]
+              - cell "0" [ref=e95]
+            - row "Atomic SKU 1792338013045-ba1571-6 12550 10 10 0" [ref=e96]:
+              - rowheader "Atomic SKU 1792338013045-ba1571-6" [ref=e97]
+              - cell "12550" [ref=e98]
+              - cell "10" [ref=e99]
+              - cell "10" [ref=e100]
+              - cell "0" [ref=e101]
+            - row "Atomic SKU 1792338013045-ba1571-7 12550 11 11 0" [ref=e102]:
+              - rowheader "Atomic SKU 1792338013045-ba1571-7" [ref=e103]
+              - cell "12550" [ref=e104]
+              - cell "11" [ref=e105]
+              - cell "11" [ref=e106]
+              - cell "0" [ref=e107]
+            - row "Atomic SKU 1792338013045-ba1571-8 12550 12 12 0" [ref=e108]:
+              - rowheader "Atomic SKU 1792338013045-ba1571-8" [ref=e109]
+              - cell "12550" [ref=e110]
+              - cell "12" [ref=e111]
+              - cell "12" [ref=e112]
+              - cell "0" [ref=e113]
+            - row "Atomic SKU 1792338013045-ba1571-9 12550 13 13 0" [ref=e114]:
+              - rowheader "Atomic SKU 1792338013045-ba1571-9" [ref=e115]
+              - cell "12550" [ref=e116]
+              - cell "13" [ref=e117]
+              - cell "13" [ref=e118]
+              - cell "0" [ref=e119]
+            - row "Atomic SKU 1792338013045-ba1571-10 12550 14 14 0" [ref=e120]:
+              - rowheader "Atomic SKU 1792338013045-ba1571-10" [ref=e121]
+              - cell "12550" [ref=e122]
+              - cell "14" [ref=e123]
+              - cell "14" [ref=e124]
+              - cell "0" [ref=e125]
+            - row "Atomic SKU 1792338013045-ba1571-11 12550 15 15 0" [ref=e126]:
+              - rowheader "Atomic SKU 1792338013045-ba1571-11" [ref=e127]
+              - cell "12550" [ref=e128]
+              - cell "15" [ref=e129]
+              - cell "15" [ref=e130]
+              - cell "0" [ref=e131]
+            - row "Atomic SKU 1792338013045-ba1571-12 12550 16 16 0" [ref=e132]:
+              - rowheader "Atomic SKU 1792338013045-ba1571-12" [ref=e133]
+              - cell "12550" [ref=e134]
+              - cell "16" [ref=e135]
+              - cell "16" [ref=e136]
+              - cell "0" [ref=e137]
+            - row "Atomic SKU 1792338013045-ba1571-13 12550 17 17 0" [ref=e138]:
+              - rowheader "Atomic SKU 1792338013045-ba1571-13" [ref=e139]
+              - cell "12550" [ref=e140]
+              - cell "17" [ref=e141]
+              - cell "17" [ref=e142]
+              - cell "0" [ref=e143]
+            - row "Atomic SKU 1792338013045-ba1571-14 12550 18 18 0" [ref=e144]:
+              - rowheader "Atomic SKU 1792338013045-ba1571-14" [ref=e145]
+              - cell "12550" [ref=e146]
+              - cell "18" [ref=e147]
+              - cell "18" [ref=e148]
+              - cell "0" [ref=e149]
+            - row "Atomic SKU 1792338013045-ba1571-15 12550 19 19 0" [ref=e150]:
+              - rowheader "Atomic SKU 1792338013045-ba1571-15" [ref=e151]
+              - cell "12550" [ref=e152]
+              - cell "19" [ref=e153]
+              - cell "19" [ref=e154]
+              - cell "0" [ref=e155]
+            - row "Atomic SKU 1792338013045-ba1571-16 12550 20 20 0" [ref=e156]:
+              - rowheader "Atomic SKU 1792338013045-ba1571-16" [ref=e157]
+              - cell "12550" [ref=e158]
+              - cell "20" [ref=e159]
+              - cell "20" [ref=e160]
+              - cell "0" [ref=e161]
+            - row "Atomic SKU 1792338013045-ba1571-17 12550 21 21 0" [ref=e162]:
+              - rowheader "Atomic SKU 1792338013045-ba1571-17" [ref=e163]
+              - cell "12550" [ref=e164]
+              - cell "21" [ref=e165]
+              - cell "21" [ref=e166]
+              - cell "0" [ref=e167]
+            - row "Atomic SKU 1792338013045-ba1571-18 12550 22 22 0" [ref=e168]:
+              - rowheader "Atomic SKU 1792338013045-ba1571-18" [ref=e169]
+              - cell "12550" [ref=e170]
+              - cell "22" [ref=e171]
+              - cell "22" [ref=e172]
+              - cell "0" [ref=e173]
+            - row "Atomic SKU 1792338013045-ba1571-19 12550 23 23 0" [ref=e174]:
+              - rowheader "Atomic SKU 1792338013045-ba1571-19" [ref=e175]
+              - cell "12550" [ref=e176]
+              - cell "23" [ref=e177]
+              - cell "23" [ref=e178]
+              - cell "0" [ref=e179]
+  - button "Open Next.js Dev Tools" [ref=e185] [cursor=pointer]:
+    - img [ref=e186]
+  - alert [ref=e189]
+  - button "Выйти везде" [ref=e190] [cursor=pointer]
+  - button "Выйти" [ref=e191] [cursor=pointer]
+```

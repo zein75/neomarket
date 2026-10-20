@@ -1,0 +1,43 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - link "К содержимому" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - main [ref=e3]:
+    - complementary [ref=e4]:
+      - link "NEOMARKET SELLER HUB" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - text: NEOMARKET
+        - generic [ref=e6]: SELLER HUB
+      - navigation "РќР°РІРёРіР°С†РёСЏ РїСЂРѕРґР°РІС†Р°" [ref=e7]:
+        - link "РћР±Р·РѕСЂ СЃРєР»Р°РґР°" [ref=e8] [cursor=pointer]:
+          - /url: /dashboard
+        - link "РўРѕРІР°СЂС‹" [ref=e9] [cursor=pointer]:
+          - /url: /products
+        - link "РЈРїСЂР°РІР»РµРЅРёРµ РѕСЃС‚Р°С‚РєР°РјРё" [ref=e10] [cursor=pointer]:
+          - /url: /inventory
+        - link "Р—Р°РєР°Р·С‹" [ref=e11] [cursor=pointer]:
+          - /url: /orders
+        - link "Р¤РёРЅР°РЅСЃС‹" [ref=e12] [cursor=pointer]:
+          - /url: /finance
+        - link "Р’С‹РїР»Р°С‚С‹" [ref=e13] [cursor=pointer]:
+          - /url: /finance/payouts
+        - link "РљРѕРјР°РЅРґР°" [ref=e14] [cursor=pointer]:
+          - /url: /team
+    - generic [ref=e15]:
+      - generic [ref=e17]:
+        - generic [ref=e18]: NEOMARKET / SELLER HUB
+        - strong [ref=e19]: Финансы
+      - generic [ref=e21]:
+        - paragraph [ref=e22]: SELLER / FINANCE
+        - heading "Финансы" [level=1] [ref=e23]
+      - status [ref=e24]:
+        - heading "Р¤РёРЅР°РЅСЃРѕРІС‹Р№ РїСЂРѕРІР°Р№РґРµСЂ РЅРµ РЅР°СЃС‚СЂРѕРµРЅ" [level=2] [ref=e25]
+        - paragraph [ref=e26]: Р¤РёРЅР°РЅСЃРѕРІС‹Рµ РґР°РЅРЅС‹Рµ Рё РІС‹РїР»Р°С‚С‹ РїРѕСЏРІСЏС‚СЃСЏ РїРѕСЃР»Рµ РЅР°СЃС‚СЂРѕР№РєРё РїР»Р°С‚С‘Р¶РЅРѕРіРѕ РїСЂРѕРІР°Р№РґРµСЂР° Рё РїСЂР°РІРёР» РєРѕРјРёСЃСЃРёРё. РЎРµР№С‡Р°СЃ СЃРёСЃС‚РµРјР° РЅРµ СЂР°СЃРїРѕР»Р°РіР°РµС‚ РїРѕРґС‚РІРµСЂР¶РґС‘РЅРЅС‹РјРё СЂР°СЃС‡С‘С‚Р°РјРё.
+  - button "Open Next.js Dev Tools" [ref=e32] [cursor=pointer]:
+    - img [ref=e33]
+  - alert [ref=e36]
+  - button "Выйти везде" [ref=e37] [cursor=pointer]
+  - button "Выйти" [ref=e38] [cursor=pointer]
+```

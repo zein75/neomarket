@@ -1,0 +1,273 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - link "К содержимому" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - main [ref=e3]:
+    - complementary [ref=e4]:
+      - link "NEOMARKET SELLER HUB" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - text: NEOMARKET
+        - generic [ref=e6]: SELLER HUB
+      - generic [ref=e7]:
+        - generic [ref=e8]: РђРєРєР°СѓРЅС‚ РїСЂРѕРґР°РІС†Р°
+        - strong [ref=e9]: РњРѕР№ РєР°Р±РёРЅРµС‚
+      - navigation "РќР°РІРёРіР°С†РёСЏ РїСЂРѕРґР°РІС†Р°" [ref=e10]:
+        - link "РћР±Р·РѕСЂ СЃРєР»Р°РґР°" [ref=e11] [cursor=pointer]:
+          - /url: /dashboard
+        - link "РўРѕРІР°СЂС‹" [ref=e12] [cursor=pointer]:
+          - /url: /products
+        - link "РЈРїСЂР°РІР»РµРЅРёРµ РѕСЃС‚Р°С‚РєР°РјРё" [ref=e13] [cursor=pointer]:
+          - /url: /inventory
+        - link "Р—Р°РєР°Р·С‹" [ref=e14] [cursor=pointer]:
+          - /url: /orders
+        - link "Р¤РёРЅР°РЅСЃС‹" [ref=e15] [cursor=pointer]:
+          - /url: /finance
+        - link "РњРѕРґРµСЂР°С†РёСЏ" [ref=e16] [cursor=pointer]:
+          - /url: /moderation
+        - link "РљРѕРјР°РЅРґР°" [ref=e17] [cursor=pointer]:
+          - /url: /team
+      - generic [ref=e18]: Р”РђРќРќР«Р• B2B API
+      - generic [ref=e19]:
+        - generic [ref=e20]: Р”РѕСЃС‚СѓРїРЅС‹Рµ РїРѕР·РёС†РёРё
+        - strong [ref=e21]: 2 136
+    - generic [ref=e22]:
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - generic [ref=e25]: NEOMARKET / SELLER HUB
+          - strong [ref=e26]: РЎРєР»Р°Рґ Рё РєР°С‚Р°Р»РѕРі
+        - link "Р”РѕР±Р°РІРёС‚СЊ С‚РѕРІР°СЂ" [ref=e27] [cursor=pointer]:
+          - /url: /products/new
+      - status [ref=e28]:
+        - generic [ref=e29]: Р”Р°РЅРЅС‹Рµ СЃРёРЅС…СЂРѕРЅРёР·РёСЂСѓСЋС‚СЃСЏ РЅР°РїСЂСЏРјСѓСЋ СЃ РєР°Р±РёРЅРµС‚РѕРј РїСЂРѕРґР°РІС†Р°
+        - generic [ref=e31]: РћР±РЅРѕРІР»РµРЅРёРµ РїСЂРё РѕС‚РєСЂС‹С‚РёРё СЃС‚СЂР°РЅРёС†С‹
+      - paragraph [ref=e32]: РЎРІРѕРґРєР° B2B API РЅР° 18.10.2026, 20:59:00
+      - generic [ref=e33]:
+        - generic [ref=e34]: LIVE B2B STOCK
+        - button "РРєСЃРїРѕСЂС‚ РѕСЃС‚Р°С‚РєРѕРІ" [ref=e35] [cursor=pointer]
+      - generic [ref=e36]:
+        - generic [ref=e37]:
+          - paragraph [ref=e38]: SELLER / INVENTORY
+          - heading "РЈРїСЂР°РІР»РµРЅРёРµ РєР°С‚Р°Р»РѕРіРѕРј Рё РѕСЃС‚Р°С‚РєР°РјРё" [level=1] [ref=e39]:
+            - text: РЈРїСЂР°РІР»РµРЅРёРµ РєР°С‚Р°Р»РѕРіРѕРј
+            - text: Рё РѕСЃС‚Р°С‚РєР°РјРё
+        - link "РћС‚РєСЂС‹С‚СЊ С‚РѕРІР°СЂС‹" [ref=e40] [cursor=pointer]:
+          - /url: /products
+      - region "РЎРІРѕРґРєР° РїРѕ СЃРєР»Р°РґСѓ" [ref=e41]:
+        - article [ref=e42]:
+          - generic [ref=e43]: РђРєС‚РёРІРЅС‹Рµ С‚РѕРІР°СЂС‹
+          - strong [ref=e44]: "12"
+          - generic [ref=e45]: Server aggregate
+        - article [ref=e46]:
+          - generic [ref=e47]: SKU РІ РєР°С‚Р°Р»РѕРіРµ
+          - strong [ref=e48]: "133"
+          - generic [ref=e49]: РџРѕ РїРѕР»РЅРѕР№ owner-scoped РІС‹Р±РѕСЂРєРµ
+        - article [ref=e50]:
+          - generic [ref=e51]: Р”РѕСЃС‚СѓРїРЅС‹Р№ РѕСЃС‚Р°С‚РѕРє
+          - strong [ref=e52]: 2 136
+          - generic [ref=e53]: РџРѕСЃР»Рµ СѓС‡С‘С‚Р° СЂРµР·РµСЂРІР°
+        - article [ref=e54]:
+          - generic [ref=e55]: Р—Р°СЂРµР·РµСЂРІРёСЂРѕРІР°РЅРѕ
+          - strong [ref=e56]: "326"
+          - generic [ref=e57]: РџРѕ РґР°РЅРЅС‹Рј СЃРєР»Р°РґСЃРєРѕРіРѕ API
+        - article [ref=e58]:
+          - generic [ref=e59]: SKU Р±РµР· РѕСЃС‚Р°С‚РєР°
+          - strong [ref=e60]: "3"
+          - generic [ref=e61]: РўРѕР»СЊРєРѕ СЃСЂРµРґРё РїРѕРєР°Р·Р°РЅРЅС‹С… С‚РѕРІР°СЂРѕРІ
+      - region "РўРѕРІР°СЂС‹ Рё СЃРєР»Р°РґСЃРєРёРµ РѕСЃС‚Р°С‚РєРё" [ref=e62]:
+        - generic [ref=e63]:
+          - generic [ref=e64]:
+            - generic "Р Р°Р·РґРµР»С‹ РїСЂРѕРґР°РІС†Р°" [ref=e65]:
+              - link "РўРѕРІР°СЂС‹ Рё SKU 133" [ref=e66] [cursor=pointer]:
+                - /url: /dashboard
+                - text: РўРѕРІР°СЂС‹ Рё SKU
+                - generic [ref=e67]: "133"
+              - link "РћСЃС‚Р°С‚РєРё" [ref=e68] [cursor=pointer]:
+                - /url: /inventory
+              - link "Р¤РёРЅР°РЅСЃС‹" [ref=e69] [cursor=pointer]:
+                - /url: /finance
+              - link "РЎС‚Р°С‚СѓСЃС‹ РјРѕРґРµСЂР°С†РёРё 0" [ref=e70] [cursor=pointer]:
+                - /url: /moderation
+                - text: РЎС‚Р°С‚СѓСЃС‹ РјРѕРґРµСЂР°С†РёРё
+                - generic [ref=e71]: "0"
+            - generic [ref=e72]:
+              - text: РџРѕРёСЃРє РїРѕ РЅР°Р·РІР°РЅРёСЋ РёР»Рё Р°СЂС‚РёРєСѓР»Сѓ
+              - textbox "РџРѕРёСЃРє РїРѕ РЅР°Р·РІР°РЅРёСЋ РёР»Рё Р°СЂС‚РёРєСѓР»Сѓ" [ref=e73]:
+                - /placeholder: РќР°Р·РІР°РЅРёРµ С‚РѕРІР°СЂР°, SKUвЂ¦
+          - group "Р¤РёР»СЊС‚СЂ СЃРєР»Р°РґСЃРєРѕРіРѕ СЃС‚Р°С‚СѓСЃР°" [ref=e74]:
+            - generic [ref=e75]: Р‘С‹СЃС‚СЂС‹Р№ С„РёР»СЊС‚СЂ
+            - button "Р’СЃРµ SKU 133" [pressed] [ref=e76] [cursor=pointer]:
+              - text: Р’СЃРµ SKU
+              - strong [ref=e77]: "133"
+            - button "Р’ РЅР°Р»РёС‡РёРё 130" [ref=e78] [cursor=pointer]:
+              - text: Р’ РЅР°Р»РёС‡РёРё
+              - strong [ref=e79]: "130"
+            - button "РЎ СЂРµР·РµСЂРІРѕРј 3" [ref=e80] [cursor=pointer]:
+              - text: РЎ СЂРµР·РµСЂРІРѕРј
+              - strong [ref=e81]: "3"
+            - button "РќРµС‚ РґРѕСЃС‚СѓРїРЅРѕРіРѕ РѕСЃС‚Р°С‚РєР° 3" [ref=e82] [cursor=pointer]:
+              - text: РќРµС‚ РґРѕСЃС‚СѓРїРЅРѕРіРѕ РѕСЃС‚Р°С‚РєР°
+              - strong [ref=e83]: "3"
+          - generic [ref=e84]:
+            - generic [ref=e85]: "РџРѕРєР°Р·Р°РЅРѕ: 1вЂ“6 РёР· 133"
+            - generic [ref=e86]:
+              - text: РЎРѕСЂС‚РёСЂРѕРІРєР°
+              - combobox "РЎРѕСЂС‚РёСЂРѕРІРєР°" [ref=e87]:
+                - option "РџРѕ РЅР°Р·РІР°РЅРёСЋ" [selected]
+                - option "РџРѕ РґРѕСЃС‚СѓРїРЅРѕРјСѓ РѕСЃС‚Р°С‚РєСѓ"
+                - option "РџРѕ РѕСЃС‚Р°С‚РєСѓ РЅР° СЃРєР»Р°РґРµ"
+          - table "РўРѕРІР°СЂС‹, SKU Рё С‚РµРєСѓС‰РёРµ СЃРєР»Р°РґСЃРєРёРµ РѕСЃС‚Р°С‚РєРё" [ref=e89]:
+            - caption [ref=e90]: РўРѕРІР°СЂС‹, SKU Рё С‚РµРєСѓС‰РёРµ СЃРєР»Р°РґСЃРєРёРµ РѕСЃС‚Р°С‚РєРё
+            - rowgroup [ref=e91]:
+              - row "РўРѕРІР°СЂ РђСЂС‚РёРєСѓР» / SKU РљР°С‚РµРіРѕСЂРёСЏ РЎС‚Р°С‚СѓСЃ РќР° СЃРєР»Р°РґРµ Р РµР·РµСЂРІ Р”РѕСЃС‚СѓРїРЅРѕ Р’С‹Р±СЂР°С‚СЊ SKU" [ref=e92]:
+                - columnheader "РўРѕРІР°СЂ" [ref=e93]
+                - columnheader "РђСЂС‚РёРєСѓР» / SKU" [ref=e94]
+                - columnheader "РљР°С‚РµРіРѕСЂРёСЏ" [ref=e95]
+                - columnheader "РЎС‚Р°С‚СѓСЃ" [ref=e96]
+                - columnheader "РќР° СЃРєР»Р°РґРµ" [ref=e97]
+                - columnheader "Р РµР·РµСЂРІ" [ref=e98]
+                - columnheader "Р”РѕСЃС‚СѓРїРЅРѕ" [ref=e99]
+                - columnheader "Р’С‹Р±СЂР°С‚СЊ SKU" [ref=e100]:
+                  - generic [ref=e101]: Р’С‹Р±СЂР°С‚СЊ SKU
+            - rowgroup [ref=e102]:
+              - row "Р¤РѕС‚Рѕ С‚РѕРІР°СЂР° В«=1+1 1792159939717-67d00fВ» РЅРµ РїСЂРµРґРѕСЃС‚Р°РІР»РµРЅРѕ =1+1 1792159939717-67d00f @SUM(1,1) 1792159939717-67d00f-0 SKU-1792159939717-67d00f-0 вЂ” Р’ РЅР°Р»РёС‡РёРё 9 0 9 Р’С‹Р±СЂР°С‚СЊ SKU =1+1 1792159939717-67d00f, @SUM(1,1) 1792159939717-67d00f-0" [ref=e103]:
+                - rowheader "Р¤РѕС‚Рѕ С‚РѕРІР°СЂР° В«=1+1 1792159939717-67d00fВ» РЅРµ РїСЂРµРґРѕСЃС‚Р°РІР»РµРЅРѕ =1+1 1792159939717-67d00f @SUM(1,1) 1792159939717-67d00f-0" [ref=e104]:
+                  - generic [ref=e105]:
+                    - img "Р¤РѕС‚Рѕ С‚РѕРІР°СЂР° В«=1+1 1792159939717-67d00fВ» РЅРµ РїСЂРµРґРѕСЃС‚Р°РІР»РµРЅРѕ" [ref=e106]:
+                      - img [ref=e107]
+                    - generic [ref=e111]:
+                      - generic [ref=e112]: =1+1 1792159939717-67d00f
+                      - generic [ref=e113]: "@SUM(1,1) 1792159939717-67d00f-0"
+                - cell "SKU-1792159939717-67d00f-0" [ref=e114]
+                - cell "вЂ”" [ref=e115]
+                - cell "Р’ РЅР°Р»РёС‡РёРё" [ref=e116]:
+                  - generic [ref=e117]: Р’ РЅР°Р»РёС‡РёРё
+                - cell "9" [ref=e118]
+                - cell "0" [ref=e119]
+                - cell "9" [ref=e120]
+                - cell "Р’С‹Р±СЂР°С‚СЊ SKU =1+1 1792159939717-67d00f, @SUM(1,1) 1792159939717-67d00f-0" [ref=e121]:
+                  - button "Р’С‹Р±СЂР°С‚СЊ SKU =1+1 1792159939717-67d00f, @SUM(1,1) 1792159939717-67d00f-0" [ref=e122] [cursor=pointer]: Р’С‹Р±СЂР°С‚СЊ
+              - row "Р¤РѕС‚Рѕ С‚РѕРІР°СЂР° В«=1+1 1792159939717-67d00fВ» РЅРµ РїСЂРµРґРѕСЃС‚Р°РІР»РµРЅРѕ =1+1 1792159939717-67d00f Atomic SKU 1792159939717-67d00f-1 SKU-1792159939717-67d00f-1 вЂ” Р’ РЅР°Р»РёС‡РёРё 5 0 5 Р’С‹Р±СЂР°С‚СЊ SKU =1+1 1792159939717-67d00f, Atomic SKU 1792159939717-67d00f-1" [ref=e123]:
+                - rowheader "Р¤РѕС‚Рѕ С‚РѕРІР°СЂР° В«=1+1 1792159939717-67d00fВ» РЅРµ РїСЂРµРґРѕСЃС‚Р°РІР»РµРЅРѕ =1+1 1792159939717-67d00f Atomic SKU 1792159939717-67d00f-1" [ref=e124]:
+                  - generic [ref=e125]:
+                    - img "Р¤РѕС‚Рѕ С‚РѕРІР°СЂР° В«=1+1 1792159939717-67d00fВ» РЅРµ РїСЂРµРґРѕСЃС‚Р°РІР»РµРЅРѕ" [ref=e126]:
+                      - img [ref=e127]
+                    - generic [ref=e131]:
+                      - generic [ref=e132]: =1+1 1792159939717-67d00f
+                      - generic [ref=e133]: Atomic SKU 1792159939717-67d00f-1
+                - cell "SKU-1792159939717-67d00f-1" [ref=e134]
+                - cell "вЂ”" [ref=e135]
+                - cell "Р’ РЅР°Р»РёС‡РёРё" [ref=e136]:
+                  - generic [ref=e137]: Р’ РЅР°Р»РёС‡РёРё
+                - cell "5" [ref=e138]
+                - cell "0" [ref=e139]
+                - cell "5" [ref=e140]
+                - cell "Р’С‹Р±СЂР°С‚СЊ SKU =1+1 1792159939717-67d00f, Atomic SKU 1792159939717-67d00f-1" [ref=e141]:
+                  - button "Р’С‹Р±СЂР°С‚СЊ SKU =1+1 1792159939717-67d00f, Atomic SKU 1792159939717-67d00f-1" [ref=e142] [cursor=pointer]: Р’С‹Р±СЂР°С‚СЊ
+              - row "Р¤РѕС‚Рѕ С‚РѕРІР°СЂР° В«=1+1 1792159939717-67d00fВ» РЅРµ РїСЂРµРґРѕСЃС‚Р°РІР»РµРЅРѕ =1+1 1792159939717-67d00f Atomic SKU 1792159939717-67d00f-10 SKU-1792159939717-67d00f-10 вЂ” Р’ РЅР°Р»РёС‡РёРё 14 0 14 Р’С‹Р±СЂР°С‚СЊ SKU =1+1 1792159939717-67d00f, Atomic SKU 1792159939717-67d00f-10" [ref=e143]:
+                - rowheader "Р¤РѕС‚Рѕ С‚РѕРІР°СЂР° В«=1+1 1792159939717-67d00fВ» РЅРµ РїСЂРµРґРѕСЃС‚Р°РІР»РµРЅРѕ =1+1 1792159939717-67d00f Atomic SKU 1792159939717-67d00f-10" [ref=e144]:
+                  - generic [ref=e145]:
+                    - img "Р¤РѕС‚Рѕ С‚РѕРІР°СЂР° В«=1+1 1792159939717-67d00fВ» РЅРµ РїСЂРµРґРѕСЃС‚Р°РІР»РµРЅРѕ" [ref=e146]:
+                      - img [ref=e147]
+                    - generic [ref=e151]:
+                      - generic [ref=e152]: =1+1 1792159939717-67d00f
+                      - generic [ref=e153]: Atomic SKU 1792159939717-67d00f-10
+                - cell "SKU-1792159939717-67d00f-10" [ref=e154]
+                - cell "вЂ”" [ref=e155]
+                - cell "Р’ РЅР°Р»РёС‡РёРё" [ref=e156]:
+                  - generic [ref=e157]: Р’ РЅР°Р»РёС‡РёРё
+                - cell "14" [ref=e158]
+                - cell "0" [ref=e159]
+                - cell "14" [ref=e160]
+                - cell "Р’С‹Р±СЂР°С‚СЊ SKU =1+1 1792159939717-67d00f, Atomic SKU 1792159939717-67d00f-10" [ref=e161]:
+                  - button "Р’С‹Р±СЂР°С‚СЊ SKU =1+1 1792159939717-67d00f, Atomic SKU 1792159939717-67d00f-10" [ref=e162] [cursor=pointer]: Р’С‹Р±СЂР°С‚СЊ
+              - row "Р¤РѕС‚Рѕ С‚РѕРІР°СЂР° В«=1+1 1792159939717-67d00fВ» РЅРµ РїСЂРµРґРѕСЃС‚Р°РІР»РµРЅРѕ =1+1 1792159939717-67d00f Atomic SKU 1792159939717-67d00f-11 SKU-1792159939717-67d00f-11 вЂ” Р’ РЅР°Р»РёС‡РёРё 15 0 15 Р’С‹Р±СЂР°С‚СЊ SKU =1+1 1792159939717-67d00f, Atomic SKU 1792159939717-67d00f-11" [ref=e163]:
+                - rowheader "Р¤РѕС‚Рѕ С‚РѕРІР°СЂР° В«=1+1 1792159939717-67d00fВ» РЅРµ РїСЂРµРґРѕСЃС‚Р°РІР»РµРЅРѕ =1+1 1792159939717-67d00f Atomic SKU 1792159939717-67d00f-11" [ref=e164]:
+                  - generic [ref=e165]:
+                    - img "Р¤РѕС‚Рѕ С‚РѕРІР°СЂР° В«=1+1 1792159939717-67d00fВ» РЅРµ РїСЂРµРґРѕСЃС‚Р°РІР»РµРЅРѕ" [ref=e166]:
+                      - img [ref=e167]
+                    - generic [ref=e171]:
+                      - generic [ref=e172]: =1+1 1792159939717-67d00f
+                      - generic [ref=e173]: Atomic SKU 1792159939717-67d00f-11
+                - cell "SKU-1792159939717-67d00f-11" [ref=e174]
+                - cell "вЂ”" [ref=e175]
+                - cell "Р’ РЅР°Р»РёС‡РёРё" [ref=e176]:
+                  - generic [ref=e177]: Р’ РЅР°Р»РёС‡РёРё
+                - cell "15" [ref=e178]
+                - cell "0" [ref=e179]
+                - cell "15" [ref=e180]
+                - cell "Р’С‹Р±СЂР°С‚СЊ SKU =1+1 1792159939717-67d00f, Atomic SKU 1792159939717-67d00f-11" [ref=e181]:
+                  - button "Р’С‹Р±СЂР°С‚СЊ SKU =1+1 1792159939717-67d00f, Atomic SKU 1792159939717-67d00f-11" [ref=e182] [cursor=pointer]: Р’С‹Р±СЂР°С‚СЊ
+              - row "Р¤РѕС‚Рѕ С‚РѕРІР°СЂР° В«=1+1 1792159939717-67d00fВ» РЅРµ РїСЂРµРґРѕСЃС‚Р°РІР»РµРЅРѕ =1+1 1792159939717-67d00f Atomic SKU 1792159939717-67d00f-12 SKU-1792159939717-67d00f-12 вЂ” Р’ РЅР°Р»РёС‡РёРё 16 0 16 Р’С‹Р±СЂР°С‚СЊ SKU =1+1 1792159939717-67d00f, Atomic SKU 1792159939717-67d00f-12" [ref=e183]:
+                - rowheader "Р¤РѕС‚Рѕ С‚РѕРІР°СЂР° В«=1+1 1792159939717-67d00fВ» РЅРµ РїСЂРµРґРѕСЃС‚Р°РІР»РµРЅРѕ =1+1 1792159939717-67d00f Atomic SKU 1792159939717-67d00f-12" [ref=e184]:
+                  - generic [ref=e185]:
+                    - img "Р¤РѕС‚Рѕ С‚РѕРІР°СЂР° В«=1+1 1792159939717-67d00fВ» РЅРµ РїСЂРµРґРѕСЃС‚Р°РІР»РµРЅРѕ" [ref=e186]:
+                      - img [ref=e187]
+                    - generic [ref=e191]:
+                      - generic [ref=e192]: =1+1 1792159939717-67d00f
+                      - generic [ref=e193]: Atomic SKU 1792159939717-67d00f-12
+                - cell "SKU-1792159939717-67d00f-12" [ref=e194]
+                - cell "вЂ”" [ref=e195]
+                - cell "Р’ РЅР°Р»РёС‡РёРё" [ref=e196]:
+                  - generic [ref=e197]: Р’ РЅР°Р»РёС‡РёРё
+                - cell "16" [ref=e198]
+                - cell "0" [ref=e199]
+                - cell "16" [ref=e200]
+                - cell "Р’С‹Р±СЂР°С‚СЊ SKU =1+1 1792159939717-67d00f, Atomic SKU 1792159939717-67d00f-12" [ref=e201]:
+                  - button "Р’С‹Р±СЂР°С‚СЊ SKU =1+1 1792159939717-67d00f, Atomic SKU 1792159939717-67d00f-12" [ref=e202] [cursor=pointer]: Р’С‹Р±СЂР°С‚СЊ
+              - row "Р¤РѕС‚Рѕ С‚РѕРІР°СЂР° В«=1+1 1792159939717-67d00fВ» РЅРµ РїСЂРµРґРѕСЃС‚Р°РІР»РµРЅРѕ =1+1 1792159939717-67d00f Atomic SKU 1792159939717-67d00f-13 SKU-1792159939717-67d00f-13 вЂ” Р’ РЅР°Р»РёС‡РёРё 17 0 17 Р’С‹Р±СЂР°С‚СЊ SKU =1+1 1792159939717-67d00f, Atomic SKU 1792159939717-67d00f-13" [ref=e203]:
+                - rowheader "Р¤РѕС‚Рѕ С‚РѕРІР°СЂР° В«=1+1 1792159939717-67d00fВ» РЅРµ РїСЂРµРґРѕСЃС‚Р°РІР»РµРЅРѕ =1+1 1792159939717-67d00f Atomic SKU 1792159939717-67d00f-13" [ref=e204]:
+                  - generic [ref=e205]:
+                    - img "Р¤РѕС‚Рѕ С‚РѕРІР°СЂР° В«=1+1 1792159939717-67d00fВ» РЅРµ РїСЂРµРґРѕСЃС‚Р°РІР»РµРЅРѕ" [ref=e206]:
+                      - img [ref=e207]
+                    - generic [ref=e211]:
+                      - generic [ref=e212]: =1+1 1792159939717-67d00f
+                      - generic [ref=e213]: Atomic SKU 1792159939717-67d00f-13
+                - cell "SKU-1792159939717-67d00f-13" [ref=e214]
+                - cell "вЂ”" [ref=e215]
+                - cell "Р’ РЅР°Р»РёС‡РёРё" [ref=e216]:
+                  - generic [ref=e217]: Р’ РЅР°Р»РёС‡РёРё
+                - cell "17" [ref=e218]
+                - cell "0" [ref=e219]
+                - cell "17" [ref=e220]
+                - cell "Р’С‹Р±СЂР°С‚СЊ SKU =1+1 1792159939717-67d00f, Atomic SKU 1792159939717-67d00f-13" [ref=e221]:
+                  - button "Р’С‹Р±СЂР°С‚СЊ SKU =1+1 1792159939717-67d00f, Atomic SKU 1792159939717-67d00f-13" [ref=e222] [cursor=pointer]: Р’С‹Р±СЂР°С‚СЊ
+          - navigation "РЎС‚СЂР°РЅРёС†С‹ СЃРєР»Р°РґСЃРєРёС… РїРѕР·РёС†РёР№" [ref=e223]:
+            - generic [ref=e224]: "Р’С‹Р±СЂР°РЅРѕ РїРѕР·РёС†РёР№: 0"
+            - generic [ref=e225]:
+              - button "РџРµСЂРІР°СЏ СЃС‚СЂР°РЅРёС†Р°" [disabled] [ref=e226]: "|вЂ№"
+              - button "РџСЂРµРґС‹РґСѓС‰Р°СЏ СЃС‚СЂР°РЅРёС†Р°" [disabled] [ref=e227]: вЂ№
+              - generic [ref=e228]: 1 / 23
+              - button "РЎР»РµРґСѓСЋС‰Р°СЏ СЃС‚СЂР°РЅРёС†Р°" [ref=e229] [cursor=pointer]: вЂє
+              - button "РџРѕСЃР»РµРґРЅСЏСЏ СЃС‚СЂР°РЅРёС†Р°" [ref=e230] [cursor=pointer]: вЂє|
+        - complementary "РЎРІРѕРґРєР° РІС‹Р±СЂР°РЅРЅРѕРіРѕ SKU" [ref=e231]:
+          - generic [ref=e232]:
+            - generic [ref=e233]: Р’С‹Р±СЂР°РЅРЅР°СЏ РїРѕР·РёС†РёСЏ
+            - strong [ref=e234]: B2B / SKU
+          - paragraph [ref=e235]: Media integration 1792336619526-9ae3e7
+          - heading "Media fixture variant" [level=2] [ref=e236]
+          - paragraph [ref=e237]: MEDIA-1792336619526-9ae3e7
+          - generic [ref=e238]:
+            - generic [ref=e239]:
+              - term [ref=e240]: РќР° СЃРєР»Р°РґРµ
+              - definition [ref=e241]: "4"
+            - generic [ref=e242]:
+              - term [ref=e243]: Р’ СЂРµР·РµСЂРІРµ
+              - definition [ref=e244]: "0"
+            - generic [ref=e245]:
+              - term [ref=e246]: Р”РѕСЃС‚СѓРїРЅРѕ
+              - definition [ref=e247]: "4"
+          - generic [ref=e248]:
+            - generic [ref=e249]: РњРѕРґРµСЂР°С†РёСЏ С‚РѕРІР°СЂР°
+            - strong [ref=e250]: CREATED
+          - link "РЈРїСЂР°РІР»СЏС‚СЊ РѕСЃС‚Р°С‚РєР°РјРё" [ref=e251] [cursor=pointer]:
+            - /url: /inventory
+          - link "РћС‚РєСЂС‹С‚СЊ РєР°СЂС‚РѕС‡РєСѓ С‚РѕРІР°СЂР°" [ref=e252] [cursor=pointer]:
+            - /url: /products/31380d6c-af43-4f04-8d21-556b984e72a6
+  - button "Open Next.js Dev Tools" [ref=e258] [cursor=pointer]:
+    - img [ref=e259]
+  - alert [ref=e262]
+  - button "Выйти везде" [ref=e263] [cursor=pointer]
+  - button "Выйти" [ref=e264] [cursor=pointer]
+```

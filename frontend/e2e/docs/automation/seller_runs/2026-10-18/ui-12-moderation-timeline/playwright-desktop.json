@@ -1,0 +1,185 @@
+{
+  "config": {
+    "configFile": "C:\\neomarket\\frontend\\e2e\\playwright.config.ts",
+    "rootDir": "C:/neomarket/frontend/e2e/tests",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/neomarket/frontend/docs/automation/seller_runs/2026-10-18/ui-12-moderation-timeline/desktop",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop-chromium",
+        "name": "desktop-chromium",
+        "testDir": "C:/neomarket/frontend/e2e/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "C:/neomarket/frontend/docs/automation/seller_runs/2026-10-18/ui-12-moderation-timeline/desktop",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "tablet-chromium",
+        "name": "tablet-chromium",
+        "testDir": "C:/neomarket/frontend/e2e/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "C:/neomarket/frontend/docs/automation/seller_runs/2026-10-18/ui-12-moderation-timeline/desktop",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "mobile-chromium",
+        "name": "mobile-chromium",
+        "testDir": "C:/neomarket/frontend/e2e/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "runAgents": "none",
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.58.2",
+    "workers": 8,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "userflows.spec.ts",
+      "file": "userflows.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "seller protected flows",
+          "file": "userflows.spec.ts",
+          "line": 579,
+          "column": 6,
+          "specs": [
+            {
+              "title": "seller creates and replays an atomic 20-variant product draft",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop-chromium",
+                  "projectName": "desktop-chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "timedOut",
+                      "duration": 31005,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                      },
+                      "errors": [
+                        {
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                        },
+                        {
+                          "location": {
+                            "file": "C:\\neomarket\\frontend\\e2e\\tests\\userflows.spec.ts",
+                            "column": 79,
+                            "line": 787
+                          },
+                          "message": "Error: locator.click: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Save corrections and resubmit' })\u001b[22m\n\n\n  785 |     await expect(page.getByText('/description · DESCRIPTION_MISMATCH')).toBeVisible();\n  786 |     await page.getByLabel('Description').fill('Corrected seller description after moderation feedback.');\n> 787 |     await page.getByRole('button', { name: 'Save corrections and resubmit' }).click();\n      |                                                                               ^\n  788 |     await expect(page.getByRole('status')).toContainText('Corrections saved. The new revision was sent for moderation.');\n  789 |     const resubmitted = await page.evaluate(async (productId) => {\n  790 |       const response = await fetch(`/api/seller/products/${productId}`, { cache: 'no-store' });\n    at C:\\neomarket\\frontend\\e2e\\tests\\userflows.spec.ts:787:79"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-18T15:40:03.695Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\neomarket\\frontend\\docs\\automation\\seller_runs\\2026-10-18\\ui-12-moderation-timeline\\desktop\\userflows-seller-protected-f69ab-ic-20-variant-product-draft-desktop-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\neomarket\\frontend\\docs\\automation\\seller_runs\\2026-10-18\\ui-12-moderation-timeline\\desktop\\userflows-seller-protected-f69ab-ic-20-variant-product-draft-desktop-chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\neomarket\\frontend\\docs\\automation\\seller_runs\\2026-10-18\\ui-12-moderation-timeline\\desktop\\userflows-seller-protected-f69ab-ic-20-variant-product-draft-desktop-chromium\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\neomarket\\frontend\\docs\\automation\\seller_runs\\2026-10-18\\ui-12-moderation-timeline\\desktop\\userflows-seller-protected-f69ab-ic-20-variant-product-draft-desktop-chromium\\trace.zip"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "d970229045dfeea31247-f15fcfcba489b0520c29",
+              "file": "userflows.spec.ts",
+              "line": 623,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-18T15:40:01.707Z",
+    "duration": 35301.856999999996,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}

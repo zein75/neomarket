@@ -1,0 +1,1 @@
+export default function NotFound() { return <main className="state-screen"><p className="eyebrow">404 / NOT FOUND</p><h1>Такой страницы нет</h1><p>Ссылка устарела или объект больше не опубликован.</p><a className="button button-primary" href="/catalog">Открыть каталог</a></main>; }

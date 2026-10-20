@@ -1,0 +1,374 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - link "К содержимому" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - main [ref=e3]:
+    - complementary [ref=e4]:
+      - link "NEOMARKET SELLER HUB" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - text: NEOMARKET
+        - generic [ref=e6]: SELLER HUB
+      - button "Разделы" [active] [ref=e7] [cursor=pointer]
+    - generic [ref=e8]:
+      - generic [ref=e9]:
+        - generic [ref=e10]: SELLER / MODERATION
+        - generic [ref=e11]: SERVER AUTHORITATIVE
+      - paragraph [ref=e12]: SELLER HUB / SE-10
+      - heading "РњРѕРґРµСЂР°С†РёСЏ" [level=1] [ref=e13]
+      - paragraph [ref=e14]: РЎС‚Р°С‚СѓСЃС‹ Рё РёСЃС‚РѕСЂРёСЏ СЂРµС€РµРЅРёР№ РїРѕРєР°Р·Р°РЅС‹ РёР· B2B API. Р РµС€РµРЅРёСЏ Admin РґРѕСЃС‚СѓРїРЅС‹ С‚РѕР»СЊРєРѕ РґР»СЏ С‡С‚РµРЅРёСЏ.
+      - group "Р¤РёР»СЊС‚СЂ СЃС‚Р°С‚СѓСЃР°" [ref=e15]:
+        - button "Р’СЃРµ" [ref=e16] [cursor=pointer]
+        - button "CREATED" [ref=e17] [cursor=pointer]
+        - button "BLOCKED" [ref=e18] [cursor=pointer]
+        - button "MODERATED" [ref=e19] [cursor=pointer]
+      - generic [ref=e20]:
+        - article [ref=e21]:
+          - generic [ref=e22]:
+            - generic [ref=e23]:
+              - paragraph [ref=e24]: 31380d6c-af43-4f04-8d21-556b984e72a6
+              - heading "Media integration 1792336619526-9ae3e7" [level=2] [ref=e25]
+            - generic [ref=e26]: CREATED
+          - paragraph [ref=e27]:
+            - time [ref=e28]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e29] [cursor=pointer]
+        - article [ref=e30]:
+          - generic [ref=e31]:
+            - generic [ref=e32]:
+              - paragraph [ref=e33]: ecdbe9d0-c747-46d8-aea1-5da4b6e0be12
+              - heading "Media integration 1792336604441-43c6ea" [level=2] [ref=e34]
+            - generic [ref=e35]: CREATED
+          - paragraph [ref=e36]:
+            - time [ref=e37]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e38] [cursor=pointer]
+        - article [ref=e39]:
+          - generic [ref=e40]:
+            - generic [ref=e41]:
+              - paragraph [ref=e42]: 08e6810b-dbfb-48ec-ac72-c4db3552e2f8
+              - heading "Media integration 1792336585944-b2e30e" [level=2] [ref=e43]
+            - generic [ref=e44]: CREATED
+          - paragraph [ref=e45]:
+            - time [ref=e46]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e47] [cursor=pointer]
+        - article [ref=e48]:
+          - generic [ref=e49]:
+            - generic [ref=e50]:
+              - paragraph [ref=e51]: 24c41dbb-fa9c-41c9-b24e-ec299a8152f4
+              - heading "Media integration 1792336240962-3a501c" [level=2] [ref=e52]
+            - generic [ref=e53]: CREATED
+          - paragraph [ref=e54]:
+            - time [ref=e55]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e56] [cursor=pointer]
+        - article [ref=e57]:
+          - generic [ref=e58]:
+            - generic [ref=e59]:
+              - paragraph [ref=e60]: 6bd4f3a9-178b-4c1c-a755-ab5060e22bb0
+              - heading "Media integration 1792336227203-54641f" [level=2] [ref=e61]
+            - generic [ref=e62]: CREATED
+          - paragraph [ref=e63]:
+            - time [ref=e64]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e65] [cursor=pointer]
+        - article [ref=e66]:
+          - generic [ref=e67]:
+            - generic [ref=e68]:
+              - paragraph [ref=e69]: b4bc0025-d6c0-4164-b77a-4138a7d18b37
+              - heading "Media integration 1792336213215-73db16" [level=2] [ref=e70]
+            - generic [ref=e71]: CREATED
+          - paragraph [ref=e72]:
+            - time [ref=e73]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e74] [cursor=pointer]
+        - article [ref=e75]:
+          - generic [ref=e76]:
+            - generic [ref=e77]:
+              - paragraph [ref=e78]: 790b6604-9442-4358-a6ed-2481d58f2561
+              - heading "Media integration 1792336182241-6d83f6" [level=2] [ref=e79]
+            - generic [ref=e80]: CREATED
+          - paragraph [ref=e81]:
+            - time [ref=e82]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e83] [cursor=pointer]
+        - article [ref=e84]:
+          - generic [ref=e85]:
+            - generic [ref=e86]:
+              - paragraph [ref=e87]: cfd92013-a359-43d8-a0ee-2d9f245d3307
+              - heading "Media integration 1792336148609-072e65" [level=2] [ref=e88]
+            - generic [ref=e89]: CREATED
+          - paragraph [ref=e90]:
+            - time [ref=e91]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e92] [cursor=pointer]
+        - article [ref=e93]:
+          - generic [ref=e94]:
+            - generic [ref=e95]:
+              - paragraph [ref=e96]: 3eb26eff-062d-44fa-aa8e-2443158c2c3d
+              - heading "Media integration 1792336125627-aa5cd1" [level=2] [ref=e97]
+            - generic [ref=e98]: CREATED
+          - paragraph [ref=e99]:
+            - time [ref=e100]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e101] [cursor=pointer]
+        - article [ref=e102]:
+          - generic [ref=e103]:
+            - generic [ref=e104]:
+              - paragraph [ref=e105]: ada5b8a8-46f1-4d9e-8674-714978811778
+              - heading "Media integration 1792335943166-bdcc9a" [level=2] [ref=e106]
+            - generic [ref=e107]: CREATED
+          - paragraph [ref=e108]:
+            - time [ref=e109]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e110] [cursor=pointer]
+        - article [ref=e111]:
+          - generic [ref=e112]:
+            - generic [ref=e113]:
+              - paragraph [ref=e114]: 23b8549c-ac64-449a-b4e7-aa183046477d
+              - heading "Media integration 1792168917849-a6a548" [level=2] [ref=e115]
+            - generic [ref=e116]: CREATED
+          - paragraph [ref=e117]:
+            - time [ref=e118]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e119] [cursor=pointer]
+        - article [ref=e120]:
+          - generic [ref=e121]:
+            - generic [ref=e122]:
+              - paragraph [ref=e123]: 1448e897-9484-42d3-9478-11b7e8e06994
+              - heading "Media integration 1792168905385-972c00" [level=2] [ref=e124]
+            - generic [ref=e125]: CREATED
+          - paragraph [ref=e126]:
+            - time [ref=e127]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e128] [cursor=pointer]
+        - article [ref=e129]:
+          - generic [ref=e130]:
+            - generic [ref=e131]:
+              - paragraph [ref=e132]: 378c5847-0d29-4ddd-a201-0f47a2f01891
+              - heading "Media integration 1792168890743-e0c2b1" [level=2] [ref=e133]
+            - generic [ref=e134]: CREATED
+          - paragraph [ref=e135]:
+            - time [ref=e136]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e137] [cursor=pointer]
+        - article [ref=e138]:
+          - generic [ref=e139]:
+            - generic [ref=e140]:
+              - paragraph [ref=e141]: 3088e04f-451f-4055-87a6-6fccbcbf58d0
+              - heading "Media integration 1792168068500-d1b2e7" [level=2] [ref=e142]
+            - generic [ref=e143]: CREATED
+          - paragraph [ref=e144]:
+            - time [ref=e145]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e146] [cursor=pointer]
+        - article [ref=e147]:
+          - generic [ref=e148]:
+            - generic [ref=e149]:
+              - paragraph [ref=e150]: 4536460c-8065-44dc-a6da-37c16663bfcc
+              - heading "Media integration 1792168055776-22284c" [level=2] [ref=e151]
+            - generic [ref=e152]: CREATED
+          - paragraph [ref=e153]:
+            - time [ref=e154]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e155] [cursor=pointer]
+        - article [ref=e156]:
+          - generic [ref=e157]:
+            - generic [ref=e158]:
+              - paragraph [ref=e159]: 2a62061d-54ce-4034-b2ab-9e1b73bb1126
+              - heading "Media integration 1792168043274-b843a3" [level=2] [ref=e160]
+            - generic [ref=e161]: CREATED
+          - paragraph [ref=e162]:
+            - time [ref=e163]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e164] [cursor=pointer]
+        - article [ref=e165]:
+          - generic [ref=e166]:
+            - generic [ref=e167]:
+              - paragraph [ref=e168]: 5872feb5-9f4d-4bd4-8863-f9ca6b3c7691
+              - heading "Media integration 1792167581940-e1b558" [level=2] [ref=e169]
+            - generic [ref=e170]: CREATED
+          - paragraph [ref=e171]:
+            - time [ref=e172]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e173] [cursor=pointer]
+        - article [ref=e174]:
+          - generic [ref=e175]:
+            - generic [ref=e176]:
+              - paragraph [ref=e177]: 58af01f3-7819-459a-976b-2bdef5c2da50
+              - heading "Media integration 1792167568332-18f4a3" [level=2] [ref=e178]
+            - generic [ref=e179]: CREATED
+          - paragraph [ref=e180]:
+            - time [ref=e181]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e182] [cursor=pointer]
+        - article [ref=e183]:
+          - generic [ref=e184]:
+            - generic [ref=e185]:
+              - paragraph [ref=e186]: 5112d152-5cc0-4ec9-a41f-de3dbad14341
+              - heading "Media integration 1792167550256-22d400" [level=2] [ref=e187]
+            - generic [ref=e188]: CREATED
+          - paragraph [ref=e189]:
+            - time [ref=e190]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e191] [cursor=pointer]
+        - article [ref=e192]:
+          - generic [ref=e193]:
+            - generic [ref=e194]:
+              - paragraph [ref=e195]: 89bf7fee-9ace-4ef1-9f4e-32800bfed045
+              - heading "Media integration 1792167265328-76f324" [level=2] [ref=e196]
+            - generic [ref=e197]: CREATED
+          - paragraph [ref=e198]:
+            - time [ref=e199]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e200] [cursor=pointer]
+        - article [ref=e201]:
+          - generic [ref=e202]:
+            - generic [ref=e203]:
+              - paragraph [ref=e204]: 5b5c0c02-5261-41c0-b725-e95281f5a2e4
+              - heading "Media integration 1792167140882-58a775" [level=2] [ref=e205]
+            - generic [ref=e206]: CREATED
+          - paragraph [ref=e207]:
+            - time [ref=e208]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e209] [cursor=pointer]
+        - article [ref=e210]:
+          - generic [ref=e211]:
+            - generic [ref=e212]:
+              - paragraph [ref=e213]: d647d41b-cee3-456a-b23c-14bfe10b63bf
+              - heading "=1+1 1792162023437-06889d" [level=2] [ref=e214]
+            - generic [ref=e215]: BLOCKED
+          - paragraph [ref=e216]:
+            - time [ref=e217]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e218] [cursor=pointer]
+        - article [ref=e219]:
+          - generic [ref=e220]:
+            - generic [ref=e221]:
+              - paragraph [ref=e222]: 9aba2297-760e-4074-ad15-8c98ff4aa744
+              - heading "=1+1 1792161880766-652963" [level=2] [ref=e223]
+            - generic [ref=e224]: CREATED
+          - paragraph [ref=e225]:
+            - time [ref=e226]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e227] [cursor=pointer]
+        - article [ref=e228]:
+          - generic [ref=e229]:
+            - generic [ref=e230]:
+              - paragraph [ref=e231]: 44deb1ce-7379-41ec-97b1-31bf7d55d8f4
+              - heading "=1+1 1792161822054-219c65" [level=2] [ref=e232]
+            - generic [ref=e233]: CREATED
+          - paragraph [ref=e234]:
+            - time [ref=e235]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e236] [cursor=pointer]
+        - article [ref=e237]:
+          - generic [ref=e238]:
+            - generic [ref=e239]:
+              - paragraph [ref=e240]: 1ff2e13f-c772-4ef8-9cfe-e6944dc67bbb
+              - heading "=1+1 1792159991915-091fa1" [level=2] [ref=e241]
+            - generic [ref=e242]: CREATED
+          - paragraph [ref=e243]:
+            - time [ref=e244]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e245] [cursor=pointer]
+        - article [ref=e246]:
+          - generic [ref=e247]:
+            - generic [ref=e248]:
+              - paragraph [ref=e249]: ffe6ac21-ba36-481e-9c7b-8ed72bddd17e
+              - heading "=1+1 1792159939717-67d00f" [level=2] [ref=e250]
+            - generic [ref=e251]: CREATED
+          - paragraph [ref=e252]:
+            - time [ref=e253]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e254] [cursor=pointer]
+        - article [ref=e255]:
+          - generic [ref=e256]:
+            - generic [ref=e257]:
+              - paragraph [ref=e258]: 569dcadd-9b2d-5a65-b03f-5cface02d4cc
+              - heading "AirFilter F9" [level=2] [ref=e259]
+            - generic [ref=e260]: MODERATED
+          - paragraph [ref=e261]:
+            - time [ref=e262]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e263] [cursor=pointer]
+        - article [ref=e264]:
+          - generic [ref=e265]:
+            - generic [ref=e266]:
+              - paragraph [ref=e267]: e8f8390f-eab1-5917-ab75-1973a6ad2350
+              - heading "LaserScanner LS-2" [level=2] [ref=e268]
+            - generic [ref=e269]: MODERATED
+          - paragraph [ref=e270]:
+            - time [ref=e271]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e272] [cursor=pointer]
+        - article [ref=e273]:
+          - generic [ref=e274]:
+            - generic [ref=e275]:
+              - paragraph [ref=e276]: b3555663-b95d-569d-8461-37014ee62231
+              - heading "RobotBracket R30" [level=2] [ref=e277]
+            - generic [ref=e278]: MODERATED
+          - paragraph [ref=e279]:
+            - time [ref=e280]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e281] [cursor=pointer]
+        - article [ref=e282]:
+          - generic [ref=e283]:
+            - generic [ref=e284]:
+              - paragraph [ref=e285]: 4f14f293-f890-5d19-88f6-49a964e07321
+              - heading "PowerModule 24V" [level=2] [ref=e286]
+            - generic [ref=e287]: MODERATED
+          - paragraph [ref=e288]:
+            - time [ref=e289]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e290] [cursor=pointer]
+        - article [ref=e291]:
+          - generic [ref=e292]:
+            - generic [ref=e293]:
+              - paragraph [ref=e294]: 0fba395e-39d9-5cb0-816f-7e389fc18126
+              - heading "MeshGateway G5" [level=2] [ref=e295]
+            - generic [ref=e296]: MODERATED
+          - paragraph [ref=e297]:
+            - time [ref=e298]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e299] [cursor=pointer]
+        - article [ref=e300]:
+          - generic [ref=e301]:
+            - generic [ref=e302]:
+              - paragraph [ref=e303]: a72cad9b-baf9-5cbb-a5a3-dd42894c633f
+              - heading "SafetyRelay SR-4" [level=2] [ref=e304]
+            - generic [ref=e305]: MODERATED
+          - paragraph [ref=e306]:
+            - time [ref=e307]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e308] [cursor=pointer]
+        - article [ref=e309]:
+          - generic [ref=e310]:
+            - generic [ref=e311]:
+              - paragraph [ref=e312]: 8d2a398a-5022-56cf-a429-f2717e3ab192
+              - heading "ServoMotor S2" [level=2] [ref=e313]
+            - generic [ref=e314]: MODERATED
+          - paragraph [ref=e315]:
+            - time [ref=e316]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e317] [cursor=pointer]
+        - article [ref=e318]:
+          - generic [ref=e319]:
+            - generic [ref=e320]:
+              - paragraph [ref=e321]: a29b2f89-f59c-5d93-b14b-12cd70144741
+              - heading "VisionCam 12MP" [level=2] [ref=e322]
+            - generic [ref=e323]: MODERATED
+          - paragraph [ref=e324]:
+            - time [ref=e325]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e326] [cursor=pointer]
+        - article [ref=e327]:
+          - generic [ref=e328]:
+            - generic [ref=e329]:
+              - paragraph [ref=e330]: 9533156e-6947-53de-9a9f-70d252e1e3c7
+              - heading "EdgeController X4" [level=2] [ref=e331]
+            - generic [ref=e332]: MODERATED
+          - paragraph [ref=e333]:
+            - time [ref=e334]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e335] [cursor=pointer]
+        - article [ref=e336]:
+          - generic [ref=e337]:
+            - generic [ref=e338]:
+              - paragraph [ref=e339]: 47767b8e-a6d7-572b-819f-4b2a9dc7a6c2
+              - heading "ShieldCable M12" [level=2] [ref=e340]
+            - generic [ref=e341]: MODERATED
+          - paragraph [ref=e342]:
+            - time [ref=e343]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e344] [cursor=pointer]
+        - article [ref=e345]:
+          - generic [ref=e346]:
+            - generic [ref=e347]:
+              - paragraph [ref=e348]: b7449ea5-e61f-595f-8411-bd51b7c04dea
+              - heading "FlowValve 300" [level=2] [ref=e349]
+            - generic [ref=e350]: MODERATED
+          - paragraph [ref=e351]:
+            - time [ref=e352]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e353] [cursor=pointer]
+        - article [ref=e354]:
+          - generic [ref=e355]:
+            - generic [ref=e356]:
+              - paragraph [ref=e357]: ec2a503c-7cdd-5f3e-a2d4-14305d0a2771
+              - heading "L-Gauge Ultra-Z" [level=2] [ref=e358]
+            - generic [ref=e359]: MODERATED
+          - paragraph [ref=e360]:
+            - time [ref=e361]: "РћР±РЅРѕРІР»РµРЅРѕ: Invalid Date"
+          - button "РџРѕРєР°Р·Р°С‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµС€РµРЅРёР№" [ref=e362] [cursor=pointer]
+  - button "Open Next.js Dev Tools" [ref=e368] [cursor=pointer]:
+    - img [ref=e369]
+  - alert [ref=e372]
+  - button "Выйти везде" [ref=e373] [cursor=pointer]
+  - button "Выйти" [ref=e374] [cursor=pointer]
+```

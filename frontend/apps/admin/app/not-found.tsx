@@ -1,0 +1,3 @@
+export default function AdminNotFound() {
+  return <main className="private-shell admin-shell" id="admin-not-found-content" tabIndex={-1}><a className="skip-link" href="#admin-not-found-panel">Перейти к содержимому</a><div className="private-bar"><span>NEOMARKET / ADMIN</span><span>NOT FOUND</span></div><section className="private-panel admin-failsafe" id="admin-not-found-panel" tabIndex={-1}><p className="eyebrow">ADMIN / 404</p><h1>Страница не найдена</h1><p>Запрошенный раздел отсутствует или больше недоступен. Вернитесь в рабочий обзор Admin.</p><a className="admin-action" href="/dashboard">Открыть обзор</a></section></main>;
+}
