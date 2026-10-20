@@ -1,0 +1,9 @@
+﻿{
+  "environment": "local-source-validation",
+  "source_sha": "71fdfbfc3c06c9e9882b891a3e085eb343104f5c",
+  "required_cases": 202,
+  "result": "BLOCKED",
+  "independent_manifests": 0,
+  "issue": "Exactly 3 independent manifests required, found 0",
+  "observedAt": "2026-10-20T14:15:08.3040050Z"
+}

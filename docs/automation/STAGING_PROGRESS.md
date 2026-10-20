@@ -160,5 +160,6 @@ An additional real-browser smoke covered 24 public Storefront, Seller and Admin 
 - Fresh current-runtime Seller browser QA completed on `20cd369`: login used an isolated fixture, all 11 protected routes returned HTTP 200 without redirecting to login, the session cookie was HttpOnly, there were no page errors and no unexpected 5xx responses. Finance's 501 responses were the documented fail-closed commercial gate. Evidence: `docs/automation/evidence/staging/b2b-authenticated-routes-20cd369-20261020.json`.
 - A separate fixture cleanup check returned `deleted=true` with no credential material recorded. Evidence: `docs/automation/evidence/staging/qa-fixture-create-destroy-20cd369-20261020.json`.
 - The B2B regression suite was rerun from source `a720655`: 285 passed, 38 skipped, 0 failed; Ruff also passed. Evidence: `docs/automation/evidence/staging/b2b-regression-a720655-20261020.json`.
+- The release checker was rerun from source `71fdfbf`: 202 required cases and zero independent final manifests, so the result remains `BLOCKED`. Evidence: `docs/automation/evidence/staging/release-check-71fdfbf-20261020.json`.
 
 
