@@ -1,0 +1,24 @@
+﻿{
+    "run_id":  "admin-full-postgres-2026-10-20",
+    "started_at":  "2026-10-20T15:29:24.4388475Z",
+    "finished_at":  "2026-10-20T15:29:24.4388475Z",
+    "environment":  "local disposable PostgreSQL 16",
+    "source_sha":  "24786ec7900755fe01c9b58599a0ad76f17c5361",
+    "result":  "PASS",
+    "commands":  [
+                     "uv run --frozen alembic upgrade head",
+                     "uv run --frozen pytest -m postgres_integration -q"
+                 ],
+    "tests":  {
+                  "passed":  63,
+                  "skipped":  2,
+                  "deselected":  58,
+                  "warnings":  1
+              },
+    "container_removed":  true,
+    "production_data_used":  false,
+    "authenticated_browser":  false,
+    "skipped_prerequisites":  [
+                                  "Redis/B2B separate integration prerequisites"
+                              ]
+}

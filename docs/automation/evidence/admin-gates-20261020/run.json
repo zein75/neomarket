@@ -1,0 +1,26 @@
+﻿{
+    "run_id":  "admin-gates-20261020",
+    "timestamp_utc":  "2026-10-20T15:30:17.1825599Z",
+    "source_sha":  "24786ec7900755fe01c9b58599a0ad76f17c5361",
+    "deployed_sha":  "45ebbae37cb5104decf7a586e767a55cd41cd0cf",
+    "environment":  "local disposable integration plus live staging health; no production data",
+    "results":  {
+                    "admin_unit":  "58 passed, 65 skipped, 1 warning",
+                    "admin_postgres":  "63 passed, 2 skipped, 58 deselected, 1 warning",
+                    "b2b":  "285 passed, 38 skipped, 2 warnings",
+                    "b2c":  "154 passed, 10 deselected, 1 warning",
+                    "shared":  "13 passed, 1 warning",
+                    "admin_ruff":  "PASS",
+                    "admin_compile":  "PASS",
+                    "current_spec_validator":  "PASS (2 OpenAPI contracts, 202 acceptance cases)",
+                    "openapi_routes":  "PASS (admin 76 operations, b2b internal 12 operations)",
+                    "admin_frontend_typecheck":  "PASS",
+                    "admin_frontend_build":  "PASS",
+                    "release_checker":  "BLOCKED: 202 required cases, 0 of 3 manifests"
+                },
+    "limitations":  [
+                        "PostgreSQL run used a disposable local PostgreSQL 16 container and removed it",
+                        "Authenticated Keycloak/MFA browser gates are unavailable because realm AMR/ACR mapping is not configured",
+                        "External object storage/AV, notice delivery, search projection/cache/reconciliation and offsite backup contracts remain undefined in approved docs"
+                    ]
+}
