@@ -39,7 +39,11 @@ async def get_integration_status(
     db: AsyncSession = Depends(get_db),
 ) -> IntegrationStatusResponse:
     oidc_configured = bool(settings.oidc_issuer and settings.oidc_jwks_url and settings.oidc_audience)
-    mfa_configured = oidc_configured and bool(settings.oidc_required_amr.strip() or settings.oidc_required_acr.strip())
+    mfa_configured = (
+        oidc_configured
+        and settings.oidc_mfa_claims_configured
+        and bool(settings.oidc_required_amr.strip() or settings.oidc_required_acr.strip())
+    )
     step_up_configured = mfa_configured and bool(
         settings.oidc_step_up_required_amr.strip() or settings.oidc_step_up_required_acr.strip()
     )

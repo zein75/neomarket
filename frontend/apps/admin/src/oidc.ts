@@ -86,6 +86,9 @@ async function internalOidcFetch(url: string, options: oidc.CustomFetchOptions) 
 }
 
 export function requiredMfaClaims() {
+  if (process.env.ADMIN_OIDC_MFA_CLAIMS_CONFIGURED?.trim().toLowerCase() !== 'true') {
+    throw new Error('Admin Keycloak MFA claim mapping is not configured');
+  }
   const amr = process.env.ADMIN_OIDC_REQUIRED_AMR?.trim() ?? '';
   const acr = process.env.ADMIN_OIDC_REQUIRED_ACR?.trim() ?? '';
   if (!amr && !acr) throw new Error('Admin Keycloak MFA claim mapping is not configured');
@@ -93,6 +96,9 @@ export function requiredMfaClaims() {
 }
 
 export function requiredStepUpClaims() {
+  if (process.env.ADMIN_OIDC_MFA_CLAIMS_CONFIGURED?.trim().toLowerCase() !== 'true') {
+    throw new Error('Admin Keycloak step-up claim mapping is not configured');
+  }
   const amr = process.env.ADMIN_OIDC_STEP_UP_REQUIRED_AMR?.trim() ?? '';
   const acr = process.env.ADMIN_OIDC_STEP_UP_REQUIRED_ACR?.trim() ?? '';
   if (!amr && !acr) throw new Error('Admin Keycloak step-up claim mapping is not configured');

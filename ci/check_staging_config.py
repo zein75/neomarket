@@ -7,6 +7,7 @@ services=data['services']
 admin_env=services['admin']['environment']
 assert admin_env['APP_ENV'] == 'production'
 assert admin_env['ADMIN_ALLOW_DEV_AUTH'] == 'false', 'staging Admin must disable development identity bypass'
+assert admin_env['OIDC_MFA_CLAIMS_CONFIGURED'] == '${ADMIN_OIDC_MFA_CLAIMS_CONFIGURED:-false}'
 assert services['admin-worker']['environment']['ADMIN_ALLOW_DEV_AUTH'] == 'false'
 assert 'gateway' in services
 assert 'clamd' in services, 'staging must include a real ClamAV scanner'

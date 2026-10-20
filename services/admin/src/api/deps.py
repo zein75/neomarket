@@ -289,6 +289,8 @@ async def staff_has_permission(
 async def _authenticate_oidc(token: str, db: AsyncSession, *, require_step_up: bool = False) -> SimpleNamespace:
     if not settings.oidc_issuer or not settings.oidc_jwks_url:
         raise HTTPException(status_code=503, detail="OIDC is not configured")
+    if not settings.oidc_mfa_claims_configured:
+        raise HTTPException(status_code=503, detail="MFA claim mapping is not configured")
     try:
         header = jwt.get_unverified_header(token)
         kid = header.get("kid")

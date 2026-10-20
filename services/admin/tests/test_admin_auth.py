@@ -5,7 +5,7 @@ from starlette.requests import Request
 
 import pytest
 
-from src.api.deps import _oidc_jwks_request, get_current_moderator
+from src.api.deps import _authenticate_oidc, _oidc_jwks_request, get_current_moderator
 from src.main import http_exception_handler
 
 
@@ -85,6 +85,21 @@ async def test_production_rejects_bearer_token_for_principal_api_and_audits(monk
         "path": "/admin/v1/moderation/tickets",
         "status_code": 401,
     }
+
+
+@pytest.mark.asyncio
+async def test_oidc_rejects_until_mfa_claim_mapping_is_explicit(monkeypatch):
+    from src.core.config import settings
+
+    monkeypatch.setattr(settings, "oidc_issuer", "https://issuer.test")
+    monkeypatch.setattr(settings, "oidc_jwks_url", "https://issuer.test/jwks")
+    monkeypatch.setattr(settings, "oidc_mfa_claims_configured", False)
+
+    with pytest.raises(HTTPException) as error:
+        await _authenticate_oidc("not-used", FakeSession())
+
+    assert error.value.status_code == 503
+    assert error.value.detail == "MFA claim mapping is not configured"
 
 
 @pytest.mark.asyncio

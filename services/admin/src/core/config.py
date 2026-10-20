@@ -31,6 +31,10 @@ class Settings:
         or ("http://keycloak:8080" if os.getenv("APP_ENV", "").strip() == "production" else "")
     )
     oidc_audience: str = os.getenv("OIDC_AUDIENCE", "neomarket-admin-api")
+    # Claim mappings are an explicit operator decision.  A populated AMR/ACR
+    # value alone must not accidentally enable Admin when the IdP realm has
+    # not been verified against the agreed MFA contract.
+    oidc_mfa_claims_configured: bool = os.getenv("OIDC_MFA_CLAIMS_CONFIGURED", "false").strip().lower() in {"1", "true", "yes"}
     oidc_required_amr: str = os.getenv("OIDC_REQUIRED_AMR", "")
     oidc_required_acr: str = os.getenv("OIDC_REQUIRED_ACR", "")
     oidc_step_up_required_amr: str = os.getenv("OIDC_STEP_UP_REQUIRED_AMR", "")
@@ -106,10 +110,11 @@ class Settings:
                 raise RuntimeError("REDIS_URL must be configured for Admin rate limiting")
             if not self.oidc_issuer or not self.oidc_jwks_url or not self.oidc_audience:
                 raise RuntimeError("OIDC_ISSUER, OIDC_JWKS_URL and OIDC_AUDIENCE are required outside local development/test")
-            if not self.oidc_required_amr.strip() and not self.oidc_required_acr.strip():
-                raise RuntimeError("Configure OIDC_REQUIRED_AMR or OIDC_REQUIRED_ACR for the selected IdP")
-            if not self.oidc_step_up_required_amr.strip() and not self.oidc_step_up_required_acr.strip():
-                raise RuntimeError("Configure OIDC_STEP_UP_REQUIRED_AMR or OIDC_STEP_UP_REQUIRED_ACR for the selected IdP")
+            if self.oidc_mfa_claims_configured:
+                if not self.oidc_required_amr.strip() and not self.oidc_required_acr.strip():
+                    raise RuntimeError("Configure OIDC_REQUIRED_AMR or OIDC_REQUIRED_ACR for the selected IdP")
+                if not self.oidc_step_up_required_amr.strip() and not self.oidc_step_up_required_acr.strip():
+                    raise RuntimeError("Configure OIDC_STEP_UP_REQUIRED_AMR or OIDC_STEP_UP_REQUIRED_ACR for the selected IdP")
             public_origin = urlsplit(self.admin_public_origin)
             if (
                 public_origin.scheme != "https"

@@ -30,8 +30,9 @@ configured = {
     "ADMIN_OIDC_JWKS_URL": "https://keycloak.neomarket.test/realms/neomarket-staging/protocol/openid-connect/certs",
     "ADMIN_OIDC_AUDIENCE": "neomarket-admin",
     "ADMIN_OIDC_CLIENT_ID": "neomarket-admin-bff",
-    "ADMIN_OIDC_REQUIRED_AMR": "otp",
-    "ADMIN_OIDC_STEP_UP_REQUIRED_AMR": "otp",
+    # The realm's AMR/ACR and step-up mappings are intentionally unconfigured
+    # until an operator records the exact Keycloak contract.
+    "ADMIN_OIDC_MFA_CLAIMS_CONFIGURED": "false",
     "SELLER_EMAIL_SMTP_HOST": "mailpit",
     "SELLER_EMAIL_SMTP_PORT": "1025",
     "SELLER_EMAIL_SMTP_MODE": "starttls",
