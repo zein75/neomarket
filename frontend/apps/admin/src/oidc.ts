@@ -68,12 +68,10 @@ async function internalOidcFetch(url: string, options: oidc.CustomFetchOptions) 
   if (requested.origin !== publicIssuer.origin) return fetch(url, options as RequestInit);
 
   const target = new URL(`${requested.pathname}${requested.search}`, internal);
-  const headers = {
-    ...options.headers,
-    Host: publicIssuer.host,
-    'X-Forwarded-Host': publicIssuer.host,
-    'X-Forwarded-Proto': publicIssuer.protocol.slice(0, -1),
-  };
+  const headers = new Headers(options.headers as HeadersInit);
+  headers.set('Host', publicIssuer.host);
+  headers.set('X-Forwarded-Host', publicIssuer.host);
+  headers.set('X-Forwarded-Proto', publicIssuer.protocol.slice(0, -1));
   try {
     return await fetch(target, { ...options, headers } as RequestInit);
   } catch (error) {
