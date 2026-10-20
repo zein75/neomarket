@@ -1,0 +1,13 @@
+﻿{
+    "deployed_sha":  "0fcb935bfd14eba6eaa197898bf865e21eddfbd4",
+    "generated_at_utc":  "2026-10-20T14:47:19.2130106Z",
+    "checker_exit_code":  1,
+    "checker_output":  {
+                           "result":  "BLOCKED",
+                           "required_cases":  202,
+                           "issues":  [
+                                          "Exactly 3 independent manifests required, found 0"
+                                      ],
+                           "issue_count":  1
+                       }
+}

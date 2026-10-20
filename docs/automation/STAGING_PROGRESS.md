@@ -1,5 +1,11 @@
 ﻿# Staging progress
 
+### Authoritative staging runtime `0fcb935` — 2026-10-20 19:44 local
+
+- The restricted deployment identity `neomarket-deploy` successfully returned a root-backed status capture for immutable SHA `0fcb935bfd14eba6eaa197898bf865e21eddfbd4`: `admin`, `admin-worker`, `b2b`, `b2c`, both workers, Keycloak, PostgreSQL, Redis, ClamAV, Mailpit, frontends and gateway are running and healthy. Evidence: `docs/automation/evidence/staging/status-0fcb935-20261020T194454.txt`.
+- A fresh read-only Admin OIDC probe on this runtime returned `307` to Keycloak with PKCE `S256`; query values are intentionally omitted from `docs/automation/evidence/staging/admin-oidc-0fcb935-20261020T194621.json`.
+- The previous `dae7914` entries below are historical runtime captures. They are not the current deployment.
+
 ### Current staging release `0fcb935` — 2026-10-20
 
 - GitHub Actions run `39439533285` passed static checks, PostgreSQL migration/concurrency checks and all six immutable image builds. The protected staging deployment completed on `0fcb935bfd14eba6eaa197898bf865e21eddfbd4`; the current status capture reports all application services, workers, gateway and Keycloak healthy: `docs/automation/evidence/staging/status-0fcb935-20261020.txt`.

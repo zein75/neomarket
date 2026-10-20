@@ -2,7 +2,7 @@
 
 ## Release status
 
-**BLOCKED.** SSH access and the restricted staging runtime are present, and read-only endpoint probes pass for the public boundaries. The current `dae7914` runtime is healthy and the real Admin OIDC login endpoint now issues a 307 redirect to Keycloak with PKCE/state/nonce. Full release gates remain open because Keycloak MFA claims are not configured, authenticated Admin/visual QA, backup/restore, provider/DLQ recovery evidence, and three independent Playwright manifests are still missing.
+**BLOCKED.** SSH access and the restricted staging runtime are present, and read-only endpoint probes pass for the public boundaries. The current `0fcb935` runtime is healthy and the real Admin OIDC login endpoint issues a 307 redirect to Keycloak with PKCE/state/nonce. Full release gates remain open because Keycloak MFA claims are not configured, authenticated Admin/visual QA, backup/restore, provider/DLQ recovery evidence, and three independent Playwright manifests are still missing.
 
 The protected staging runtime was deliberately deployed to the pinned SHA below. No production deployment was performed.
 
@@ -12,15 +12,15 @@ The protected staging runtime was deliberately deployed to the pinned SHA below.
 - Current production specifications: `docs/NeoMarket_Admin_Production_Spec_2026-10-16/` and `docs/NeoMarket_Seller_Production_Blueprint_2026-10-16/`.
 - Staging manifests: `deploy/staging/`.
 - Local branch: `staging`; local HEAD contains later documentation-only commits. Those commits are not deployed.
-- The local worktree is dirty; the current deployed staging release is `dae79147dac0b4d86e4397981e86f7bec10d3faa` (see `evidence/staging/status-dae7914-20261020T143121Z.txt`).
+- The local worktree is dirty; the current deployed staging release is `0fcb935bfd14eba6eaa197898bf865e21eddfbd4` (see `evidence/staging/status-0fcb935-20261020T194454.txt`).
 - Requested `$neomarket-exhaustive-qa` skill was not present in the configured skill roots or repository skill directory.
 
 ## Latest OIDC staging verification
 
-- CI and the restricted deployment completed for immutable SHA `dae79147dac0b4d86e4397981e86f7bec10d3faa`; all required services and workers report healthy.
+- The restricted deployment currently runs immutable SHA `0fcb935bfd14eba6eaa197898bf865e21eddfbd4`; all required services and workers report healthy. The authoritative capture is [`status-0fcb935-20261020T194454.txt`](evidence/staging/status-0fcb935-20261020T194454.txt).
 - Server-side discovery and token metadata fetches use the private `keycloak:8080` service. The public issuer remains `https://keycloak.neomarket.test/realms/neomarket-staging` for browser redirects and issuer validation.
-- `GET https://admin.neomarket.test/api/auth/login` returned `307 Temporary Redirect` with the expected authorization endpoint, `response_type=code`, PKCE `S256`, state, nonce, `prompt=login`, and `max_age=0`. Evidence: [`admin-oidc-private-keycloak-dae79147dac0b4d86e4397981e86f7bec10d3faa-20261020T143102Z.json`](evidence/staging/admin-oidc-private-keycloak-dae79147dac0b4d86e4397981e86f7bec10d3faa-20261020T143102Z.json).
-- Fresh Chromium staging checks on the same SHA passed **75/75** across desktop, tablet and mobile: 72 anonymous protected-route/forged-cookie cases and 3 cross-origin CSRF cases. Evidence: [`admin-boundary-dae7914-20261020T144500Z.json`](evidence/staging/admin-boundary-dae7914-20261020T144500Z.json) and the persisted Playwright report.
+- `GET https://admin.neomarket.test/api/auth/login` on the current SHA returned `307 Temporary Redirect` with the expected authorization endpoint, `response_type=code`, PKCE `S256`, state, nonce, `prompt=login`, and `max_age=0`. Secret query values are omitted from [`admin-oidc-0fcb935-20261020T194621.json`](evidence/staging/admin-oidc-0fcb935-20261020T194621.json).
+- The latest persisted Chromium boundary run remains **75/75** across desktop, tablet and mobile. It was run against the code-equivalent OIDC deployment and covers 72 anonymous protected-route/forged-cookie cases and 3 cross-origin CSRF cases: [`admin-boundary-dae7914-20261020T144500Z.json`](evidence/staging/admin-boundary-dae7914-20261020T144500Z.json).
 - This is OIDC discovery/redirect evidence only. No staff credentials or MFA claims were used; authenticated Admin browser acceptance remains BLOCKED and fail-closed.
 
 ## Latest local release regression

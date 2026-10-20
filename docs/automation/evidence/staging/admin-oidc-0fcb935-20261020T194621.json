@@ -1,0 +1,22 @@
+﻿{
+  "generated_at_utc": "2026-10-20T14:46:21.025737+00:00",
+  "deployed_sha": "0fcb935bfd14eba6eaa197898bf865e21eddfbd4",
+  "endpoint": "https://admin.neomarket.test/api/auth/login",
+  "status_line": "HTTP/1.1 307 Temporary Redirect",
+  "location_origin": "https://keycloak.neomarket.test",
+  "location_path": "/realms/neomarket-staging/protocol/openid-connect/auth",
+  "query_keys": [
+    "client_id",
+    "code_challenge",
+    "code_challenge_method",
+    "max_age",
+    "nonce",
+    "prompt",
+    "redirect_uri",
+    "response_type",
+    "scope",
+    "state"
+  ],
+  "code_challenge_method": "S256",
+  "secret_values_omitted": true
+}
