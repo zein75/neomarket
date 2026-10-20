@@ -103,7 +103,11 @@ async def create_fixture(run_id: str) -> None:
             options={},
             is_active=True,
         )
-        session.add_all([seller, user, membership, product, sku])
+        # The fixture intentionally uses scalar foreign keys, so make the
+        # parent rows durable before inserting membership/product dependants.
+        session.add_all([seller, user])
+        await session.flush()
+        session.add_all([membership, product, sku])
         await session.commit()
 
     print(json.dumps({
