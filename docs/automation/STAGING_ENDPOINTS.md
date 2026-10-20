@@ -4,7 +4,7 @@
 **Runtime release:** image SHA `0fcb935bfd14eba6eaa197898bf865e21eddfbd4` (captured in `evidence/staging/status-0fcb935-20261020T194454.txt`)
 **Gateway:** `127.0.0.1:18080` (the legacy demo Nginx keeps `127.0.0.1:8080`)
 
-The authoritative current application image is `b0fd2323d8fa5c6df166018f0e5f7c0cfdb4c565`; older SHA references in individual historical probe rows are retained as provenance.
+The authoritative current application image is `45ebbae37cb5104decf7a586e767a55cd41cd0cf`; older SHA references in individual historical probe rows are retained as provenance.
 
 | URL / route | Target | Evidence |
 |---|---|---|

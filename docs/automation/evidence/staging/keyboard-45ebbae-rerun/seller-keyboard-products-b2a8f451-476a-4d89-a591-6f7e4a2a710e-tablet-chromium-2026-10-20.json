@@ -1,0 +1,68 @@
+{
+  "route": "/products/b2a8f451-476a-4d89-a591-6f7e4a2a710e",
+  "project": "tablet-chromium",
+  "viewport": {
+    "width": 712,
+    "height": 1138
+  },
+  "tabCount": 7,
+  "visitedFocusTargets": [
+    {
+      "focusVisible": true,
+      "tag": "A",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "A",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "BUTTON",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "BUTTON",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "A",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "BUTTON",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "BUTTON",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    }
+  ],
+  "result": "PASS"
+}

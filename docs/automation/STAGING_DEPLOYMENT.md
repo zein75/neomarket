@@ -6,8 +6,8 @@
 
 ### Authoritative current runtime (2026-10-20)
 
-- Current deployed application image SHA: `b0fd2323d8fa5c6df166018f0e5f7c0cfdb4c565`.
-- All application services, workers, gateway and Keycloak are healthy; see [`status-b0fd232-20261020.txt`](evidence/staging/status-b0fd232-20261020.txt).
+- Current deployed application image SHA: `45ebbae37cb5104decf7a586e767a55cd41cd0cf`.
+- All application services, workers, gateway and Keycloak are healthy; see [`status-45ebbae-20261020.txt`](evidence/staging/status-45ebbae-20261020.txt).
 - The older deployment records below remain historical evidence and are not the current image.
 
 - Host: `192.168.0.112` (`market-staging`), environment: staging.

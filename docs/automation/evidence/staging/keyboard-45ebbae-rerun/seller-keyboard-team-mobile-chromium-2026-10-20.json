@@ -1,0 +1,92 @@
+{
+  "route": "/team",
+  "project": "mobile-chromium",
+  "viewport": {
+    "width": 393,
+    "height": 727
+  },
+  "tabCount": 10,
+  "visitedFocusTargets": [
+    {
+      "focusVisible": true,
+      "tag": "A",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "A",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "BUTTON",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "INPUT",
+      "id": "team-email",
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "SELECT",
+      "id": "team-role",
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "BUTTON",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "BUTTON",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "DIV",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "BUTTON",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "BUTTON",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    }
+  ],
+  "result": "PASS"
+}

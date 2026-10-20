@@ -1,0 +1,100 @@
+{
+  "route": "/inventory",
+  "project": "desktop-chromium",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "tabCount": 11,
+  "visitedFocusTargets": [
+    {
+      "focusVisible": true,
+      "tag": "A",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "A",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "A",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "A",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "A",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "A",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "A",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "A",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "A",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "INPUT",
+      "id": "inventory-search",
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "SELECT",
+      "id": "inventory-status",
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    }
+  ],
+  "result": "PASS"
+}

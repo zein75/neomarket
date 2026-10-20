@@ -2,15 +2,15 @@
 
 ## Version
 
-- Runtime release: \`b0fd2323d8fa5c6df166018f0e5f7c0cfdb4c565\` (current live staging)
-- Tested source release: \`b0fd2323d8fa5c6df166018f0e5f7c0cfdb4c565\`; verify/build passed in GitHub Actions run \`39441458390\`, and the protected staging wrapper deployed this immutable SHA. Later documentation commits do not change the runtime image.
+- Runtime release: \`45ebbae37cb5104decf7a586e767a55cd41cd0cf\` (current live staging)
+- Tested source release: \`45ebbae37cb5104decf7a586e767a55cd41cd0cf\`; the protected staging wrapper currently reports this immutable SHA. Historical b0fd232 evidence remains linked below where it was captured.
 - Server: \`192.168.0.112\`
 - Gateway: \`127.0.0.1:18080\`
 - Environment: isolated staging
 
 ## Evidence executed
 
-- Source verification on the current source tree: `uv run pytest services/b2b/tests -q` returned **285 passed, 38 skipped, 0 failed**; `uv run ruff check services/b2b frontend/apps/seller` returned **All checks passed**. Latest rerun evidence: `evidence/staging/b2b-pytest-rerun-20261020.txt`. Documentation commits do not change the deployed application image; runtime remains the immutable `b0fd232` release below.
+- Source verification on the current source tree: `uv run pytest services/b2b/tests -q` returned **285 passed, 38 skipped, 0 failed**; `uv run ruff check services/b2b frontend/apps/seller` returned **All checks passed**. Latest rerun evidence: `evidence/staging/b2b-pytest-rerun-20261020.txt`.
 - The release checker was rerun against the current acceptance matrix: **BLOCKED**, 202 required cases, `0/3` independent authenticated manifests. Evidence: `evidence/staging/release-check-fd02bd8-20261020.json`. No manifest was fabricated.
 - Local B2B regression: **285 passed, 38 skipped, 0 failed**.
 - Isolated PostgreSQL integration subset: **32 passed, 0 failed** after applying B2B migrations through `0065_product_safety_holds` in a disposable database.
@@ -40,6 +40,9 @@
 - Real HTTPS probes through Caddy passed on the current runtime: Storefront `/` 200, Seller `/login` 200, Admin `/api/health` 200, anonymous Admin `/` 307, and Keycloak realm discovery 200. Evidence: `evidence/staging/https-health-b0fd232-rerun-20261020.txt`.
 - The acceptance release checker was rerun on the current repository state and remains honestly **BLOCKED**: 202 required cases, `0/3` independent manifests. Evidence: `evidence/staging/release-check-fd02bd8-20261020.json`; no manifests were fabricated.
 - A fresh local regression rerun on the current source completed with **285 passed, 38 skipped, 0 failed** (two dependency warnings only). Evidence: `evidence/staging/b2b-pytest-rerun-20261020.txt`.
+- The current live runtime was re-queried after deployment and reports application images at `45ebbae37cb5104decf7a586e767a55cd41cd0cf`; all required services, workers, gateway and Keycloak are healthy. Evidence: `evidence/staging/status-45ebbae-20261020.txt`.
+- Fresh authenticated staging accessibility on runtime `45ebbae` passed **3/3** Chromium projects with zero axe WCAG 2.2 A/AA violations. Evidence: `evidence/staging/axe-45ebbae-rerun/manifest.json`.
+- Fresh authenticated staging keyboard/focus on runtime `45ebbae` passed **9/9** Chromium tests with zero invalid focus states. Evidence: `evidence/staging/keyboard-45ebbae-rerun/manifest.json` and 90 JSON/PNG artifacts.
 - Separate real staging captures for the approved UI-04/UI-05 responsive targets (Pixel 5/390 and Galaxy Tab S4/768) returned HTTP 200 with no horizontal overflow. The captures are isolated from the approved candidate baselines; the two expected session-check 401 console responses are recorded and no visual PASS is asserted from dimensions alone. Evidence: `evidence/staging/ui-04-05-b0fd232/manifest.json` and its four PNG captures.
 
 Evidence files:
@@ -141,4 +144,4 @@ Remaining non-commercial evidence gaps:
 
 ## Release status
 
-**B2B runtime is deployed and regression-tested. The current `b0fd232` runtime is healthy; the protected status capture shows all required services, workers, gateway and Keycloak healthy. The official Seller focus spec passed 9/9 across desktop, tablet and mobile after fixing the moderation filter focus defect. The full Seller/B2B release remains BLOCKED** until the remaining non-commercial evidence gaps and the ADR-dependent requirements are resolved. ADR-001 is present but still marked `PROPOSED / LEGAL_AND_PSP_REVIEW_REQUIRED`; no finance or return requirement was promoted from documentation alone.
+**B2B runtime is deployed and regression-tested. The current `45ebbae` runtime is healthy; the protected status capture shows all required services, workers, gateway and Keycloak healthy. Fresh accessibility passed 3/3 and keyboard/focus passed 9/9 across desktop, tablet and mobile. The full Seller/B2B release remains BLOCKED** until the remaining non-commercial evidence gaps and the ADR-dependent requirements are resolved. ADR-001 is present but still marked `PROPOSED / LEGAL_AND_PSP_REVIEW_REQUIRED`; no finance or return requirement was promoted from documentation alone.

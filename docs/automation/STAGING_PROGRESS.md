@@ -1,4 +1,12 @@
-﻿# Staging progress
+# Staging progress
+
+### Authoritative staging runtime `45ebbae` ? 2026-10-20 15:09Z
+
+- The restricted deployment identity promoted immutable SHA `45ebbae37cb5104decf7a586e767a55cd41cd0cf` from the local network after the GitHub runner timed out reaching the private staging address. All application services, workers, frontends, gateway and dependencies are healthy: `docs/automation/evidence/staging/status-45ebbae-20261020.txt`.
+- The Admin MFA mapping fix is live and fail-closed as required while the Keycloak AMR/ACR contract is `не настроено`: `/login` renders `Вход закрыт`, `/api/auth/login` returns `503`, Admin health returns `200`, and discovery advertises only ACR `0`/`1`: `docs/automation/evidence/staging/admin-mfa-fail-closed-45ebbae-20261020T150811Z.json`.
+- CI run `39443689865` passed static checks, migrations/concurrency checks and all six immutable image builds. The manual deploy workflow could not reach the private host from GitHub Actions (connection timeout); the identical restricted request succeeded over the authorized local SSH path.
+- Fresh authenticated Seller accessibility on this live runtime passed 3/3 Chromium projects with zero axe WCAG 2.2 A/AA violations: `docs/automation/evidence/staging/axe-45ebbae-rerun/manifest.json`.
+- Fresh authenticated Seller keyboard/focus on this live runtime passed 9/9 Chromium tests with zero invalid focus states: `docs/automation/evidence/staging/keyboard-45ebbae-rerun/manifest.json`.
 
 ### Authoritative staging runtime `0fcb935` — 2026-10-20 19:44 local
 

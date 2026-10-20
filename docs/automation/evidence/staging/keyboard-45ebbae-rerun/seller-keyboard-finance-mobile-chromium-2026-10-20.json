@@ -1,0 +1,36 @@
+{
+  "route": "/finance",
+  "project": "mobile-chromium",
+  "viewport": {
+    "width": 393,
+    "height": 727
+  },
+  "tabCount": 3,
+  "visitedFocusTargets": [
+    {
+      "focusVisible": true,
+      "tag": "A",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "A",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "BUTTON",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    }
+  ],
+  "result": "PASS"
+}
