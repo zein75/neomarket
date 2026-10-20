@@ -5,7 +5,7 @@ from starlette.requests import Request
 
 import pytest
 
-from src.api.deps import get_current_moderator
+from src.api.deps import _oidc_jwks_request, get_current_moderator
 from src.main import http_exception_handler
 
 
@@ -21,6 +21,26 @@ class FakeSession:
 
     async def rollback(self):
         return None
+
+
+def test_oidc_jwks_fetch_uses_private_keycloak_but_keeps_public_host(monkeypatch):
+    from src.core.config import settings
+
+    monkeypatch.setattr(
+        settings,
+        "oidc_jwks_url",
+        "https://keycloak.neomarket.test/realms/neomarket-staging/protocol/openid-connect/certs",
+    )
+    monkeypatch.setattr(settings, "oidc_internal_base_url", "http://keycloak:8080")
+
+    url, headers = _oidc_jwks_request()
+
+    assert url == "http://keycloak:8080/realms/neomarket-staging/protocol/openid-connect/certs"
+    assert headers == {
+        "Host": "keycloak.neomarket.test",
+        "X-Forwarded-Host": "keycloak.neomarket.test",
+        "X-Forwarded-Proto": "https",
+    }
 
 
 def _request(path="/admin/v1/moderation/tickets"):

@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
 from secrets import compare_digest
+from urllib.parse import urlsplit, urlunsplit
 import jwt
 from jwt.exceptions import InvalidTokenError
 import httpx
@@ -25,6 +26,21 @@ from shared.utils.service_auth import verify_service_token
 _jwks_cache: tuple[float, dict[str, object]] | None = None
 _jwks_lock = asyncio.Lock()
 _jwks_unknown_kid_refresh_after = 0.0
+
+
+def _oidc_jwks_request() -> tuple[str, dict[str, str]]:
+    """Return a private-network JWKS URL while preserving public issuer identity."""
+    public = urlsplit(settings.oidc_jwks_url)
+    internal_base = settings.oidc_internal_base_url.strip()
+    if not internal_base:
+        return settings.oidc_jwks_url, {}
+    internal = urlsplit(internal_base)
+    target = urlunsplit((internal.scheme, internal.netloc, public.path, public.query, ""))
+    return target, {
+        "Host": public.netloc,
+        "X-Forwarded-Host": public.netloc,
+        "X-Forwarded-Proto": public.scheme,
+    }
 
 ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     "support_viewer": frozenset({"session.read", "session.revoke", "dashboard.read", "moderation.ticket.read", "products.read", "sellers.read", "complaint.read", "appeal.read", "audit.read", "operations.read"}),
@@ -125,8 +141,9 @@ async def _oidc_keys(required_kid: str | None = None) -> dict[str, object]:
                 return _jwks_cache[1]
             _jwks_unknown_kid_refresh_after = now + 1.0
         try:
+            jwks_url, jwks_headers = _oidc_jwks_request()
             async with httpx.AsyncClient(timeout=3.0) as client:
-                response = await client.get(settings.oidc_jwks_url)
+                response = await client.get(jwks_url, headers=jwks_headers)
                 response.raise_for_status()
                 payload = response.json()
         except (httpx.HTTPError, ValueError) as exc:

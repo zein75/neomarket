@@ -37,6 +37,45 @@ function requiredEnv(name: string) {
   return value;
 }
 
+function oidcInternalBaseUrl() {
+  const value = process.env.ADMIN_OIDC_INTERNAL_BASE_URL?.trim();
+  if (!value) return undefined;
+  const parsed = new URL(value);
+  if (
+    !['http:', 'https:'].includes(parsed.protocol) ||
+    !parsed.hostname ||
+    parsed.pathname !== '/' && parsed.pathname !== '' ||
+    parsed.search ||
+    parsed.hash ||
+    parsed.username ||
+    parsed.password
+  ) {
+    throw new Error('ADMIN_OIDC_INTERNAL_BASE_URL must be a host-only internal URL');
+  }
+  if (parsed.protocol === 'http:' && parsed.hostname !== 'keycloak') {
+    throw new Error('HTTP ADMIN_OIDC_INTERNAL_BASE_URL is restricted to the private Keycloak service');
+  }
+  return parsed;
+}
+
+function internalOidcFetch(url: string, options: oidc.CustomFetchOptions) {
+  const internal = oidcInternalBaseUrl();
+  if (!internal) return fetch(url, options as RequestInit);
+
+  const requested = new URL(url);
+  const publicIssuer = new URL(requiredEnv('ADMIN_OIDC_ISSUER'));
+  if (requested.origin !== publicIssuer.origin) return fetch(url, options as RequestInit);
+
+  const target = new URL(`${requested.pathname}${requested.search}`, internal);
+  const headers = {
+    ...options.headers,
+    Host: publicIssuer.host,
+    'X-Forwarded-Host': publicIssuer.host,
+    'X-Forwarded-Proto': publicIssuer.protocol.slice(0, -1),
+  };
+  return fetch(target, { ...options, headers } as RequestInit);
+}
+
 export function requiredMfaClaims() {
   const amr = process.env.ADMIN_OIDC_REQUIRED_AMR?.trim() ?? '';
   const acr = process.env.ADMIN_OIDC_REQUIRED_ACR?.trim() ?? '';
@@ -69,11 +108,13 @@ let configuration: Promise<oidc.Configuration> | undefined;
 
 export function oidcConfiguration() {
   if (!configuration) {
+    const internal = oidcInternalBaseUrl();
     configuration = oidc.discovery(
       new URL(requiredEnv('ADMIN_OIDC_ISSUER')),
       requiredEnv('ADMIN_OIDC_CLIENT_ID'),
       { client_secret: requiredEnv('ADMIN_OIDC_CLIENT_SECRET') },
       oidc.ClientSecretBasic(),
+      internal ? { [oidc.customFetch]: internalOidcFetch } : undefined,
     ).catch((error: unknown) => {
       configuration = undefined;
       throw error;

@@ -22,6 +22,11 @@ class Settings:
     trusted_service_public_keys: str = os.getenv("TRUSTED_SERVICE_PUBLIC_KEYS", "")
     oidc_issuer: str = os.getenv("OIDC_ISSUER", "")
     oidc_jwks_url: str = os.getenv("OIDC_JWKS_URL", "")
+    # The issuer and JWKS URL remain the public HTTPS identifiers used for
+    # token validation. In staging, the private Docker network can fetch the
+    # same JWKS document through Keycloak's service name without requiring
+    # public DNS or hairpin TLS.
+    oidc_internal_base_url: str = os.getenv("OIDC_INTERNAL_BASE_URL", "").strip()
     oidc_audience: str = os.getenv("OIDC_AUDIENCE", "neomarket-admin-api")
     oidc_required_amr: str = os.getenv("OIDC_REQUIRED_AMR", "")
     oidc_required_acr: str = os.getenv("OIDC_REQUIRED_ACR", "")
@@ -115,6 +120,20 @@ class Settings:
                 raise RuntimeError("ADMIN_PUBLIC_ORIGIN must be a configured HTTPS origin in production")
             if urlsplit(self.oidc_issuer).scheme != "https" or urlsplit(self.oidc_jwks_url).scheme != "https":
                 raise RuntimeError("OIDC_ISSUER and OIDC_JWKS_URL must use HTTPS in production")
+            if self.oidc_internal_base_url:
+                internal = urlsplit(self.oidc_internal_base_url)
+                if (
+                    internal.scheme not in {"http", "https"}
+                    or not internal.netloc
+                    or internal.path not in {"", "/"}
+                    or internal.query
+                    or internal.fragment
+                    or internal.username
+                    or internal.password
+                ):
+                    raise RuntimeError("OIDC_INTERNAL_BASE_URL must be a host-only internal URL")
+                if internal.scheme == "http" and internal.hostname != "keycloak":
+                    raise RuntimeError("HTTP OIDC_INTERNAL_BASE_URL is restricted to the private Keycloak service")
 
 
 settings = Settings()
