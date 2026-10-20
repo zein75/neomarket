@@ -1,0 +1,11 @@
+﻿{
+  "environment": "local-source-validation",
+  "source_sha": "a720655d6f6e00f01476b2ef9c7f6cbc0e1612c5",
+  "suite": "services/b2b/tests",
+  "command": ".venv/Scripts/python.exe -m pytest services/b2b/tests -q",
+  "passed": 285,
+  "skipped": 38,
+  "failed": 0,
+  "warnings": 2,
+  "observedAt": "2026-10-20T14:10:28.4519607Z"
+}

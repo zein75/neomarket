@@ -49,6 +49,7 @@ Evidence files:
 - \`evidence/staging/https-health-20cd369-20261020.txt\`
 - \`evidence/staging/b2b-authenticated-routes-20cd369-20261020.json\`
 - \`evidence/staging/qa-fixture-create-destroy-20cd369-20261020.json\`
+- \`evidence/staging/b2b-regression-a720655-20261020.json\`
 - \`evidence/staging/clamav-ee079032-20261020.json\`
 - \`evidence/staging/smoke-ee07903-20261020.txt\`
 - \`evidence/staging/qa-fixture-create-destroy-ee07903-20261020.json\`
