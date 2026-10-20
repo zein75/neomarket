@@ -1,0 +1,95 @@
+{
+  "release_sha": "0fcb935bfd14eba6eaa197898bf865e21eddfbd4",
+  "viewport": {
+    "width": 1440,
+    "height": 1100
+  },
+  "results": [
+    {
+      "route": "/dashboard",
+      "count": 28,
+      "invalid": []
+    },
+    {
+      "route": "/products",
+      "count": 14,
+      "invalid": []
+    },
+    {
+      "route": "/products/new",
+      "count": 20,
+      "invalid": []
+    },
+    {
+      "route": "/products/b2a8f451-476a-4d89-a591-6f7e4a2a710e",
+      "count": 11,
+      "invalid": []
+    },
+    {
+      "route": "/products/b2a8f451-476a-4d89-a591-6f7e4a2a710e/skus",
+      "count": 11,
+      "invalid": []
+    },
+    {
+      "route": "/inventory",
+      "count": 18,
+      "invalid": []
+    },
+    {
+      "route": "/imports",
+      "count": 13,
+      "invalid": []
+    },
+    {
+      "route": "/orders",
+      "count": 9,
+      "invalid": []
+    },
+    {
+      "route": "/orders/8f40be87-cf72-4e78-89ba-9b2fc9ce3f11",
+      "count": 11,
+      "invalid": []
+    },
+    {
+      "route": "/moderation",
+      "count": 12,
+      "invalid": [
+        {
+          "tag": "BUTTON",
+          "id": null,
+          "className": "active",
+          "text": "Все",
+          "focusVisible": true,
+          "outlineWidth": "0px",
+          "outlineStyle": "none",
+          "visible": true
+        },
+        {
+          "tag": "BUTTON",
+          "id": null,
+          "className": "",
+          "text": "CREATED",
+          "focusVisible": true,
+          "outlineWidth": "0px",
+          "outlineStyle": "none",
+          "visible": true
+        }
+      ]
+    },
+    {
+      "route": "/team",
+      "count": 17,
+      "invalid": []
+    },
+    {
+      "route": "/finance",
+      "count": 12,
+      "invalid": []
+    },
+    {
+      "route": "/finance/payouts",
+      "count": 12,
+      "invalid": []
+    }
+  ]
+}

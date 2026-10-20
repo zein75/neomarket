@@ -12,6 +12,12 @@
 - A real Chromium Seller keyboard sweep used a disposable staging fixture and the trusted Caddy CA at 1440x1100. Eight authenticated routes and 147 visible controls were traversed with zero invalid focus states, zero page errors and zero unexpected 5xx responses: `docs/automation/evidence/staging/seller-focus-0fcb935-20261020-tls.json`.
 - This closes the observed missing focus ring on the two session controls in source commit `0fcb935`; UI-06 remains PARTIAL where the acceptance matrix requires manual screen-reader/modal review. Automated axe remains clean, while UI-07 manual assistive-technology evidence is still open.
 
+### Current staging release `b0fd232` — 2026-10-20
+
+- The full verify/build workflow `39441458390` passed and the protected deployment promoted immutable SHA `b0fd2323d8fa5c6df166018f0e5f7c0cfdb4c565`. All application services, workers, gateway and Keycloak are healthy in `docs/automation/evidence/staging/status-b0fd232-20261020.txt`.
+- The first official three-project Seller keyboard run exposed two moderation filter buttons with `outline: none` on desktop/tablet. Diagnosis is recorded in `docs/automation/evidence/staging/seller-focus-diagnose-0fcb935-20261020.json`; source fix `b0fd232` adds an explicit 3px cobalt focus ring.
+- The repeat official `seller-keyboard-focus.spec.ts` run passed 9/9 tests across desktop, tablet and mobile with no skipped or unexpected tests: `docs/automation/evidence/staging/keyboard-b0fd232-playwright.json`. UI-06 is still PARTIAL only for its remaining manual screen-reader/modal review requirement.
+
 **Latest verification:** 2026-10-20 (local regression and frontend release checks)
 
 ### Current live runtime `dae7914` — OIDC discovery and redirect verification
