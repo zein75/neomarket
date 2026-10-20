@@ -4,7 +4,7 @@
 1. **Backup/restore (P1):** no approved external backup target or isolated restore drill is configured.
 2. **Full functional/security evidence (P1):** media quarantine, order flows, retry/DLQ, concurrency, RBAC and visual acceptance remain unverified on the real staging runtime. The ClamAV daemon is now reachable through the isolated egress network and rejects EICAR, but signature refresh is blocked by the upstream CDN's HTTP 403/cooldown.
 3. **Commercial rules (P1):** ADR-001 is present but remains `PROPOSED / LEGAL_AND_PSP_REVIEW_REQUIRED`; merchant-of-record, tax, refund/restock and PSP settlement flows remain intentionally disabled pending the required approvals/provider evidence. Seller-fulfilled delivery is selected in the proposal, but its legal/commercial gate is not accepted.
-4. **Fixture cleanup and refresh (RESOLVED):** after deploy `cba15c1`, the protected fixture runner created and destroyed an isolated authenticated Seller fixture with `deleted=true`; the authenticated state matrix contains no credential material.
+4. **Fixture cleanup and refresh (RESOLVED):** after deploy `ee079032`, the protected fixture runner created and destroyed an isolated authenticated Seller fixture with `deleted=true`; evidence contains no credential material.
 
 Resolved runtime issue: `STAGING-GW-001` was cleared after the root-owned gateway refresh and fixed-SHA redeploy on 2026-10-20. Current runtime evidence for `ee079032`: `docs/automation/evidence/staging/status-ee07903-20261020.txt` and `clamav-ee079032-20261020.json`.
 
