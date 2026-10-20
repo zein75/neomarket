@@ -1,0 +1,8 @@
+﻿{
+    "commit":  "ee079032cfd234ddd3232c4dfc74fc84b1a5bc22",
+    "run_id":  "qa-b2b-ee07903-20261020",
+    "create":  "success",
+    "destroy":  "deleted=true",
+    "credentials_recorded":  false,
+    "observedAt":  "2026-10-20T13:16:04.1485466Z"
+}
