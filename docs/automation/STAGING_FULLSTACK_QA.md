@@ -2,7 +2,7 @@
 
 ## Release status
 
-**BLOCKED.** SSH access and the restricted staging runtime are present, and read-only endpoint probes pass for the public boundaries. The current `b7e07e7` runtime is healthy and its real HTTPS health/discovery probes pass; the authenticated Seller route sweep and bounded recovery evidence were collected on the code-equivalent `ee079032` runtime. Full release gates remain open because Keycloak MFA/OIDC, authenticated Admin/visual QA, backup/restore, provider/DLQ recovery evidence, and three independent Playwright manifests are still missing.
+**BLOCKED.** SSH access and the restricted staging runtime are present, and read-only endpoint probes pass for the public boundaries. The current `20cd369` runtime is healthy and its real HTTPS health/discovery probes pass; the authenticated Seller route sweep and bounded recovery evidence were collected on the code-equivalent `ee079032` runtime. Full release gates remain open because Keycloak MFA/OIDC, authenticated Admin/visual QA, backup/restore, provider/DLQ recovery evidence, and three independent Playwright manifests are still missing.
 
 The protected staging runtime was deliberately deployed to the pinned SHA below. No production deployment was performed.
 
@@ -12,7 +12,7 @@ The protected staging runtime was deliberately deployed to the pinned SHA below.
 - Current production specifications: `docs/NeoMarket_Admin_Production_Spec_2026-10-16/` and `docs/NeoMarket_Seller_Production_Blueprint_2026-10-16/`.
 - Staging manifests: `deploy/staging/`.
 - Local branch: `staging`; local HEAD contains later documentation-only commits. Those commits are not deployed.
-- The local worktree is dirty; the current deployed staging release is `b7e07e79e8f471f664fdc946683f475eae005772` (see `status-b7e07e7-20261020.txt`). Source HEAD `e7e9010bdec9c72a224a81a1fb57d5bf14e5d941` contains documentation-only changes after that code release.
+- The local worktree is dirty; the current deployed staging release is `20cd369cefdd0e8b6b89addedf92df6cc49bb796` (see `status-20cd369-20261020.txt`). Source HEAD `f533cc3c37c4a1123aa50cf1b994bd3028d0e722` contains documentation-only changes after that code release.
 - Requested `$neomarket-exhaustive-qa` skill was not present in the configured skill roots or repository skill directory.
 
 ## Stage 1 ? server audit
@@ -51,7 +51,7 @@ The protected staging runtime was deliberately deployed to the pinned SHA below.
 The root-owned deployment layout is present under `/opt/neomarket-staging/compose` with compose, migration, smoke, and status scripts. `/opt/neomarket-staging/last-successful-sha` contains:
 
 ```text
-b7e07e79e8f471f664fdc946683f475eae005772
+20cd369cefdd0e8b6b89addedf92df6cc49bb796
 ```
 
 `/opt/neomarket-staging/.release.env` points to `ghcr.io/zein75/market` with the same SHA. The value is metadata only; container status cannot be read directly by `ter0o` because the environment file and Docker socket are protected.
@@ -80,11 +80,11 @@ Static staging Compose security: PASS
 
 This proves only static Compose properties. It does not prove secrets, container health, migrations, TLS trust in browsers, or external integrations.
 
-The latest successful image build for the current code release was workflow run `39433889652` for SHA `b7e07e79e8f471f664fdc946683f475eae005772`; static checks, PostgreSQL migration/concurrency tests, and all six image builds passed. The current live runtime is `b7e07e7`; the later `e7e9010` commit contains documentation-only changes.
+The latest successful image build for the current code release was workflow run `39435057893` for SHA `20cd369cefdd0e8b6b89addedf92df6cc49bb796`; static checks, PostgreSQL migration/concurrency tests, and all six image builds passed. The current live runtime is `20cd369`; the later `f533cc3` commit contains documentation-only changes.
 
 ## Stage 2–7 result
 
-The protected runtime status and startup migrations are verified. The B2B suite completed with `285 passed, 38 skipped, 0 failed`; a fresh Chromium Seller fixture authenticated and returned `200` on 11 protected routes on the code-equivalent `ee079032` runtime; ClamAV detected EICAR and accepted a clean sample; and bounded PostgreSQL and Redis stop/start drills returned readiness `503` during each dependency outage and `200` after recovery without deleting volumes. The current `b7e07e7` status and HTTPS probes are healthy. These checks do not prove the full release: Keycloak MFA/OIDC claims, authenticated Admin workflows, visual comparison, upload/quarantine end-to-end behavior, retry/DLQ/provider drills, off-host backup/restore and the three independent release-gate manifests remain open.
+The protected runtime status and startup migrations are verified. The B2B suite completed with `285 passed, 38 skipped, 0 failed`; a fresh Chromium Seller fixture authenticated and returned `200` on 11 protected routes on the code-equivalent `ee079032` runtime; ClamAV detected EICAR and accepted a clean sample; and bounded PostgreSQL and Redis stop/start drills returned readiness `503` during each dependency outage and `200` after recovery without deleting volumes. The current `20cd369` status and HTTPS probes are healthy. These checks do not prove the full release: Keycloak MFA/OIDC claims, authenticated Admin workflows, visual comparison, upload/quarantine end-to-end behavior, retry/DLQ/provider drills, off-host backup/restore and the three independent release-gate manifests remain open.
 
 ## Required next steps
 
@@ -122,6 +122,8 @@ The protected runtime status and startup migrations are verified. The B2B suite 
 - [status-872b0a1-20261020.txt](evidence/staging/status-872b0a1-20261020.txt) (current live runtime)
 - [status-b7e07e7-20261020.txt](evidence/staging/status-b7e07e7-20261020.txt) (current live runtime)
 - [https-health-b7e07e7-20261020.txt](evidence/staging/https-health-b7e07e7-20261020.txt)
+- [status-20cd369-20261020.txt](evidence/staging/status-20cd369-20261020.txt) (current live runtime)
+- [https-health-20cd369-20261020.txt](evidence/staging/https-health-20cd369-20261020.txt)
 - [smoke-ee07903-20261020.txt](evidence/staging/smoke-ee07903-20261020.txt)
 - [clamav-ee079032-20261020.json](evidence/staging/clamav-ee079032-20261020.json)
 - [qa-fixture-create-destroy-ee07903-20261020.json](evidence/staging/qa-fixture-create-destroy-ee07903-20261020.json)

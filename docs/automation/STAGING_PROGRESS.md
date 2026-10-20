@@ -151,4 +151,10 @@ An additional real-browser smoke covered 24 public Storefront, Seller and Admin 
 - Real HTTPS health probes returned 200 for Storefront, Seller and Admin; Keycloak realm discovery returned 200 with the configured issuer and JWKS URL. Evidence: `docs/automation/evidence/staging/https-health-b7e07e7-20261020.txt`.
 - The authenticated Seller browser sweep remains the earlier code-equivalent `ee079032` evidence; no fresh authenticated browser claim is made for `b7e07e7`.
 
+### Current live runtime 20cd369 - 2026-10-20
+
+- Workflow `39435057893` passed verify, PostgreSQL integration and all six immutable image builds. Protected deployment completed on `20cd369cefdd0e8b6b89addedf92df6cc49bb796`; all required services, workers, gateway and Keycloak report healthy. Evidence: `docs/automation/evidence/staging/status-20cd369-20261020.txt`.
+- Real HTTPS health probes returned 200 for Storefront, Seller and Admin; Keycloak realm discovery returned 200 with the configured issuer and JWKS URL. Evidence: `docs/automation/evidence/staging/https-health-20cd369-20261020.txt`.
+- The authenticated Seller browser sweep remains the earlier code-equivalent `ee079032` evidence; no fresh authenticated browser claim is made for `20cd369`.
+
 

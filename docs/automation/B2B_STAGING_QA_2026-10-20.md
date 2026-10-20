@@ -2,8 +2,8 @@
 
 ## Version
 
-- Runtime release: \`b7e07e79e8f471f664fdc946683f475eae005772\` (current live staging)
-- Source HEAD: \`e7e9010bdec9c72a224a81a1fb57d5bf14e5d941\`; this HEAD contains the current source plus documentation-only provenance updates. The deployed runtime is the preceding code SHA \`b7e07e7\`.
+- Runtime release: \`20cd369cefdd0e8b6b89addedf92df6cc49bb796\` (current live staging)
+- Source HEAD: \`f533cc3c37c4a1123aa50cf1b994bd3028d0e722\`; this HEAD contains the current source plus documentation-only provenance updates. The deployed runtime is the preceding code SHA \`20cd369\`.
 - Server: \`192.168.0.112\`
 - Gateway: \`127.0.0.1:18080\`
 - Environment: isolated staging
@@ -45,6 +45,8 @@ Evidence files:
 - \`evidence/staging/status-872b0a1-20261020.txt\`
 - \`evidence/staging/status-b7e07e7-20261020.txt\`
 - \`evidence/staging/https-health-b7e07e7-20261020.txt\`
+- \`evidence/staging/status-20cd369-20261020.txt\`
+- \`evidence/staging/https-health-20cd369-20261020.txt\`
 - \`evidence/staging/clamav-ee079032-20261020.json\`
 - \`evidence/staging/smoke-ee07903-20261020.txt\`
 - \`evidence/staging/qa-fixture-create-destroy-ee07903-20261020.json\`
@@ -63,7 +65,7 @@ Evidence files:
 - \`evidence/staging/b2b-isolated-order-carrier-integration-20261020.json\`
 - \`evidence/staging/b2b-regression-source-35ebe3a-20261020.txt\`
 
-The current Compose release `b7e07e7` keeps the application network internal and adds
+The current Compose release `20cd369` keeps the application network internal and adds
 a dedicated egress-only network for ClamAV updates. The scanner is healthy and
 a real EICAR sample was detected while a clean sample returned OK. The updater
 reaches the CDN but is currently rejected with HTTP 403/cooldown, so signature
@@ -110,4 +112,4 @@ Remaining non-commercial evidence gaps:
 
 ## Release status
 
-**B2B runtime is deployed and regression-tested. The current `b7e07e7` runtime is healthy and the real HTTPS health probes pass; the latest authenticated Seller route evidence is on the code-equivalent `ee079032` runtime. The full Seller/B2B release remains BLOCKED** until the non-commercial evidence gaps and the ADR-dependent requirements are resolved. ADR-001 is present but still marked `PROPOSED / LEGAL_AND_PSP_REVIEW_REQUIRED`; no finance or return requirement was promoted from documentation alone.
+**B2B runtime is deployed and regression-tested. The current `20cd369` runtime is healthy and the real HTTPS health probes pass; the latest authenticated Seller route evidence is on the code-equivalent `ee079032` runtime. The full Seller/B2B release remains BLOCKED** until the non-commercial evidence gaps and the ADR-dependent requirements are resolved. ADR-001 is present but still marked `PROPOSED / LEGAL_AND_PSP_REVIEW_REQUIRED`; no finance or return requirement was promoted from documentation alone.
