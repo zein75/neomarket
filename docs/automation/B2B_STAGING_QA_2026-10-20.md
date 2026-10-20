@@ -3,7 +3,7 @@
 ## Version
 
 - Runtime release: \`d30c5d843f741213db7d11278bb528c586655b90\` (current live staging)
-- Source HEAD: \`d30c5d843f741213db7d11278bb528c586655b90\`; this release contains documentation-only changes after the previously verified code runtime, and was deployed through the protected staging wrapper.
+- Source HEAD: \`f9faaf93de8b01c44bf1521be3283af15f1509cf\`; this HEAD contains documentation-only changes after the deployed `d30c5d8` runtime, which was deployed through the protected staging wrapper.
 - Server: \`192.168.0.112\`
 - Gateway: \`127.0.0.1:18080\`
 - Environment: isolated staging
