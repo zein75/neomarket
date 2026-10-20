@@ -1,0 +1,22 @@
+﻿{
+    "timestamp":  "20261020T1152Z",
+    "deployment_sha":  "c073e7446d6d639f73644a1b68d2110ed234b325",
+    "issuer":  "https://keycloak.neomarket.test/realms/neomarket-staging",
+    "jwks_uri":  "https://keycloak.neomarket.test/realms/neomarket-staging/protocol/openid-connect/certs",
+    "authorization_endpoint":  "https://keycloak.neomarket.test/realms/neomarket-staging/protocol/openid-connect/auth",
+    "token_endpoint":  "https://keycloak.neomarket.test/realms/neomarket-staging/protocol/openid-connect/token",
+    "response_types_supported":  [
+                                     "code",
+                                     "none",
+                                     "id_token",
+                                     "token",
+                                     "id_token token",
+                                     "code id_token",
+                                     "code token",
+                                     "code id_token token"
+                                 ],
+    "code_challenge_methods_supported":  [
+                                             "plain",
+                                             "S256"
+                                         ]
+}

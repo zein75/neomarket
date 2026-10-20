@@ -35,5 +35,7 @@ Independent local checks on the current checkout:
 
 **Runtime evidence (2026-10-20T11:50:01Z):** deployment `c073e7446d6d639f73644a1b68d2110ed234b325` completed through the restricted `neomarket-deploy` SSH command. Gateway probes are recorded in `evidence/staging/gateway-routes-20261020T115001Z.txt`; the status capture is `evidence/staging/status-20261020T115001Z.txt`. All required containers reported `running` and `healthy`; the deployment smoke check returned `SMOKE PASS`.
 
+The public Keycloak discovery document also resolves through Caddy with the configured staging issuer, JWKS URL and PKCE `S256` support; the response is recorded in `evidence/staging/keycloak-oidc-discovery-20261020T1152Z.json`. This is provider discovery evidence only and does not promote browser MFA/OIDC acceptance.
+
 The acceptance checker still returns `BLOCKED` (`202` required cases, `0` of `3` authenticated manifests):
 `python docs/NeoMarket_Admin_Production_Spec_2026-10-16/qa/check_release.py --matrix docs/NeoMarket_Admin_Production_Spec_2026-10-16/qa/ACCEPTANCE_MATRIX.csv --runs-dir docs/automation/seller_runs`.
