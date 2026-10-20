@@ -1,0 +1,14 @@
+﻿{
+    "environment":  "isolated-local-postgres-redis",
+    "commit_sha":  "3ddf0a128e62e0677a76d0179278fbace20ff5e7",
+    "database":  "temporary disposable database",
+    "redis":  "temporary disposable redis",
+    "test_files":  [
+                       "test_live_seller_carrier_reconciliation.py",
+                       "test_live_signed_carrier_webhook_ordering.py",
+                       "test_live_seller_order_cancellation.py"
+                   ],
+    "result":  "PASS",
+    "summary":  "3 passed, 0 failed",
+    "generated_at":  "2026-10-20T13:43:39.7487159Z"
+}

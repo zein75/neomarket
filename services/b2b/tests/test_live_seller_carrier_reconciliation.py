@@ -74,13 +74,13 @@ def test_live_local_carrier_recovers_label_after_lost_ack_without_duplicate() ->
                 path = f"/api/v1/seller/orders/{order_id}/shipments/{shipment_id}/dispatch"
                 first = client.post(path, headers=headers)
                 assert first.status_code == 503, first.text
-                assert first.json()["detail"]["code"] == "COMMERCIAL_FLOW_DISABLED"
-                assert first.json()["detail"]["flow"] == "seller_carrier_dispatch"
+                assert first.json()["code"] == "COMMERCIAL_FLOW_DISABLED"
+                assert first.json()["flow"] == "seller_carrier_dispatch"
 
                 status_path = f"/api/v1/seller/orders/{order_id}/shipments/{shipment_id}/carrier-operation"
                 repeated = client.post(path, headers=headers)
                 assert repeated.status_code == 503, repeated.text
-                assert repeated.json()["detail"]["code"] == "COMMERCIAL_FLOW_DISABLED"
+                assert repeated.json()["code"] == "COMMERCIAL_FLOW_DISABLED"
 
                 status_pending = client.get(status_path, headers=headers)
                 assert status_pending.status_code == 404, status_pending.text

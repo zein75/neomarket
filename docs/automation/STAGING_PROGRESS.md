@@ -116,6 +116,7 @@ An additional real-browser smoke covered 24 public Storefront, Seller and Admin 
 - A disposable PostgreSQL integration run applied B2B migrations through `0065_product_safety_holds` and passed 32 DB-backed inventory/export/reservation/outbox tests with zero failures. Evidence: `docs/automation/evidence/staging/b2b-isolated-postgres-integration-20261020.txt` and `.json`. This is isolated local evidence, not a claim against the staging database.
 - A second disposable PostgreSQL run passed 7 auth/draft integration tests covering session revocation, draft autosave revision fencing and membership management. Evidence: `docs/automation/evidence/staging/b2b-isolated-auth-draft-integration-20261020.txt` and `.json`.
 - A disposable PostgreSQL scale run passed both 100k-row checks: seller inventory pagination completed 1,000 pages with 3.16 MB Python peak, and inventory export wrote 100,001 CSV lines with 1.65 MB worker peak. Evidence: `docs/automation/evidence/staging/b2b-isolated-scale-integration-20261020.txt` and `.json`.
+- With separate disposable PostgreSQL and Redis dependencies, carrier/order integration passed 3/3 tests. The carrier dispatch remains intentionally disabled by ADR, while signed webhook ordering and cancellation idempotency were exercised against the current error contract. Evidence: `docs/automation/evidence/staging/b2b-isolated-order-carrier-integration-20261020.txt` and `.json`.
 
 ### Deployment confirmation for ee07903 - 2026-10-20 13:10Z
 

@@ -62,7 +62,7 @@ def test_live_seller_order_acceptance_is_idempotent_and_owner_scoped() -> None:
                 assert "orders.fulfill" in owner_permissions.json()["permissions"]
                 disabled = client.post(f"/api/v1/seller/orders/{order_id}/accept", headers=headers)
                 assert disabled.status_code == 503, disabled.text
-                assert disabled.json()["detail"]["code"] == "COMMERCIAL_FLOW_DISABLED"
+                assert disabled.json()["code"] == "COMMERCIAL_FLOW_DISABLED"
                 assert disabled.json()["detail"]["flow"] == "seller_order_acceptance"
 
                 packed = client.post(
@@ -71,7 +71,7 @@ def test_live_seller_order_acceptance_is_idempotent_and_owner_scoped() -> None:
                     json={"lines": [{"seller_order_item_id": str(uuid4()), "quantity": 1}]},
                 )
                 assert packed.status_code == 503, packed.text
-                assert packed.json()["detail"]["code"] == "COMMERCIAL_FLOW_DISABLED"
+                assert packed.json()["code"] == "COMMERCIAL_FLOW_DISABLED"
                 assert packed.json()["detail"]["flow"] == "seller_packing_manifest"
 
                 refreshed = client.get(f"/api/v1/seller/orders/{order_id}", headers=headers)

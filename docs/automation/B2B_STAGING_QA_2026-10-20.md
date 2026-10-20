@@ -13,6 +13,7 @@
 - Isolated PostgreSQL integration subset: **32 passed, 0 failed** after applying B2B migrations through `0065_product_safety_holds` in a disposable database.
 - Isolated PostgreSQL auth/draft subset: **7 passed, 0 failed** covering session revocation, draft autosave fencing and membership management.
 - Isolated PostgreSQL scale subset: **2 passed, 0 failed**; 100,000 SKU cursor pagination used 1,000 pages with 3.16 MB Python peak, and 100,000-row export produced 100,001 CSV lines with 1.65 MB worker peak.
+- Isolated PostgreSQL+Redis order/carrier subset: **3 passed, 0 failed** for fail-closed carrier dispatch, signed out-of-order carrier webhook handling and cancellation idempotency. The skipped tests were aligned to the current top-level error contract (`code/message/flow`).
 - Ruff: PASS.
 - Python compilation: PASS.
 - B2B target OpenAPI validation: PASS (76 Admin target operations and 12 B2B Admin target operations).
@@ -54,6 +55,8 @@ Evidence files:
 - \`evidence/staging/b2b-isolated-auth-draft-integration-20261020.json\`
 - \`evidence/staging/b2b-isolated-scale-integration-20261020.txt\`
 - \`evidence/staging/b2b-isolated-scale-integration-20261020.json\`
+- \`evidence/staging/b2b-isolated-order-carrier-integration-20261020.txt\`
+- \`evidence/staging/b2b-isolated-order-carrier-integration-20261020.json\`
 
 The Compose release `ee079032` keeps the application network internal and adds
 a dedicated egress-only network for ClamAV updates. The scanner is healthy and
