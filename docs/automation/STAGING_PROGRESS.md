@@ -12,6 +12,7 @@ Independent local checks on the current checkout:
 - Shared/target tests: `27 passed`.
 - Ruff, OpenAPI target validation, Compose security, and Python compilation: PASS.
 - Frontend typecheck and production build for Storefront, Seller, Admin, and shared packages: PASS.
+- GitHub Actions run `39417180391` for `f8dfbf1`: verify, PostgreSQL integration, and all six immutable image builds PASS; hosted staging deploy was skipped because `192.168.0.112` is private.
 
 **Updated:** 2026-10-20 (runtime verification after deployment)
 | Phase | Status | Evidence |
