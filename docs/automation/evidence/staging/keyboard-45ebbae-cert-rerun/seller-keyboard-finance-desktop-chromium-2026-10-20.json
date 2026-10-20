@@ -1,0 +1,108 @@
+{
+  "route": "/finance",
+  "project": "desktop-chromium",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "tabCount": 12,
+  "visitedFocusTargets": [
+    {
+      "focusVisible": true,
+      "tag": "A",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "A",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "A",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "A",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "A",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "A",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "A",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "A",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "A",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "A",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "BUTTON",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    },
+    {
+      "focusVisible": true,
+      "tag": "BUTTON",
+      "id": null,
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "visible": true
+    }
+  ],
+  "result": "PASS"
+}

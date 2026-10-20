@@ -43,6 +43,7 @@
 - The current live runtime was re-queried after deployment and reports application images at `45ebbae37cb5104decf7a586e767a55cd41cd0cf`; all required services, workers, gateway and Keycloak are healthy. Evidence: `evidence/staging/status-45ebbae-20261020.txt`.
 - Fresh authenticated staging accessibility on runtime `45ebbae` passed **3/3** Chromium projects with zero axe WCAG 2.2 A/AA violations. Evidence: `evidence/staging/axe-45ebbae-rerun/manifest.json`.
 - Fresh authenticated staging keyboard/focus on runtime `45ebbae` passed **9/9** Chromium tests with zero invalid focus states. Evidence: `evidence/staging/keyboard-45ebbae-rerun/manifest.json` and 90 JSON/PNG artifacts.
+- Certificate validation was explicitly enabled for additional desktop runs: Seller accessibility passed 1/1 and keyboard/focus passed 3/3 with no `ignoreHTTPSErrors`; the Caddy internal CA was trusted by Chromium. Evidence: `evidence/staging/axe-45ebbae-cert-rerun/manifest.json` and `evidence/staging/keyboard-45ebbae-cert-rerun/manifest.json`.
 - Separate real staging captures for the approved UI-04/UI-05 responsive targets (Pixel 5/390 and Galaxy Tab S4/768) returned HTTP 200 with no horizontal overflow. The captures are isolated from the approved candidate baselines; the two expected session-check 401 console responses are recorded and no visual PASS is asserted from dimensions alone. Evidence: `evidence/staging/ui-04-05-b0fd232/manifest.json` and its four PNG captures.
 
 Evidence files:
