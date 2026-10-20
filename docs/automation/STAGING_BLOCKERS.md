@@ -1,9 +1,8 @@
-# NeoMarket staging blockers
+﻿# NeoMarket staging blockers
 
-1. **Root refresh for the compose-path fix is pending (P0):** the owner has applied the first root refresh, generated provider values and GHCR pull credentials, and image pulls now succeed. The next deployment exposed a path mismatch between the root wrapper (`/opt/neomarket-staging/compose`) and the helper scripts. Commit `617a117` fixes that mismatch; the owner must rerun the restricted bootstrap once to install the corrected root-owned scripts.
-3. **Keycloak and TLS absent (P0 Admin):** runtime deployment has not completed, so no trusted CA, or approved redirect/issuer host has been verified.
-4. **Object storage contract absent (P1 media):** the current implementation is a private local media volume; S3/MinIO must not be claimed until the approved storage contract is implemented and tested.
-5. **Browser QA absent (P0 release):** no authenticated staging Playwright manifests or visual evidence exist.
-6. **Backup/restore absent (P1 operations):** external backup target and a restore drill are not configured.
+1. **Browser trust and authenticated QA (P0):** Caddy uses its internal CA. The current browser environment does not trust that CA, so authenticated OIDC/MFA, Seller and Admin Playwright manifests cannot be run without violating the no-TLS-bypass rule.
+2. **Backup/restore (P1):** no approved external backup target or isolated restore drill is configured.
+3. **Full functional/security evidence (P1):** media quarantine, order flows, retry/DLQ, concurrency, RBAC and visual acceptance remain unverified on the real staging runtime.
+4. **Commercial rules (P1):** merchant-of-record, tax, delivery/returns, refund/restock and PSP settlement flows remain intentionally disabled pending ADR, as previously approved.
 
-These are evidence-based blockers, not waived requirements.
+These are evidence-based blockers; no acceptance scenario is marked PASS solely from documentation.

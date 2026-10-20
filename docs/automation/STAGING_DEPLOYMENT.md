@@ -1,16 +1,24 @@
-# NeoMarket staging deployment
+﻿# NeoMarket staging deployment
 
-**Status:** `PARTIAL` — protected bootstrap and restricted deployment are installed; runtime release is blocked by two fixed compose/image defects awaiting root-owned compose refresh.
+**Status:** `PASS` for protected runtime deployment; release readiness remains `BLOCKED` by missing QA evidence.
 
-The deployment workflow now requests a fixed SHA through the root-owned `neomarket-staging-deploy` wrapper. It no longer rsyncs executable Compose or shell files as the deployment user. The wrapper is installed by `deploy/staging/bootstrap/bootstrap.sh` and records `/var/log/neomarket-staging/deploy.log` plus `/opt/neomarket-staging/last-successful-sha`.
+## Deployment record
 
-Evidence from `192.168.0.112`:
+- Host: `192.168.0.112` (`market-staging`), environment: staging.
+- Image release SHA: `7c1951054cf3c4e69b4e1a38769c2ca640da2f89`.
+- Compose/Caddy/deployment configuration commit: `772ace6`.
+- Deployment was submitted through the forced `neomarket-deploy` SSH command; no Docker socket was granted to `ter0o`.
+- Root wrapper wrote the release metadata and completed migrations for B2B, B2C and Admin.
+- Deployment output ended with `SMOKE PASS` and `DEPLOY_SUCCESS sha=7c1951054cf3c4e69b4e1a38769c2ca640da2f89`.
 
-- `1ceba9fbce7105866f48536a09d087c80c3e4f47` was pulled and migrations completed.
-- Admin, B2B, B2C and their workers reached healthy/readiness states.
-- Keycloak PostgreSQL and Keycloak reached healthy state.
-- Deployment stopped at the real `clamd` health gate; Mailpit also restarted. Existing frontend images used an unavailable `wget` healthcheck.
-- `40ffdc140006174ed504c96dc61a15a444e1ade5` removes the invalid Mailpit TLS path and read-only ClamAV root filesystem and expands diagnostics.
-- `e4249b7cbb6341eb70577657a925606a2234d12f` replaces frontend `wget` healthchecks with Node's built-in `fetch`.
+## Runtime evidence
 
-CI runs `39405875211` and `39406495189` passed verify, integration and image builds. Run `39406685722` is building the frontend healthcheck fix. A root owner must refresh the immutable files under `/opt/neomarket-staging/compose` before requesting `e4249b7`; application data and volumes do not need removal.
+- PostgreSQL, Admin PostgreSQL, Redis, Keycloak PostgreSQL, Keycloak, ClamAV and Mailpit are healthy.
+- B2C, B2B, Admin, Admin worker, taxonomy worker and recovery worker are running; API readiness returned 200.
+- Storefront, Seller and Admin frontends are healthy with `HOSTNAME=0.0.0.0`.
+- Gateway is healthy on `127.0.0.1:18080`; the pre-existing demo Nginx on `127.0.0.1:8080` was preserved.
+- Caddy HTTPS probes with `--resolve` returned 200 for Storefront/Seller, 307 for the unauthenticated Admin boundary, and 302 for Keycloak.
+
+## Known limits
+
+The smoke test proves service startup, migrations, gateway routing and the negative internal-route boundary. It does not prove authenticated OIDC/MFA, full seller/order/media flows, backup restore, visual acceptance, or production readiness.
