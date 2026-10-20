@@ -58,7 +58,7 @@ function oidcInternalBaseUrl() {
   return parsed;
 }
 
-function internalOidcFetch(url: string, options: oidc.CustomFetchOptions) {
+async function internalOidcFetch(url: string, options: oidc.CustomFetchOptions) {
   const internal = oidcInternalBaseUrl();
   if (!internal) return fetch(url, options as RequestInit);
 
@@ -73,7 +73,17 @@ function internalOidcFetch(url: string, options: oidc.CustomFetchOptions) {
     'X-Forwarded-Host': publicIssuer.host,
     'X-Forwarded-Proto': publicIssuer.protocol.slice(0, -1),
   };
-  return fetch(target, { ...options, headers } as RequestInit);
+  try {
+    return await fetch(target, { ...options, headers } as RequestInit);
+  } catch (error) {
+    const cause = error instanceof Error && error.cause instanceof Error
+      ? `${error.cause.name}:${error.cause.message}`
+      : error instanceof Error && error.cause
+        ? String(error.cause)
+        : 'none';
+    console.error('Admin OIDC private fetch failed', `${target.origin}${target.pathname}`, cause);
+    throw error;
+  }
 }
 
 export function requiredMfaClaims() {
