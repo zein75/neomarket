@@ -10,11 +10,12 @@ run_id="${2:-}"
 ROOT=/opt/neomarket-staging
 COMPOSE="$ROOT/compose/docker-compose.staging.yml"
 ENV_FILE=/etc/neomarket/staging.env
+RELEASE_ENV="$ROOT/.release.env"
 FIXTURE="$ROOT/qa/b2b_fixture.py"
-[[ -r "$COMPOSE" && -r "$ENV_FILE" && -r "$FIXTURE" ]] || { echo 'Staging fixture files are missing.' >&2; exit 1; }
+[[ -r "$COMPOSE" && -r "$ENV_FILE" && -r "$RELEASE_ENV" && -r "$FIXTURE" ]] || { echo 'Staging fixture files or current release metadata are missing.' >&2; exit 1; }
 
 # The service, image, command and mount are fixed. User input is only a
 # validated action and run id; no arbitrary shell, compose file or path is accepted.
-exec docker compose --env-file "$ENV_FILE" -f "$COMPOSE" run --rm --no-deps \
+exec docker compose --project-name neomarket-staging --env-file "$ENV_FILE" --env-file "$RELEASE_ENV" -f "$COMPOSE" run --rm --no-deps \
   -v "$FIXTURE:/qa/b2b_fixture.py:ro" b2b \
   uv run --no-sync python /qa/b2b_fixture.py "$action" "$run_id"
