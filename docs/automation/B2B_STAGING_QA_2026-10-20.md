@@ -11,7 +11,7 @@
 ## Evidence executed
 
 - Source verification on the current source tree: `uv run pytest services/b2b/tests -q` returned **285 passed, 38 skipped, 0 failed**; `uv run ruff check services/b2b frontend/apps/seller` returned **All checks passed**. Latest rerun evidence: `evidence/staging/b2b-pytest-rerun-20261020.txt`.
-- The release checker was rerun against the current acceptance matrix: **BLOCKED**, 202 required cases, `0/3` independent authenticated manifests. Evidence: `evidence/staging/release-check-fd02bd8-20261020.json`. No manifest was fabricated.
+- The release checker was rerun against the current acceptance matrix: **BLOCKED**, 202 required cases, `0/3` independent authenticated manifests. Evidence: `evidence/staging/release-check-45ebbae-20261020T151000Z.json`. No manifest was fabricated.
 - Local B2B regression: **285 passed, 38 skipped, 0 failed**.
 - Isolated PostgreSQL integration subset: **32 passed, 0 failed** after applying B2B migrations through `0065_product_safety_holds` in a disposable database.
 - Isolated PostgreSQL auth/draft subset: **7 passed, 0 failed** covering session revocation, draft autosave fencing and membership management.
@@ -38,7 +38,7 @@
 - A fresh real staging run of `seller-keyboard-focus.spec.ts` passed **9/9** tests across desktop/tablet/mobile with zero invalid focus states. The run used the disposable fixture and explicit Chromium host mapping; credentials were omitted and the fixture was destroyed. Evidence: `evidence/staging/keyboard-b0fd232-rerun/manifest.json` and its JSON/PNG artifacts.
 - A fresh protected status capture confirms the immutable `b0fd232` application services, workers, gateway and Keycloak are healthy. It also records two older `Created` ephemeral B2B run containers from interrupted QA attempts; no running service is affected and they are retained as a staging hygiene item until the root owner performs the bounded cleanup. Evidence: `evidence/staging/status-b0fd232-rerun-20261020.txt`.
 - Real HTTPS probes through Caddy passed on the current runtime: Storefront `/` 200, Seller `/login` 200, Admin `/api/health` 200, anonymous Admin `/` 307, and Keycloak realm discovery 200. Evidence: `evidence/staging/https-health-b0fd232-rerun-20261020.txt`.
-- The acceptance release checker was rerun on the current repository state and remains honestly **BLOCKED**: 202 required cases, `0/3` independent manifests. Evidence: `evidence/staging/release-check-fd02bd8-20261020.json`; no manifests were fabricated.
+- The acceptance release checker was rerun on the current repository state and remains honestly **BLOCKED**: 202 required cases, `0/3` independent manifests. Evidence: `evidence/staging/release-check-45ebbae-20261020T151000Z.json`; no manifests were fabricated.
 - A fresh local regression rerun on the current source completed with **285 passed, 38 skipped, 0 failed** (two dependency warnings only). Evidence: `evidence/staging/b2b-pytest-rerun-20261020.txt`.
 - The current live runtime was re-queried after deployment and reports application images at `45ebbae37cb5104decf7a586e767a55cd41cd0cf`; all required services, workers, gateway and Keycloak are healthy. Evidence: `evidence/staging/status-45ebbae-20261020.txt`.
 - Fresh authenticated staging accessibility on runtime `45ebbae` passed **3/3** Chromium projects with zero axe WCAG 2.2 A/AA violations. Evidence: `evidence/staging/axe-45ebbae-rerun/manifest.json`.
