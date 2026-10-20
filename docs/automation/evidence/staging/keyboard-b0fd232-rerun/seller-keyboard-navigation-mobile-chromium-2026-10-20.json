@@ -1,0 +1,52 @@
+{
+  "project": "mobile-chromium",
+  "viewport": {
+    "width": 393,
+    "height": 727
+  },
+  "focusedLinks": [
+    {
+      "href": "/dashboard",
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "inViewport": true
+    },
+    {
+      "href": "/products",
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "inViewport": true
+    },
+    {
+      "href": "/inventory",
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "inViewport": true
+    },
+    {
+      "href": "/orders",
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "inViewport": true
+    },
+    {
+      "href": "/finance",
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "inViewport": true
+    },
+    {
+      "href": "/moderation",
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "inViewport": true
+    },
+    {
+      "href": "/team",
+      "outlineWidth": "3px",
+      "outlineStyle": "solid",
+      "inViewport": true
+    }
+  ],
+  "result": "PASS"
+}
