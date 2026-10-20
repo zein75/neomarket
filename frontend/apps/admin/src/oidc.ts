@@ -38,7 +38,8 @@ function requiredEnv(name: string) {
 }
 
 function oidcInternalBaseUrl() {
-  const value = process.env.ADMIN_OIDC_INTERNAL_BASE_URL?.trim();
+  const value = process.env.ADMIN_OIDC_INTERNAL_BASE_URL?.trim()
+    || (process.env.NODE_ENV === 'production' ? 'http://gateway:80' : '');
   if (!value) return undefined;
   const parsed = new URL(value);
   if (

@@ -26,7 +26,10 @@ class Settings:
     # token validation. In staging, the private Docker network can fetch the
     # same JWKS document through Keycloak's service name without requiring
     # public DNS or hairpin TLS.
-    oidc_internal_base_url: str = os.getenv("OIDC_INTERNAL_BASE_URL", "").strip()
+    oidc_internal_base_url: str = (
+        os.getenv("OIDC_INTERNAL_BASE_URL", "").strip()
+        or ("http://gateway:80" if os.getenv("APP_ENV", "").strip() == "production" else "")
+    )
     oidc_audience: str = os.getenv("OIDC_AUDIENCE", "neomarket-admin-api")
     oidc_required_amr: str = os.getenv("OIDC_REQUIRED_AMR", "")
     oidc_required_acr: str = os.getenv("OIDC_REQUIRED_ACR", "")
