@@ -1,0 +1,15 @@
+{
+  "environment": "staging",
+  "release_sha": "fbbd47372974678638ed0cc48967fa73e4a3d3a8",
+  "fixture": "qa-b2b-20261020b",
+  "browser": "Chromium",
+  "authenticated_cookie_present": true,
+  "private_routes": "11/11 HTTP 200 with final URL on requested route",
+  "runtime_error_responses": [],
+  "axe_checked_routes": ["/dashboard", "/products", "/products/new", "/inventory", "/imports", "/orders", "/team", "/settings"],
+  "axe_violations": [],
+  "notes": [
+    "The prior team-members 500 was caused by a synthetic .test address rejected by EmailStr; the fixture now uses staging.neomarket.internal.",
+    "Finance, returns and provider-backed flows remain fail-closed until ADR/provider gates are accepted."
+  ]
+}

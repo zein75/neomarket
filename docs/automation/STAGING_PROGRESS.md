@@ -20,8 +20,8 @@ Independent local checks on the current checkout:
 | S0 host audit | DONE | `STAGING_INFRA_AUDIT.md` and captured server audit |
 | S1 restricted deployment | DONE | fixed-SHA wrapper, forced SSH command, root-only Docker credentials |
 | S2 filesystem/secrets | DONE | root-owned `/etc/neomarket/staging.env`, persistent volumes, no secret values in Git |
-| S3 Compose runtime | PASS | deployment `c073e744…` completed; all required services, both workers and gateway healthy |
-| S4 ingress/HTTPS | PARTIAL | Caddy internal TLS works; fixed-SHA redeploy recreated the gateway and live host probes now return the expected Storefront/Seller/Admin health payloads. CA/browser trust is still not installed |
+| S3 Compose runtime | PASS | deployment `3a1e7e9505fc767…` completed; all required services, both workers and gateway healthy |
+| S4 ingress/HTTPS | PARTIAL | Caddy internal TLS works; fixed-SHA redeploy recreated the gateway and live host probes return the expected Storefront/Seller/Admin health payloads. The current Playwright Chromium profile trusts the Caddy CA; authenticated browser evidence remains open |
 | S5 migrations/integration | PASS for startup | B2B, B2C and Admin migrations completed; PostgreSQL/Redis healthy |
 | S6 Keycloak/OIDC/MFA | PARTIAL | Keycloak realm imported and healthy; real browser OIDC/MFA evidence not run |
 | S7 media/antivirus | PASS for startup | ClamAV healthy and B2B depends on it; full upload/quarantine evidence not run |
@@ -43,3 +43,34 @@ The acceptance checker still returns `BLOCKED` (`202` required cases, `0` of `3`
 **Browser evidence (2026-10-20T11:56Z):** `admin-auth-boundary.spec.ts` ran against the real staging Admin host with Chromium host rules and the Caddy CA trusted in the current user store. All 72 anonymous protected-page/forged-cookie checks passed across desktop, tablet and mobile; report: `evidence/staging/admin-anonymous-boundary-20261020.json`. The separate APIRequestContext check was not promoted because Playwright's request client does not consume Chromium host rules and the local DNS names are intentionally private.
 
 An additional real-browser smoke covered 24 public Storefront, Seller and Admin entrypoints across desktop, tablet and mobile; every response was HTTP 200 with a visible `<main>`. Report: `evidence/staging/public-browser-20261020.json`.
+
+### Latest protected status and Admin boundary run вЂ” 2026-10-20 17:15 local
+
+- The forced-command CI deploy key first captured status on SHA `c073e7446d6d639f73644a1b68d2110ed234b325`; this is historical evidence only. The current protected deployment is SHA `3a1e7e9505fc76716322aa2ea9d97a4eff30672f`, with current status in `docs/automation/evidence/staging/status-20261020T1721Z.txt`.
+- A fresh Chromium Playwright run against real `admin.neomarket.test` passed 72 anonymous protected-page and forged-cookie checks across desktop/tablet/mobile with the trusted Caddy local CA. This does not satisfy authenticated Admin acceptance or release manifests.
+- Keycloak discovery on the protected staging host reports `acr_values_supported=[0,1]`; ACR 2/3 step-up is not configured. AMR scope support alone is not authenticated MFA evidence. Evidence: `docs/automation/evidence/staging/keycloak-oidc-discovery-20261020T1718Z-summary.json`.
+
+### Immutable redeploy and repeat boundary ? 2026-10-20 17:22 local
+
+- CI run `39421153548` completed successfully for SHA `3a1e7e9505fc76716322aa2ea9d97a4eff30672f`; all six images built and PostgreSQL migration/concurrency checks passed.
+- The protected forced-command deployment completed and `last-successful-sha` is `3a1e7e9505fc76716322aa2ea9d97a4eff30672f`. All services became healthy after warm-up. Evidence: `docs/automation/evidence/staging/status-20261020T1721Z.txt`.
+- Repeated Admin anonymous boundary: 72/72 passed across desktop/tablet/mobile with trusted Caddy CA. Evidence: `docs/automation/evidence/staging/admin-anonymous-boundary-3a1e7e9.json`.
+- Repeated Caddy host and anonymous Admin API probes returned expected Storefront/Seller/Admin/Keycloak boundaries and `401 ADMIN_SESSION_REQUIRED` on protected Admin endpoints. Evidence: `docs/automation/evidence/staging/gateway-routes-20261020T1722Z.txt`.
+- Staging CSRF browser probe initially exposed a test-fixture issue: `SameSite=Strict` cookies are correctly withheld on the cross-site form, so the request stopped at 401 before CSRF. The test now uses production `__Host-` cookie names with secure `SameSite=None` synthetic cookies only for this negative boundary; the real staging probe passes HTTP 403 `CSRF_VALIDATION_FAILED` with `no-store`. Evidence: `docs/automation/evidence/staging/admin-csrf-boundary-3a1e7e9/REPORT.md`.
+- The protected `neomarket-staging-qa-fixture` probe exposed deployment drift: the root-installed fixture copy is stale. The first create returned ephemeral fixture data, while the destroy request followed the stale create path and failed on a `products.seller_id` NOT NULL violation. Cleanup is therefore unconfirmed and must be handled by the root owner after refreshing `/opt/neomarket-staging/qa/b2b_fixture.py` from the checked-out source. Evidence: `docs/automation/evidence/staging/qa-fixture-fk-failure-3a1e7e9.txt`.
+- Fresh release checker result: 202 required cases, 170 PASS, 32 NOT_RUN, and 0/3 independent manifests; result `BLOCKED`. Evidence: `docs/automation/evidence/staging/release-check-20261020T1730Z.json`.
+
+### Latest redeploy and repeat boundary ? 2026-10-20 18:01 local
+
+- CI run `39422677045` completed successfully for SHA `fbbd47372974678638ed0cc48967fa73e4a3d3a8`; all six images built and migration/concurrency checks passed.
+- Protected staging deployment completed with `SMOKE PASS` and all required services healthy on SHA `fbbd47372974678638ed0cc48967fa73e4a3d3a8`. Evidence: `docs/automation/evidence/staging/status-20261020T1800Z.txt`.
+- Admin anonymous boundary passed 72/72 across desktop/tablet/mobile, and CSRF boundary passed 3/3. Evidence: `admin-anonymous-boundary-fbbd473.json`, `admin-csrf-boundary-fbbd473.json`.
+- Gateway probes returned Storefront/Seller 200, Admin anonymous redirect 307, Keycloak 302, Admin health 200 and protected moderation 401. Evidence: `docs/automation/evidence/staging/gateway-routes-20261020T1801Z.txt`.
+
+### Authenticated Seller follow-up — 2026-10-20
+
+- Release `fbbd47372974678638ed0cc48967fa73e4a3d3a8` passed verify/integration and all six immutable image builds, then completed the restricted staging deployment with healthy services and `SMOKE PASS`.
+- Fixed Seller middleware session validation to call the internal `NEOMARKET_B2B_URL/auth/me` service route instead of recursively calling the public BFF origin from inside the frontend container. This removed false login redirects on private Seller pages.
+- Fixed the staging QA fixture email suffix from `.test` to `.internal`; the former was rejected by the same `EmailStr` validator used by the live team response and caused a real `/team/members` 500.
+- Authenticated Chromium sweep on the real staging host: 11/11 protected Seller routes stayed on the requested URL with HTTP 200; runtime error sweep was empty; axe violations were empty on eight core routes. Evidence: `docs/automation/evidence/staging/b2b-authenticated-routes-fbbd473-20261020.json` and `docs/automation/evidence/staging/b2b-authenticated-runtime-fbbd473-20261020.json`.
+- ADR-001 was added to the repository but remains `PROPOSED / LEGAL_AND_PSP_REVIEW_REQUIRED`; returns, restock, PSP, payout and fiscal flows remain fail-closed and release-blocking until the required approvals/provider evidence exist.

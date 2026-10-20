@@ -1,0 +1,21 @@
+{
+  "environment": "staging",
+  "release_sha": "fbbd47372974678638ed0cc48967fa73e4a3d3a8",
+  "host": "seller.neomarket.test",
+  "browser": "Chromium",
+  "authenticated_cookie_present": true,
+  "login_credentials": "ephemeral fixture; omitted",
+  "routes": [
+    {"route":"/dashboard","status":200,"final_url":"https://seller.neomarket.test/dashboard","h1":"Управление каталогом и остатками","login_form":false},
+    {"route":"/products","status":200,"final_url":"https://seller.neomarket.test/products","h1":"Товары","login_form":false},
+    {"route":"/products/new","status":200,"final_url":"https://seller.neomarket.test/products/new","h1":"Новый черновик","login_form":false},
+    {"route":"/inventory","status":200,"final_url":"https://seller.neomarket.test/inventory","h1":"Остатки","login_form":false},
+    {"route":"/imports","status":200,"final_url":"https://seller.neomarket.test/imports","h1":"Import stock counts","login_form":false},
+    {"route":"/orders","status":200,"final_url":"https://seller.neomarket.test/orders","h1":"Заказы","login_form":false},
+    {"route":"/returns","status":200,"final_url":"https://seller.neomarket.test/returns","h1":"returns","login_form":false},
+    {"route":"/finance","status":200,"final_url":"https://seller.neomarket.test/finance","h1":"Финансы","login_form":false},
+    {"route":"/finance/payouts","status":200,"final_url":"https://seller.neomarket.test/finance/payouts","h1":"Выплаты","login_form":false},
+    {"route":"/team","status":200,"final_url":"https://seller.neomarket.test/team","h1":"Команда","login_form":false},
+    {"route":"/settings","status":200,"final_url":"https://seller.neomarket.test/settings","h1":"settings","login_form":false}
+  ]
+}

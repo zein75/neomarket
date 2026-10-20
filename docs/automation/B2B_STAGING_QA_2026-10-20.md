@@ -2,7 +2,7 @@
 
 ## Version
 
-- Runtime release: \`c073e7446d6d639f73644a1b68d2110ed234b325\`
+- Runtime release: \`fbbd47372974678638ed0cc48967fa73e4a3d3a8\`
 - Server: \`192.168.0.112\`
 - Gateway: \`127.0.0.1:18080\`
 - Environment: isolated staging
@@ -22,6 +22,7 @@
   - private \`/internal/*\` route through gateway: \`404\`;
   - unauthenticated MFA challenge: \`401\`.
 - Host port capture shows only Caddy \`80/443\` publicly bound; NeoMarket gateway and service listeners remain loopback/internal.
+- Authenticated Chromium staging sweep: 11/11 protected Seller routes returned HTTP 200 on the requested URL with a real opaque session cookie; no runtime error responses were observed after refreshing the fixture with a valid internal email domain. Axe found no violations on dashboard, products, product-create, inventory, imports, orders, team and settings.
 
 Evidence files:
 
@@ -29,6 +30,8 @@ Evidence files:
 - \`evidence/staging/b2b-runtime-smoke-20261020T120619Z.json\`
 - \`evidence/staging/b2b-staging-boundaries-20261020T120530Z.json\`
 - \`evidence/staging/port-exposure-20261020T120647Z.json\`
+- \`evidence/staging/b2b-authenticated-routes-fbbd473-20261020.json\`
+- \`evidence/staging/b2b-authenticated-runtime-fbbd473-20261020.json\`
 
 ## Current requirement matrix
 
@@ -50,5 +53,4 @@ Remaining non-commercial evidence gaps:
 
 ## Release status
 
-**B2B runtime is deployed and regression-tested. The full Seller/B2B release remains BLOCKED** until the non-commercial evidence gaps and the explicitly ADR-dependent requirements are resolved. No requirement was promoted to PASS from documentation alone.
-
+**B2B runtime is deployed and regression-tested. Authenticated Seller route access is now verified on the current release. The full Seller/B2B release remains BLOCKED** until the non-commercial evidence gaps and the ADR-dependent requirements are resolved. ADR-001 is present but still marked `PROPOSED / LEGAL_AND_PSP_REVIEW_REQUIRED`; no finance or return requirement was promoted from documentation alone.
