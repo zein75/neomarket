@@ -2,7 +2,7 @@
 
 ## Release status
 
-**BLOCKED.** SSH access and the restricted staging runtime are present, and read-only endpoint probes pass for the public boundaries. The current `20cd369` runtime is healthy and its real HTTPS health/discovery probes pass; the authenticated Seller route sweep and bounded recovery evidence were collected on the code-equivalent `ee079032` runtime. Full release gates remain open because Keycloak MFA/OIDC, authenticated Admin/visual QA, backup/restore, provider/DLQ recovery evidence, and three independent Playwright manifests are still missing.
+**BLOCKED.** SSH access and the restricted staging runtime are present, and read-only endpoint probes pass for the public boundaries. The current `20cd369` runtime is healthy and its real HTTPS health/discovery probes pass; a fresh authenticated Seller route sweep on this runtime verified all 11 protected routes. Full release gates remain open because Keycloak MFA/OIDC, authenticated Admin/visual QA, backup/restore, provider/DLQ recovery evidence, and three independent Playwright manifests are still missing.
 
 The protected staging runtime was deliberately deployed to the pinned SHA below. No production deployment was performed.
 
@@ -84,7 +84,7 @@ The latest successful image build for the current code release was workflow run 
 
 ## Stage 2–7 result
 
-The protected runtime status and startup migrations are verified. The B2B suite completed with `285 passed, 38 skipped, 0 failed`; a fresh Chromium Seller fixture authenticated and returned `200` on 11 protected routes on the code-equivalent `ee079032` runtime; ClamAV detected EICAR and accepted a clean sample; and bounded PostgreSQL and Redis stop/start drills returned readiness `503` during each dependency outage and `200` after recovery without deleting volumes. The current `20cd369` status and HTTPS probes are healthy. These checks do not prove the full release: Keycloak MFA/OIDC claims, authenticated Admin workflows, visual comparison, upload/quarantine end-to-end behavior, retry/DLQ/provider drills, off-host backup/restore and the three independent release-gate manifests remain open.
+The protected runtime status and startup migrations are verified. The B2B suite completed with `285 passed, 38 skipped, 0 failed`; a fresh Chromium Seller fixture on `20cd369` authenticated and returned `200` on 11 protected routes with an HttpOnly session and no unexpected 5xx responses; ClamAV detected EICAR and accepted a clean sample; and bounded PostgreSQL and Redis stop/start drills returned readiness `503` during each dependency outage and `200` after recovery without deleting volumes. The current `20cd369` status and HTTPS probes are healthy. These checks do not prove the full release: Keycloak MFA/OIDC claims, authenticated Admin workflows, visual comparison, upload/quarantine end-to-end behavior, retry/DLQ/provider drills, off-host backup/restore and the three independent release-gate manifests remain open.
 
 ## Required next steps
 
@@ -124,6 +124,8 @@ The protected runtime status and startup migrations are verified. The B2B suite 
 - [https-health-b7e07e7-20261020.txt](evidence/staging/https-health-b7e07e7-20261020.txt)
 - [status-20cd369-20261020.txt](evidence/staging/status-20cd369-20261020.txt) (current live runtime)
 - [https-health-20cd369-20261020.txt](evidence/staging/https-health-20cd369-20261020.txt)
+- [b2b-authenticated-routes-20cd369-20261020.json](evidence/staging/b2b-authenticated-routes-20cd369-20261020.json)
+- [qa-fixture-create-destroy-20cd369-20261020.json](evidence/staging/qa-fixture-create-destroy-20cd369-20261020.json)
 - [smoke-ee07903-20261020.txt](evidence/staging/smoke-ee07903-20261020.txt)
 - [clamav-ee079032-20261020.json](evidence/staging/clamav-ee079032-20261020.json)
 - [qa-fixture-create-destroy-ee07903-20261020.json](evidence/staging/qa-fixture-create-destroy-ee07903-20261020.json)

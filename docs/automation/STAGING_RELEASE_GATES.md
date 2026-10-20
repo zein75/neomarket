@@ -12,7 +12,7 @@
 | OIDC/MFA/RBAC browser proof | BLOCKED | anonymous boundary is verified; real staff credentials/MFA browser manifests are missing; Keycloak advertises only ACR `0`/`1` |
 | Media storage and ClamAV | PARTIAL | ClamAV is healthy on the private backend plus dedicated egress network; real EICAR detection and clean-file scan passed. `freshclam` reaches the CDN but receives HTTP 403/cooldown, and full upload/quarantine evidence is still not run |
 | HTTPS ingress | PASS for routing / PARTIAL for browser | Caddy internal TLS and host routing pass on `20cd369`; real HTTPS health/discovery probes are in `https-health-20cd369-20261020.txt`; CA is trusted by the current Playwright Chromium profile |
-| Authenticated Playwright | BLOCKED | Seller authenticated Chromium sweep on code-equivalent `ee079032` verified 11/11 protected routes; no fresh authenticated run exists for `20cd369`; Admin OIDC/MFA, visual comparison and three independent full manifests remain missing |
+| Authenticated Playwright | BLOCKED | Fresh Seller Chromium sweep on `20cd369` verified 11/11 protected routes with an HttpOnly session and no unexpected 5xx; Admin OIDC/MFA, visual comparison and three independent full manifests remain missing |
 | Backup/restore | PARTIAL / BLOCKED | isolated local B2C/B2B/Admin restore drill passed with matching counts/checksums and valid Admin audit chain; external backup target, WAL/PITR and RPO/RTO remain absent (`qa-reports/restore-drill/b2b-followup-20261020.json`) |
 | Three independent clean manifests | BLOCKED | release checker: `202` required cases, `0` manifests; [`release-check-ee07903-20261020.json`](evidence/staging/release-check-ee07903-20261020.json) |
 

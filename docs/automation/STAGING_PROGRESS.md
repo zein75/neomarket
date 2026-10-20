@@ -157,4 +157,7 @@ An additional real-browser smoke covered 24 public Storefront, Seller and Admin 
 - Real HTTPS health probes returned 200 for Storefront, Seller and Admin; Keycloak realm discovery returned 200 with the configured issuer and JWKS URL. Evidence: `docs/automation/evidence/staging/https-health-20cd369-20261020.txt`.
 - The authenticated Seller browser sweep remains the earlier code-equivalent `ee079032` evidence; no fresh authenticated browser claim is made for `20cd369`.
 
+- Fresh current-runtime Seller browser QA completed on `20cd369`: login used an isolated fixture, all 11 protected routes returned HTTP 200 without redirecting to login, the session cookie was HttpOnly, there were no page errors and no unexpected 5xx responses. Finance's 501 responses were the documented fail-closed commercial gate. Evidence: `docs/automation/evidence/staging/b2b-authenticated-routes-20cd369-20261020.json`.
+- A separate fixture cleanup check returned `deleted=true` with no credential material recorded. Evidence: `docs/automation/evidence/staging/qa-fixture-create-destroy-20cd369-20261020.json`.
+
 

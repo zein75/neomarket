@@ -1,0 +1,112 @@
+﻿{
+  "environment": "staging",
+  "release_sha": "20cd369cefdd0e8b6b89addedf92df6cc49bb796",
+  "browser": "Chromium",
+  "authenticated_cookie_present": true,
+  "authenticated_cookie_http_only": true,
+  "routes": [
+    {
+      "route": "/dashboard",
+      "status": 200,
+      "final_url": "https://seller.neomarket.test/dashboard",
+      "login_form": false,
+      "h1": "Управление каталогом и остатками"
+    },
+    {
+      "route": "/products",
+      "status": 200,
+      "final_url": "https://seller.neomarket.test/products",
+      "login_form": false,
+      "h1": "Товары"
+    },
+    {
+      "route": "/products/new",
+      "status": 200,
+      "final_url": "https://seller.neomarket.test/products/new",
+      "login_form": false,
+      "h1": "Новый черновик"
+    },
+    {
+      "route": "/inventory",
+      "status": 200,
+      "final_url": "https://seller.neomarket.test/inventory",
+      "login_form": false,
+      "h1": "Остатки"
+    },
+    {
+      "route": "/imports",
+      "status": 200,
+      "final_url": "https://seller.neomarket.test/imports",
+      "login_form": false,
+      "h1": "Import stock counts"
+    },
+    {
+      "route": "/orders",
+      "status": 200,
+      "final_url": "https://seller.neomarket.test/orders",
+      "login_form": false,
+      "h1": "Заказы"
+    },
+    {
+      "route": "/returns",
+      "status": 200,
+      "final_url": "https://seller.neomarket.test/returns",
+      "login_form": false,
+      "h1": "returns"
+    },
+    {
+      "route": "/finance",
+      "status": 200,
+      "final_url": "https://seller.neomarket.test/finance",
+      "login_form": false,
+      "h1": "Финансы"
+    },
+    {
+      "route": "/finance/payouts",
+      "status": 200,
+      "final_url": "https://seller.neomarket.test/finance/payouts",
+      "login_form": false,
+      "h1": "Выплаты"
+    },
+    {
+      "route": "/team",
+      "status": 200,
+      "final_url": "https://seller.neomarket.test/team",
+      "login_form": false,
+      "h1": "Команда"
+    },
+    {
+      "route": "/settings",
+      "status": 200,
+      "final_url": "https://seller.neomarket.test/settings",
+      "login_form": false,
+      "h1": "settings"
+    }
+  ],
+  "console_errors": [
+    "Failed to load resource: the server responded with a status of 401 ()",
+    "Failed to load resource: the server responded with a status of 401 ()",
+    "Failed to load resource: the server responded with a status of 501 ()",
+    "Failed to load resource: the server responded with a status of 501 ()"
+  ],
+  "page_errors": [],
+  "failed_responses": [
+    {
+      "url": "https://seller.neomarket.test/api/seller/auth/organizations",
+      "status": 401
+    },
+    {
+      "url": "https://seller.neomarket.test/api/seller/auth/session",
+      "status": 401
+    },
+    {
+      "url": "https://seller.neomarket.test/api/seller/finance/overview",
+      "status": 501
+    },
+    {
+      "url": "https://seller.neomarket.test/api/seller/finance/payouts",
+      "status": 501
+    }
+  ],
+  "unexpected_failed_responses": []
+}

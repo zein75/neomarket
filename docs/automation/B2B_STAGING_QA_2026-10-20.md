@@ -47,6 +47,8 @@ Evidence files:
 - \`evidence/staging/https-health-b7e07e7-20261020.txt\`
 - \`evidence/staging/status-20cd369-20261020.txt\`
 - \`evidence/staging/https-health-20cd369-20261020.txt\`
+- \`evidence/staging/b2b-authenticated-routes-20cd369-20261020.json\`
+- \`evidence/staging/qa-fixture-create-destroy-20cd369-20261020.json\`
 - \`evidence/staging/clamav-ee079032-20261020.json\`
 - \`evidence/staging/smoke-ee07903-20261020.txt\`
 - \`evidence/staging/qa-fixture-create-destroy-ee07903-20261020.json\`
@@ -112,4 +114,4 @@ Remaining non-commercial evidence gaps:
 
 ## Release status
 
-**B2B runtime is deployed and regression-tested. The current `20cd369` runtime is healthy and the real HTTPS health probes pass; the latest authenticated Seller route evidence is on the code-equivalent `ee079032` runtime. The full Seller/B2B release remains BLOCKED** until the non-commercial evidence gaps and the ADR-dependent requirements are resolved. ADR-001 is present but still marked `PROPOSED / LEGAL_AND_PSP_REVIEW_REQUIRED`; no finance or return requirement was promoted from documentation alone.
+**B2B runtime is deployed and regression-tested. The current `20cd369` runtime is healthy and the real HTTPS health probes pass. A fresh Chromium run on this runtime authenticated an isolated Seller fixture and verified 11/11 protected routes, HttpOnly session state, no page errors and no unexpected 5xx responses. The full Seller/B2B release remains BLOCKED** until the non-commercial evidence gaps and the ADR-dependent requirements are resolved. ADR-001 is present but still marked `PROPOSED / LEGAL_AND_PSP_REVIEW_REQUIRED`; no finance or return requirement was promoted from documentation alone.

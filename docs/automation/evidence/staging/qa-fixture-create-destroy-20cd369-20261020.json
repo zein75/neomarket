@@ -1,0 +1,8 @@
+﻿{
+    "environment":  "staging",
+    "release_sha":  "20cd369cefdd0e8b6b89addedf92df6cc49bb796",
+    "run_id":  "qa-b2b-20cd3693",
+    "destroy":  true,
+    "credentials_recorded":  false,
+    "observedAt":  "2026-10-20T14:08:56.8796623Z"
+}
