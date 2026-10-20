@@ -38,7 +38,10 @@ def validate_run_id(value: str) -> str:
 
 def build_credentials(run_id: str) -> tuple[str, str, str]:
     validate_run_id(run_id)
-    email = f"{run_id}@staging.neomarket.test"
+    # `.test` is intentionally rejected by pydantic-email-validator as a
+    # special-use domain. Use a reserved-for-internal staging suffix that
+    # still exercises the same production email validation rules.
+    email = f"{run_id}@staging.neomarket.internal"
     password = f"Qa-{secrets.token_urlsafe(18)}-9a"
     company = f"NeoMarket QA {run_id}"
     return email, password, company
