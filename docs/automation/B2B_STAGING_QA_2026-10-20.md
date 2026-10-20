@@ -31,6 +31,7 @@
 - Current-runtime Chromium axe sweep on `d30c5d8` covered the same eight authenticated Seller routes at 1440px: 0 WCAG 2.2 A/AA violations, 0 page errors and 0 unexpected failed responses. Manual assistive-technology review remains separate evidence work for UI-07.
 - Current-runtime Chromium keyboard focus sweep on `0fcb935` covered eight authenticated Seller routes at 1440px: 147 visible controls traversed, 0 invalid focus states, 0 page errors and 0 unexpected 5xx responses. The run used the trusted Caddy CA and an isolated fixture; the two session controls that previously lacked an indicator now expose a 3px solid focus ring.
 - The official `seller-keyboard-focus.spec.ts` then ran against `b0fd232` on desktop, tablet and mobile: 9/9 tests passed, with no skipped or unexpected tests. It covered sign-in traversal, navigation reachability and the 13-route product/inventory/order/moderation focus sweep. Evidence: `evidence/staging/keyboard-b0fd232-playwright.json` and `evidence/staging/keyboard-b0fd232/`.
+- The official `seller-accessibility.spec.ts` ran against `b0fd232` on desktop, tablet and mobile: 3/3 projects passed, 0 skipped, 0 unexpected. The public and authenticated Seller scans returned zero axe WCAG 2.2 A/AA violations across the tested screens. Evidence: `evidence/staging/axe-b0fd232-playwright.json` and `evidence/staging/axe-b0fd232/`.
 
 Evidence files:
 
@@ -62,6 +63,8 @@ Evidence files:
 - \`evidence/staging/seller-focus-diagnose-0fcb935-20261020.json\` (pre-fix moderation filter diagnosis)
 - \`evidence/staging/keyboard-b0fd232-playwright.json\`
 - \`evidence/staging/status-b0fd232-20261020.txt\`
+- \`evidence/staging/axe-b0fd232-playwright.json\`
+- \`evidence/staging/axe-b0fd232/\`
 - \`evidence/staging/clamav-ee079032-20261020.json\`
 - \`evidence/staging/smoke-ee07903-20261020.txt\`
 - \`evidence/staging/qa-fixture-create-destroy-ee07903-20261020.json\`
