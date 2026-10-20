@@ -3,7 +3,7 @@
 ## Version
 
 - Runtime release: \`0fcb935bfd14eba6eaa197898bf865e21eddfbd4\` (current live staging)
-- Source HEAD: \`0fcb935bfd14eba6eaa197898bf865e21eddfbd4\`; verify/build passed in GitHub Actions run \`39439533285\`, and the protected staging wrapper deployed this immutable SHA.
+- Tested source release: \`0fcb935bfd14eba6eaa197898bf865e21eddfbd4\`; verify/build passed in GitHub Actions run \`39439533285\`, and the protected staging wrapper deployed this immutable SHA. Later documentation commits do not change the runtime image.
 - Server: \`192.168.0.112\`
 - Gateway: \`127.0.0.1:18080\`
 - Environment: isolated staging
