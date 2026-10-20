@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+[[ "$EUID" -eq 0 ]] || { echo 'Run as root.' >&2; exit 1; }
+action="${1:-}"
+run_id="${2:-}"
+[[ "$action" == create || "$action" == destroy ]] || { echo 'Usage: ... {create|destroy} qa-run-id' >&2; exit 2; }
+[[ "$run_id" =~ ^qa-[a-z0-9][a-z0-9-]{7,63}$ ]] || { echo 'Invalid QA run id.' >&2; exit 2; }
+
+ROOT=/opt/neomarket-staging
+COMPOSE="$ROOT/compose/docker-compose.staging.yml"
+ENV_FILE=/etc/neomarket/staging.env
+FIXTURE="$ROOT/qa/b2b_fixture.py"
+[[ -r "$COMPOSE" && -r "$ENV_FILE" && -r "$FIXTURE" ]] || { echo 'Staging fixture files are missing.' >&2; exit 1; }
+
+# The service, image, command and mount are fixed. User input is only a
+# validated action and run id; no arbitrary shell, compose file or path is accepted.
+exec docker compose --env-file "$ENV_FILE" -f "$COMPOSE" run --rm --no-deps \
+  -v "$FIXTURE:/qa/b2b_fixture.py:ro" b2b \
+  uv run --no-sync python /qa/b2b_fixture.py "$action" "$run_id"

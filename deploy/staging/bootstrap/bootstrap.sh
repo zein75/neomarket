@@ -68,12 +68,14 @@ for f in docker-compose.staging.yml nginx.conf init.sql deploy.sh smoke.sh statu
   [[ -f "$SOURCE_ROOT/$f" ]] || { echo "Missing source manifest $SOURCE_ROOT/$f" >&2; exit 1; }
 done
 [[ -f "$SOURCE_ROOT/keycloak/realm.template.json" ]] || { echo "Missing Keycloak realm template" >&2; exit 1; }
+[[ -f "$SOURCE_ROOT/qa/b2b_fixture.py" ]] || { echo "Missing B2B QA fixture" >&2; exit 1; }
 
 if ! id -u "$DEPLOY_USER" >/dev/null 2>&1; then
   useradd --system --create-home --home-dir "$STATE" --shell /bin/bash "$DEPLOY_USER"
 fi
 install -d -o root -g root -m 0755 "$ROOT" "$ROOT/compose" "$ROOT/metadata"
 install -d -o root -g root -m 0750 "$ROOT/compose/keycloak"
+install -d -o root -g root -m 0750 "$ROOT/qa"
 install -d -o "$DEPLOY_USER" -g "$DEPLOY_USER" -m 0700 "$STATE" "$STATE/requests" "$STATE/.ssh"
 install -d -o root -g root -m 0750 /var/log/neomarket-staging
 install -d -o root -g root -m 0750 "$ETC"
@@ -83,6 +85,7 @@ for f in docker-compose.staging.yml nginx.conf init.sql deploy.sh smoke.sh statu
 done
 install -o root -g root -m 0755 "$SCRIPT_DIR/complete_test_secrets.py" "$ROOT/compose/complete_test_secrets.py"
 install -o root -g root -m 0755 "$SCRIPT_DIR/prepare_keycloak_realm.py" "$ROOT/compose/prepare_keycloak_realm.py"
+install -o root -g root -m 0755 "$SOURCE_ROOT/qa/b2b_fixture.py" "$ROOT/qa/b2b_fixture.py"
 install -o root -g root -m 0640 "$SOURCE_ROOT/keycloak/realm.template.json" "$ROOT/compose/keycloak/realm.template.json"
 chmod 0755 "$ROOT/compose/deploy.sh" "$ROOT/compose/smoke.sh" "$ROOT/compose/status.sh"
 printf 'REGISTRY_IMAGE=%s\n' "$REGISTRY_IMAGE" > "$ETC/staging-release.conf"
@@ -101,6 +104,7 @@ fi
 
 install -o root -g root -m 0755 "$SCRIPT_DIR/neomarket-staging-deploy" /usr/local/sbin/neomarket-staging-deploy
 install -o root -g root -m 0755 "$SCRIPT_DIR/neomarket-staging-status" /usr/local/sbin/neomarket-staging-status
+install -o root -g root -m 0755 "$SCRIPT_DIR/neomarket-staging-qa-fixture" /usr/local/sbin/neomarket-staging-qa-fixture
 install -o root -g root -m 0755 "$SCRIPT_DIR/neomarket-staging-ssh-guard" /usr/local/sbin/neomarket-staging-ssh-guard
 install -o root -g root -m 0644 "$SCRIPT_DIR/neomarket-staging-deploy.sudoers" /etc/sudoers.d/neomarket-staging-deploy
 chmod 0440 /etc/sudoers.d/neomarket-staging-deploy

@@ -32,6 +32,7 @@ DEPLOY_WRAPPER_SRC="$SOURCE_ROOT/bootstrap/neomarket-staging-deploy"
 for path in "$COMPOSE_SRC" "$STATUS_SRC" "$CADDY_SRC" "$NGINX_SRC"; do
   [[ -f "$path" ]] || { echo "Missing $path" >&2; exit 1; }
 done
+[[ -f "$SOURCE_ROOT/qa/b2b_fixture.py" ]] || { echo "Missing $SOURCE_ROOT/qa/b2b_fixture.py" >&2; exit 1; }
 
 caddy validate --config "$CADDY_SRC" --adapter caddyfile
 backup="$CADDY_DST.neomarket.backup.$(date +%Y%m%d%H%M%S)"
@@ -41,7 +42,13 @@ install -o root -g root -m 0644 "$COMPOSE_SRC" "$COMPOSE_DST"
 install -o root -g root -m 0755 "$STATUS_SRC" "$STATUS_DST"
 install -o root -g root -m 0644 "$NGINX_SRC" "$NGINX_DST"
 if [[ -f "$DEPLOY_WRAPPER_SRC" ]]; then
-  install -o root -g root -m 0755 "$DEPLOY_WRAPPER_SRC" /usr/local/sbin/neomarket-staging-deploy
+install -o root -g root -m 0755 "$DEPLOY_WRAPPER_SRC" /usr/local/sbin/neomarket-staging-deploy
+install -d -o root -g root -m 0750 /opt/neomarket-staging/qa
+install -o root -g root -m 0755 "$SOURCE_ROOT/qa/b2b_fixture.py" /opt/neomarket-staging/qa/b2b_fixture.py
+install -o root -g root -m 0755 "$SCRIPT_DIR/neomarket-staging-qa-fixture" /usr/local/sbin/neomarket-staging-qa-fixture
+install -o root -g root -m 0755 "$SCRIPT_DIR/neomarket-staging-ssh-guard" /usr/local/sbin/neomarket-staging-ssh-guard
+install -o root -g root -m 0644 "$SCRIPT_DIR/neomarket-staging-deploy.sudoers" /etc/sudoers.d/neomarket-staging-deploy
+chmod 0440 /etc/sudoers.d/neomarket-staging-deploy
 fi
 systemctl reload caddy
 rm -f "$COMPOSE_SRC" "$STATUS_SRC" "$CADDY_SRC" "$NGINX_SRC"
