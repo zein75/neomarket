@@ -41,12 +41,23 @@ test.describe('Admin anonymous access boundary', () => {
     });
   }
 
-  test('Admin BFF returns a machine-readable 401 without a session', async ({ request }) => {
-    const response = await request.get(new URL('/api/admin/v1/moderation/tickets', admin).toString());
+  test('Admin BFF returns a machine-readable 401 without a session', async ({ page }) => {
+    // Use Chromium fetch so the test honours the explicit staging host mapping
+    // configured in the project launch options. APIRequestContext resolves the
+    // hostname outside Chromium and cannot reach private staging DNS.
+    await page.goto(new URL('/login', admin).toString());
+    const result = await page.evaluate(async () => {
+      const response = await fetch('/api/admin/v1/moderation/tickets', { cache: 'no-store' });
+      return {
+        status: response.status,
+        body: await response.json(),
+        cacheControl: response.headers.get('cache-control'),
+      };
+    });
 
-    expect(response.status()).toBe(401);
-    await expect(response.json()).resolves.toEqual({ code: 'ADMIN_SESSION_REQUIRED' });
-    expect(response.headers()['cache-control']).toContain('no-store');
+    expect(result.status).toBe(401);
+    expect(result.body).toEqual({ code: 'ADMIN_SESSION_REQUIRED' });
+    expect(result.cacheControl).toContain('no-store');
   });
 
   test('a forged Admin cookie cannot open a privileged page', async ({ page }) => {

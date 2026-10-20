@@ -1,0 +1,18 @@
+{
+  "run_id": "admin-anonymous-boundary-45ebbae-20261020T1541Z",
+  "timestamp_utc": "2026-10-20T15:41:43Z",
+  "environment": "staging",
+  "release_sha": "45ebbae37cb5104decf7a586e767a55cd41cd0cf",
+  "command": "playwright test tests/admin-auth-boundary.spec.ts --config=.tmp-staging-current.config.ts --workers=1",
+  "projects": ["desktop-chromium", "tablet-chromium", "mobile-chromium"],
+  "tests": {"total": 75, "passed": 75, "failed": 0, "skipped": 0},
+  "host_mapping": "Chromium --host-resolver-rules=MAP *.neomarket.test 192.168.0.112",
+  "coverage": [
+    "23 protected Admin pages per project redirect to /unauthorized",
+    "Admin BFF browser fetch returns 401 ADMIN_SESSION_REQUIRED with no-store",
+    "forged Admin cookie is rejected and removed"
+  ],
+  "backend_stubs": false,
+  "route_interception": false,
+  "test_harness_fix": "The BFF assertion uses browser fetch so private staging DNS mapping is honored; APIRequestContext cannot use Chromium host resolver rules."
+}
