@@ -33,6 +33,7 @@ Evidence files:
 - \`evidence/staging/b2b-authenticated-routes-fbbd473-20261020.json\`
 - \`evidence/staging/b2b-authenticated-runtime-fbbd473-20261020.json\`
 - \`evidence/staging/csp-fonts-82e1253-20261020.json\`
+- \`evidence/staging/status-cba15c1-20261020.txt\`
 
 The Compose release `cba15c1` keeps ClamAV private and adds container-scoped
 DNS for the signature updater. The container remains healthy, but the staging

@@ -1,0 +1,35 @@
+﻿# Sanitized staging status capture
+captured_at=2026-10-20T18:58:00+05:00
+release_sha=cba15c1aa57641677dc57d1692da8bc38d5f8ac5
+neomarket-staging-admin-1                 ghcr.io/zein75/market/admin:cba15c1aa57641677dc57d1692da8bc38d5f8ac5            "uv run --no-sync uv…"   admin                 2 minutes ago        Up 2 minutes (healthy)        8003/tcp
+neomarket-staging-admin-frontend-1        ghcr.io/zein75/market/admin-frontend:cba15c1aa57641677dc57d1692da8bc38d5f8ac5   "docker-entrypoint.s…"   admin-frontend        2 minutes ago        Up 2 minutes (healthy)        3000/tcp
+neomarket-staging-admin-postgres-1        postgres:16-alpine                                                              "docker-entrypoint.s…"   admin-postgres        4 hours ago          Up 4 hours (healthy)          5432/tcp
+neomarket-staging-admin-worker-1          ghcr.io/zein75/market/admin:cba15c1aa57641677dc57d1692da8bc38d5f8ac5            "uv run --no-sync py…"   admin-worker          2 minutes ago        Up 2 minutes (healthy)        8003/tcp
+neomarket-staging-b2b-1                   ghcr.io/zein75/market/b2b:cba15c1aa57641677dc57d1692da8bc38d5f8ac5              "uv run --no-sync uv…"   b2b                   2 minutes ago        Up 2 minutes (healthy)        8002/tcp
+neomarket-staging-b2b-taxonomy-worker-1   ghcr.io/zein75/market/b2b:cba15c1aa57641677dc57d1692da8bc38d5f8ac5              "uv run --no-sync py…"   b2b-taxonomy-worker   2 minutes ago        Up 2 minutes (healthy)        8002/tcp
+neomarket-staging-b2c-1                   ghcr.io/zein75/market/b2c:cba15c1aa57641677dc57d1692da8bc38d5f8ac5              "uv run --no-sync uv…"   b2c                   2 minutes ago        Up 2 minutes (healthy)        8001/tcp
+neomarket-staging-b2c-recovery-worker-1   ghcr.io/zein75/market/b2c:cba15c1aa57641677dc57d1692da8bc38d5f8ac5              "uv run --no-sync py…"   b2c-recovery-worker   2 minutes ago        Up 2 minutes (healthy)        8001/tcp
+neomarket-staging-clamd-1                 clamav/clamav:1.5.4                                                             "/init"                  clamd                 2 minutes ago        Up 2 minutes (healthy)        3310/tcp, 7357/tcp
+neomarket-staging-gateway-1               nginx:1.27-alpine                                                               "/docker-entrypoint.…"   gateway               About a minute ago   Up About a minute (healthy)   127.0.0.1:18080->80/tcp
+neomarket-staging-keycloak-1              quay.io/keycloak/keycloak:26.3.2                                                "/opt/keycloak/bin/k…"   keycloak              3 hours ago          Up 3 hours (healthy)          8080/tcp, 8443/tcp, 9000/tcp
+neomarket-staging-keycloak-postgres-1     postgres:16-alpine                                                              "docker-entrypoint.s…"   keycloak-postgres     3 hours ago          Up 3 hours (healthy)          5432/tcp
+neomarket-staging-mailpit-1               axllent/mailpit:v1.21.8                                                         "/mailpit"               mailpit               2 hours ago          Up 2 hours (healthy)          1025/tcp, 1110/tcp, 8025/tcp
+neomarket-staging-postgres-1              postgres:16-alpine                                                              "docker-entrypoint.s…"   postgres              4 hours ago          Up 4 hours (healthy)          5432/tcp
+neomarket-staging-redis-1                 redis:7-alpine                                                                  "docker-entrypoint.s…"   redis                 4 hours ago          Up 4 hours (healthy)          6379/tcp
+neomarket-staging-seller-frontend-1       ghcr.io/zein75/market/seller:cba15c1aa57641677dc57d1692da8bc38d5f8ac5           "docker-entrypoint.s…"   seller-frontend       2 minutes ago        Up About a minute (healthy)   3000/tcp
+neomarket-staging-storefront-1            ghcr.io/zein75/market/storefront:cba15c1aa57641677dc57d1692da8bc38d5f8ac5       "docker-entrypoint.s…"   storefront            2 minutes ago        Up 2 minutes (healthy)        3000/tcp
+/neomarket-staging-admin-1 state=running health=healthy exit=0
+/neomarket-staging-admin-worker-1 state=running health=healthy exit=0
+/neomarket-staging-b2b-1 state=running health=healthy exit=0
+/neomarket-staging-b2c-1 state=running health=healthy exit=0
+/neomarket-staging-b2b-taxonomy-worker-1 state=running health=healthy exit=0
+/neomarket-staging-b2c-recovery-worker-1 state=running health=healthy exit=0
+/neomarket-staging-clamd-1 state=running health=healthy exit=0
+/neomarket-staging-mailpit-1 state=running health=healthy exit=0
+/neomarket-staging-keycloak-1 state=running health=healthy exit=0
+/neomarket-staging-storefront-1 state=running health=healthy exit=0
+/neomarket-staging-seller-frontend-1 state=running health=healthy exit=0
+/neomarket-staging-admin-frontend-1 state=running health=healthy exit=0
+/neomarket-staging-gateway-1 state=running health=healthy exit=0
+clamd-1     | ERROR: Update failed for database: daily
+clamd-1     | ERROR: Update failed.
