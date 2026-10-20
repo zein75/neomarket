@@ -40,7 +40,8 @@ export async function GET() {
     }
     response.headers.set('Cache-Control', 'no-store');
     return response;
-  } catch {
+  } catch (error) {
+    console.error('Admin OIDC login initialization failed', error instanceof Error ? error.message : String(error));
     return NextResponse.json({ error: 'Admin OIDC is not configured' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
   }
 }
