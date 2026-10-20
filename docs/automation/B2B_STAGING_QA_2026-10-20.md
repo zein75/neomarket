@@ -133,7 +133,7 @@ the expected `connect-src` directive.
 - PARTIAL: 7
 - BLOCKED: 17
 
-The blocked finance and returns requirements remain disabled by the approved commercial decision: merchant-of-record/tax, delivery/returns ownership, refund/restock and PSP/settlement are pending ADR. No fake payment or return implementation was enabled.
+The blocked finance and returns requirements remain disabled by the approved fail-closed decision. Merchant-of-record/tax, delivery/returns ownership, refund/restock and PSP/settlement are still pending an accepted ADR and provider/legal evidence. No fake payment or return implementation was enabled.
 
 Remaining non-commercial evidence gaps:
 
