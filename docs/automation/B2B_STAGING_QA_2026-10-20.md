@@ -40,6 +40,7 @@ Evidence files:
 - \`evidence/staging/smoke-ee07903-20261020.txt\`
 - \`evidence/staging/qa-fixture-create-destroy-ee07903-20261020.json\`
 - \`evidence/staging/b2b-regression-ee07903-20261020.txt\`
+- \`evidence/staging/b2b-authenticated-routes-ee07903-20261020.json\`
 
 The Compose release `ee079032` keeps the application network internal and adds
 a dedicated egress-only network for ClamAV updates. The scanner is healthy and
@@ -54,6 +55,12 @@ returns stayed disabled by ADR policy, and finance returned the explicit
 `501 FEATURE_NOT_CONFIGURED` state. The expected 501 responses are retained as
 fail-closed evidence; they are not treated as runtime defects. The ephemeral
 fixture was destroyed after the run.
+
+On `ee079032`, a fresh Chromium login with an isolated fixture verified 11
+protected Seller routes at HTTP 200 with the requested final URLs and no
+unexpected 5xx responses. The observed `401` and `501` responses were the
+documented fail-closed finance/session checks. The fixture was destroyed with
+`deleted=true`; credentials are omitted from the evidence.
 
 The release `82e1253` also corrected the enforced CSP `connect-src` to allow the
 Google font stylesheet/font origins already used by the approved Seller,
