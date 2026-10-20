@@ -1,0 +1,5 @@
+﻿release_sha=d30c5d843f741213db7d11278bb528c586655b90
+{"status":"ok"}
+{"status":"ok","service":"seller"}
+{"status":"ok","service":"admin"}
+{"issuer":"https://keycloak.neomarket.test/realms/neomarket-staging","jwks_uri":"https://keycloak.neomarket.test/realms/neomarket-staging/protocol/openid-connect/certs","acr_values_supported":["0","1"]}

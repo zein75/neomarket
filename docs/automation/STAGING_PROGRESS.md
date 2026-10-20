@@ -151,10 +151,10 @@ An additional real-browser smoke covered 24 public Storefront, Seller and Admin 
 - Real HTTPS health probes returned 200 for Storefront, Seller and Admin; Keycloak realm discovery returned 200 with the configured issuer and JWKS URL. Evidence: `docs/automation/evidence/staging/https-health-b7e07e7-20261020.txt`.
 - The authenticated Seller browser sweep remains the earlier code-equivalent `ee079032` evidence; no fresh authenticated browser claim is made for `b7e07e7`.
 
-### Current live runtime 20cd369 - 2026-10-20
+### Current live runtime d30c5d8 - 2026-10-20
 
-- Workflow `39435057893` passed verify, PostgreSQL integration and all six immutable image builds. Protected deployment completed on `20cd369cefdd0e8b6b89addedf92df6cc49bb796`; all required services, workers, gateway and Keycloak report healthy. Evidence: `docs/automation/evidence/staging/status-20cd369-20261020.txt`.
-- Real HTTPS health probes returned 200 for Storefront, Seller and Admin; Keycloak realm discovery returned 200 with the configured issuer and JWKS URL. Evidence: `docs/automation/evidence/staging/https-health-20cd369-20261020.txt`.
+- Workflow `39437627719` passed verify, PostgreSQL integration and all six immutable image builds. Protected deployment completed on `d30c5d843f741213db7d11278bb528c586655b90`; all required services, workers, gateway and Keycloak report healthy. Evidence: `docs/automation/evidence/staging/status-d30c5d8-20261020.txt`.
+- Real HTTPS health probes returned 200 for Storefront, Seller and Admin; Keycloak realm discovery returned 200 with the configured issuer and JWKS URL. Evidence: `docs/automation/evidence/staging/https-health-d30c5d8-20261020.txt`.
 - The authenticated Seller browser sweep remains the earlier code-equivalent `ee079032` evidence; no fresh authenticated browser claim is made for `20cd369`.
 
 - Fresh current-runtime Seller browser QA completed on `20cd369`: login used an isolated fixture, all 11 protected routes returned HTTP 200 without redirecting to login, the session cookie was HttpOnly, there were no page errors and no unexpected 5xx responses. Finance's 501 responses were the documented fail-closed commercial gate. Evidence: `docs/automation/evidence/staging/b2b-authenticated-routes-20cd369-20261020.json`.

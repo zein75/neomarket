@@ -2,8 +2,8 @@
 
 ## Version
 
-- Runtime release: \`20cd369cefdd0e8b6b89addedf92df6cc49bb796\` (current live staging)
-- Source HEAD: \`f533cc3c37c4a1123aa50cf1b994bd3028d0e722\`; this HEAD contains the current source plus documentation-only provenance updates. The deployed runtime is the preceding code SHA \`20cd369\`.
+- Runtime release: \`d30c5d843f741213db7d11278bb528c586655b90\` (current live staging)
+- Source HEAD: \`d30c5d843f741213db7d11278bb528c586655b90\`; this release contains documentation-only changes after the previously verified code runtime, and was deployed through the protected staging wrapper.
 - Server: \`192.168.0.112\`
 - Gateway: \`127.0.0.1:18080\`
 - Environment: isolated staging
@@ -50,6 +50,8 @@ Evidence files:
 - \`evidence/staging/b2b-authenticated-routes-20cd369-20261020.json\`
 - \`evidence/staging/qa-fixture-create-destroy-20cd369-20261020.json\`
 - \`evidence/staging/b2b-regression-a720655-20261020.json\`
+- \`evidence/staging/status-d30c5d8-20261020.txt\`
+- \`evidence/staging/https-health-d30c5d8-20261020.txt\`
 - \`evidence/staging/clamav-ee079032-20261020.json\`
 - \`evidence/staging/smoke-ee07903-20261020.txt\`
 - \`evidence/staging/qa-fixture-create-destroy-ee07903-20261020.json\`
@@ -115,4 +117,4 @@ Remaining non-commercial evidence gaps:
 
 ## Release status
 
-**B2B runtime is deployed and regression-tested. The current `20cd369` runtime is healthy and the real HTTPS health probes pass. A fresh Chromium run on this runtime authenticated an isolated Seller fixture and verified 11/11 protected routes, HttpOnly session state, no page errors and no unexpected 5xx responses. The full Seller/B2B release remains BLOCKED** until the non-commercial evidence gaps and the ADR-dependent requirements are resolved. ADR-001 is present but still marked `PROPOSED / LEGAL_AND_PSP_REVIEW_REQUIRED`; no finance or return requirement was promoted from documentation alone.
+**B2B runtime is deployed and regression-tested. The current `d30c5d8` runtime is healthy and the real HTTPS health probes pass. The fresh Chromium Seller fixture evidence was collected on the code-equivalent `20cd369` runtime; it verified 11/11 protected routes, HttpOnly session state, no page errors and no unexpected 5xx responses. The full Seller/B2B release remains BLOCKED** until the non-commercial evidence gaps and the ADR-dependent requirements are resolved. ADR-001 is present but still marked `PROPOSED / LEGAL_AND_PSP_REVIEW_REQUIRED`; no finance or return requirement was promoted from documentation alone.
