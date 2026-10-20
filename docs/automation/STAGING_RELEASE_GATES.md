@@ -14,7 +14,7 @@
 | HTTPS ingress | PASS for routing / PARTIAL for browser | Caddy internal TLS and host routing pass on `dae7914`; Admin OIDC redirect evidence is in [`admin-oidc-private-keycloak-dae79147dac0b4d86e4397981e86f7bec10d3faa-20261020T143102Z.json`](evidence/staging/admin-oidc-private-keycloak-dae79147dac0b4d86e4397981e86f7bec10d3faa-20261020T143102Z.json); CA is trusted by the current Playwright Chromium profile |
 | Authenticated Playwright | BLOCKED | Fresh Seller Chromium sweep on `20cd369` verified 11/11 protected routes with an HttpOnly session and no unexpected 5xx; Admin OIDC/MFA, visual comparison and three independent full manifests remain missing |
 | Backup/restore | PARTIAL / BLOCKED | isolated local B2C/B2B/Admin restore drill passed with matching counts/checksums and valid Admin audit chain; external backup target, WAL/PITR and RPO/RTO remain absent (`qa-reports/restore-drill/b2b-followup-20261020.json`) |
-| Three independent clean manifests | BLOCKED | current release checker: `202` required cases, `0` manifests; [`release-check-71fdfbf-20261020.json`](evidence/staging/release-check-71fdfbf-20261020.json) |
+| Three independent clean manifests | BLOCKED | current release checker: `202` required cases, `0` manifests; [`release-check-20261020T1448Z.json`](evidence/staging/release-check-20261020T1448Z.json) |
 
 Production readiness remains false while any mandatory gate is BLOCKED or NOT RUN.
 

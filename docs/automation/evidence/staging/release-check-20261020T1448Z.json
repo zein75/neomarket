@@ -1,0 +1,8 @@
+{
+  "result": "BLOCKED",
+  "required_cases": 202,
+  "issues": [
+    "Exactly 3 independent manifests required, found 0"
+  ],
+  "issue_count": 1
+}
