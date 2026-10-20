@@ -53,6 +53,9 @@ END $$;
     op.execute("REVOKE ALL PRIVILEGES ON TABLE audit_chain_heads FROM admin_runtime")
     op.execute("GRANT SELECT, UPDATE ON TABLE audit_chain_heads TO admin_runtime")
     op.execute("REVOKE ALL PRIVILEGES ON TABLE alembic_version FROM admin_runtime")
+    # Readiness verifies the applied head while the migration owner remains
+    # responsible for all schema writes.  The runtime role needs only SELECT.
+    op.execute("GRANT SELECT ON TABLE alembic_version TO admin_runtime")
 
 
 def downgrade() -> None:
