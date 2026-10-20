@@ -15,7 +15,8 @@ LIVE_MARKER = STATE_ROOT / ".admin-db-live"
 BACKUPS = STATE_ROOT / "backups"
 COMPOSE = [
     "docker", "compose", "--project-name", "neomarket-staging",
-    "--env-file", str(SECRETS), "-f", str(ROOT / "docker-compose.staging.yml"),
+    "--env-file", str(SECRETS), "--env-file", str(STATE_ROOT / ".release.env"),
+    "-f", str(ROOT / "docker-compose.staging.yml"),
 ]
 
 
