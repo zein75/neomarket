@@ -17,6 +17,10 @@ lib/
 lib64/
 wheels/
 
+# Frontend source helpers are real application code, not generated Python lib output.
+!frontend/apps/*/src/lib/
+!frontend/apps/*/src/lib/**
+
 # Virtual environments
 .venv/
 venv/
@@ -61,6 +65,7 @@ Thumbs.db
 
 # Node (if any frontend tooling)
 node_modules/
+.tmp-admin-*
 
 # Jupyter
 .ipynb_checkpoints/
