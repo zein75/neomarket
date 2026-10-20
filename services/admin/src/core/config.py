@@ -28,7 +28,7 @@ class Settings:
     # public DNS or hairpin TLS.
     oidc_internal_base_url: str = (
         os.getenv("OIDC_INTERNAL_BASE_URL", "").strip()
-        or ("http://gateway:80" if os.getenv("APP_ENV", "").strip() == "production" else "")
+        or ("http://keycloak:8080" if os.getenv("APP_ENV", "").strip() == "production" else "")
     )
     oidc_audience: str = os.getenv("OIDC_AUDIENCE", "neomarket-admin-api")
     oidc_required_amr: str = os.getenv("OIDC_REQUIRED_AMR", "")
