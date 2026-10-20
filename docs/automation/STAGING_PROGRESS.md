@@ -27,7 +27,7 @@ Independent local checks on the current checkout:
 | S7 media/antivirus | PASS for startup | ClamAV healthy and B2B depends on it; full upload/quarantine evidence not run |
 | S8 workers/events | PASS for startup | taxonomy/recovery/admin workers running; retry/DLQ scenario evidence not run |
 | S9 CI/CD | PARTIAL | CI verify and six image builds pass; hosted runner cannot reach private staging, so deployment is executed through the restricted local SSH path |
-| S10 browser QA | BLOCKED | Caddy CA is untrusted in the current browser environment; no authenticated manifests |
+| S10 browser QA | PARTIAL | Local Playwright now trusts the Caddy CA and resolves all staging hosts via Chromium host rules; 72 anonymous Admin boundary checks passed across desktop/tablet/mobile. Authenticated OIDC/MFA, Seller flows, visual baselines and the three release manifests remain outstanding |
 | S13 backup/restore | NOT RUN | external backup target and restore drill are not configured |
 | S14 security audit | PARTIAL | static Compose gates and ingress smoke passed; full runtime audit remains |
 
@@ -39,3 +39,5 @@ The public Keycloak discovery document also resolves through Caddy with the conf
 
 The acceptance checker still returns `BLOCKED` (`202` required cases, `0` of `3` authenticated manifests):
 `python docs/NeoMarket_Admin_Production_Spec_2026-10-16/qa/check_release.py --matrix docs/NeoMarket_Admin_Production_Spec_2026-10-16/qa/ACCEPTANCE_MATRIX.csv --runs-dir docs/automation/seller_runs`.
+
+**Browser evidence (2026-10-20T11:56Z):** `admin-auth-boundary.spec.ts` ran against the real staging Admin host with Chromium host rules and the Caddy CA trusted in the current user store. All 72 anonymous protected-page/forged-cookie checks passed across desktop, tablet and mobile; report: `evidence/staging/admin-anonymous-boundary-20261020.json`. The separate APIRequestContext check was not promoted because Playwright's request client does not consume Chromium host rules and the local DNS names are intentionally private.
