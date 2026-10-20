@@ -119,14 +119,26 @@ let configuration: Promise<oidc.Configuration> | undefined;
 export function oidcConfiguration() {
   if (!configuration) {
     const internal = oidcInternalBaseUrl();
+    const issuer = requiredEnv('ADMIN_OIDC_ISSUER');
     configuration = oidc.discovery(
-      new URL(requiredEnv('ADMIN_OIDC_ISSUER')),
+      new URL(issuer),
       requiredEnv('ADMIN_OIDC_CLIENT_ID'),
       { client_secret: requiredEnv('ADMIN_OIDC_CLIENT_SECRET') },
       oidc.ClientSecretBasic(),
       internal ? { [oidc.customFetch]: internalOidcFetch } : undefined,
     ).catch((error: unknown) => {
       configuration = undefined;
+      const cause = error instanceof Error && error.cause instanceof Error
+        ? `${error.cause.name}:${error.cause.message}`
+        : error instanceof Error && error.cause
+          ? String(error.cause)
+          : 'none';
+      console.error(
+        'Admin OIDC discovery failed',
+        `issuer=${new URL(issuer).origin}`,
+        `internal=${internal?.origin ?? 'none'}`,
+        `cause=${cause}`,
+      );
       throw error;
     });
   }
