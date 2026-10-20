@@ -95,9 +95,10 @@ services:
     # state during startup. Keep its persistent database isolated, but do not
     # make the container root filesystem read-only or the entrypoint exits
     # before clamd can become healthy.
-    tmpfs: [/tmp]
+    tmpfs: [/tmp, /run]
     security_opt: ["no-new-privileges:true"]
     cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
     volumes:
       - clamavdata:/var/lib/clamav
     healthcheck:
@@ -150,6 +151,7 @@ services:
       # the B2B test mail workflow is deterministic without fake certificates.
       MP_SMTP_REQUIRE_STARTTLS: "false"
       MP_SMTP_AUTH_ACCEPT_ANY: "true"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
     volumes: ["mailpitdata:/data"]
     healthcheck:
       test: ["CMD", "mailpit", "readyz"]
