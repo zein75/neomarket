@@ -136,6 +136,16 @@ async def destroy_fixture(run_id: str) -> None:
                 select(SellerMembership.user_id).where(SellerMembership.seller_id == seller.id)
             )
         )
+        # SQLAlchemy's default relationship synchronisation can try to NULL
+        # the non-nullable products.seller_id before the database CASCADE runs.
+        # Delete fixture-owned products/SKUs explicitly, then remove the
+        # seller and its remaining database-cascaded rows.
+        product_ids = list(
+            await session.scalars(select(Product.id).where(Product.seller_id == seller.id))
+        )
+        if product_ids:
+            await session.execute(delete(SKU).where(SKU.product_id.in_(product_ids)))
+            await session.execute(delete(Product).where(Product.id.in_(product_ids)))
         await session.delete(seller)
         if user_ids:
             await session.execute(delete(SellerUser).where(SellerUser.id.in_(user_ids)))
