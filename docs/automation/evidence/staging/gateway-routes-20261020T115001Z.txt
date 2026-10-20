@@ -1,0 +1,6 @@
+﻿timestamp=20261020T115001Z
+deployment_sha=c073e7446d6d639f73644a1b68d2110ed234b325
+server=192.168.0.112
+storefront.neomarket.test {"status":"ok"}
+seller.neomarket.test {"status":"ok","service":"seller"}
+admin.neomarket.test {"status":"ok","service":"admin"}

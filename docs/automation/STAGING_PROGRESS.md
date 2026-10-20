@@ -2,7 +2,7 @@
 
 **Latest verification:** 2026-10-20 (local regression and frontend release checks)
 
-The staging refresh helper was hardened in `bcdcddb`: when run from `/tmp/neomarket-src/deploy/staging/bootstrap/refresh_root_files.sh`, it reads the checked-out manifests directly and updates the root-owned deployment wrapper. The host has not yet applied this commit; live route probes therefore still show `STAGING-GW-001`.
+The staging refresh helper was hardened in `bcdcddb`: when run from `/tmp/neomarket-src/deploy/staging/bootstrap/refresh_root_files.sh`, it reads the checked-out manifests directly and updates the root-owned deployment wrapper. The host applied the refresh and a fixed-SHA redeploy on 2026-10-20.
 
 Independent local checks on the current checkout:
 
@@ -21,7 +21,7 @@ Independent local checks on the current checkout:
 | S1 restricted deployment | DONE | fixed-SHA wrapper, forced SSH command, root-only Docker credentials |
 | S2 filesystem/secrets | DONE | root-owned `/etc/neomarket/staging.env`, persistent volumes, no secret values in Git |
 | S3 Compose runtime | PASS | deployment `c073e744…` completed; all required services, both workers and gateway healthy |
-| S4 ingress/HTTPS | BLOCKED | Caddy internal TLS works, but `STAGING-GW-001` swaps Storefront/Admin host routing until root gateway refresh is applied; CA/browser trust also not installed |
+| S4 ingress/HTTPS | PARTIAL | Caddy internal TLS works; fixed-SHA redeploy recreated the gateway and live host probes now return the expected Storefront/Seller/Admin health payloads. CA/browser trust is still not installed |
 | S5 migrations/integration | PASS for startup | B2B, B2C and Admin migrations completed; PostgreSQL/Redis healthy |
 | S6 Keycloak/OIDC/MFA | PARTIAL | Keycloak realm imported and healthy; real browser OIDC/MFA evidence not run |
 | S7 media/antivirus | PASS for startup | ClamAV healthy and B2B depends on it; full upload/quarantine evidence not run |
@@ -32,3 +32,8 @@ Independent local checks on the current checkout:
 | S14 security audit | PARTIAL | static Compose gates and ingress smoke passed; full runtime audit remains |
 
 **Current release status: BLOCKED.** Production readiness is not asserted while browser, backup/restore, authenticated QA, visual, and full security evidence are missing.
+
+**Runtime evidence (2026-10-20T11:50:01Z):** deployment `c073e7446d6d639f73644a1b68d2110ed234b325` completed through the restricted `neomarket-deploy` SSH command. Gateway probes are recorded in `evidence/staging/gateway-routes-20261020T115001Z.txt`; the status capture is `evidence/staging/status-20261020T115001Z.txt`. All required containers reported `running` and `healthy`; the deployment smoke check returned `SMOKE PASS`.
+
+The acceptance checker still returns `BLOCKED` (`202` required cases, `0` of `3` authenticated manifests):
+`python docs/NeoMarket_Admin_Production_Spec_2026-10-16/qa/check_release.py --matrix docs/NeoMarket_Admin_Production_Spec_2026-10-16/qa/ACCEPTANCE_MATRIX.csv --runs-dir docs/automation/seller_runs`.
